@@ -505,6 +505,10 @@ extension Tree {
                     MemoryLayout<Element>.stride <= Self._maxStride,
                     "Element stride (\(MemoryLayout<Element>.stride)) exceeds inline storage slot size (\(Self._maxStride) bytes). Use Binary.Bounded instead."
                 )
+                precondition(
+                    MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment,
+                    "Element alignment (\(MemoryLayout<Element>.alignment)) exceeds inline slot alignment (\(MemoryLayout<Int>.alignment) bytes). Use Binary.Bounded instead."
+                )
                 self._storage = InlineArray(repeating: InlineNode())
                 self._tokens = InlineArray(repeating: 0)  // All start as free (even)
                 self._nextFree = InlineArray(repeating: -1)
@@ -639,6 +643,10 @@ extension Tree {
                 precondition(
                     MemoryLayout<Element>.stride <= Self._maxStride,
                     "Element stride (\(MemoryLayout<Element>.stride)) exceeds inline storage slot size (\(Self._maxStride) bytes). Use Binary.Bounded instead."
+                )
+                precondition(
+                    MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment,
+                    "Element alignment (\(MemoryLayout<Element>.alignment)) exceeds inline slot alignment (\(MemoryLayout<Int>.alignment) bytes). Use Binary.Bounded instead."
                 )
                 self._inline = InlineArray(repeating: InlineNode())
                 self._inlineTokens = InlineArray(repeating: 0)  // All start as free (even)

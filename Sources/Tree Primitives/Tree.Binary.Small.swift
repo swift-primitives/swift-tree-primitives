@@ -236,8 +236,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
         at position: Tree.Binary<Element>.InsertPosition
     ) throws(__TreeBinarySmallError) -> Tree.Binary<Element>.Position {
         // If spilled to heap, use heap storage
-        if var heap = _heap, let heapPtr = unsafe _heapPtr,
-           let heapTokens = unsafe _heapTokens, let heapNextFree = unsafe _heapNextFree {
+        if _heap != nil {
             switch position {
             case .root:
                 guard _rootIndex < 0 else {
@@ -246,24 +245,23 @@ extension Tree.Binary.Small where Element: ~Copyable {
 
                 // Allocate slot from heap
                 var index: Int
-                if heap.header.freeHead >= 0 {
-                    index = heap.header.freeHead
-                    heap.header.freeHead = unsafe heapNextFree[index]
+                if _heap!.header.freeHead >= 0 {
+                    index = _heap!.header.freeHead
+                    _heap!.header.freeHead = unsafe _heapNextFree![index]
                 } else {
                     // Grow if needed
-                    if heap.header.count >= heap.header.capacity {
-                        let newCapacity = Swift.max(heap.header.capacity * 2, 8)
+                    if _heap!.header.count >= _heap!.header.capacity {
+                        let newCapacity = Swift.max(_heap!.header.capacity * 2, 8)
                         let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: newCapacity)
-                        heap._moveAllElements(to: newStorage)
+                        _heap!._moveAllElements(to: newStorage)
                         _updateHeapPointers(newStorage)
-                        heap = newStorage
                     }
-                    index = heap.header.count
+                    index = _heap!.header.count
                 }
 
-                // Increment token
-                unsafe (heapTokens[index] &+= 1)
-                let token = unsafe heapTokens[index]
+                // Increment token (use fresh pointers after potential growth)
+                unsafe (_heapTokens![index] &+= 1)
+                let token = unsafe _heapTokens![index]
 
                 _heap!._initializeNode(at: index, element: element)
                 _heap!.header.rootIndex = index
@@ -275,29 +273,26 @@ extension Tree.Binary.Small where Element: ~Copyable {
             case .left(of: let parent):
                 // Validate parent position
                 try _validate(parent)
-                guard unsafe heapPtr[parent.index].leftIndex < 0 else {
+                guard unsafe _heapPtr![parent.index].leftIndex < 0 else {
                     throw .positionOccupied
                 }
 
                 var index: Int
-                if heap.header.freeHead >= 0 {
-                    index = heap.header.freeHead
-                    heap.header.freeHead = unsafe heapNextFree[index]
+                if _heap!.header.freeHead >= 0 {
+                    index = _heap!.header.freeHead
+                    _heap!.header.freeHead = unsafe _heapNextFree![index]
                 } else {
-                    if heap.header.count >= heap.header.capacity {
-                        let newCapacity = Swift.max(heap.header.capacity * 2, 8)
+                    if _heap!.header.count >= _heap!.header.capacity {
+                        let newCapacity = Swift.max(_heap!.header.capacity * 2, 8)
                         let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: newCapacity)
-                        heap._moveAllElements(to: newStorage)
+                        _heap!._moveAllElements(to: newStorage)
                         _updateHeapPointers(newStorage)
-                        heap = newStorage
                     }
-                    index = heap.header.count
+                    index = _heap!.header.count
                 }
 
-                // Increment token
-                if let tokens = _heap!._tokens {
-                    unsafe (tokens[index] &+= 1)
-                }
+                // Increment token (use fresh pointers after potential growth)
+                unsafe (_heapTokens![index] &+= 1)
                 let token = unsafe _heapTokens![index]
 
                 _heap!._initializeNode(at: index, element: element, parentIndex: parent.index)
@@ -309,29 +304,26 @@ extension Tree.Binary.Small where Element: ~Copyable {
             case .right(of: let parent):
                 // Validate parent position
                 try _validate(parent)
-                guard unsafe heapPtr[parent.index].rightIndex < 0 else {
+                guard unsafe _heapPtr![parent.index].rightIndex < 0 else {
                     throw .positionOccupied
                 }
 
                 var index: Int
-                if heap.header.freeHead >= 0 {
-                    index = heap.header.freeHead
-                    heap.header.freeHead = unsafe heapNextFree[index]
+                if _heap!.header.freeHead >= 0 {
+                    index = _heap!.header.freeHead
+                    _heap!.header.freeHead = unsafe _heapNextFree![index]
                 } else {
-                    if heap.header.count >= heap.header.capacity {
-                        let newCapacity = Swift.max(heap.header.capacity * 2, 8)
+                    if _heap!.header.count >= _heap!.header.capacity {
+                        let newCapacity = Swift.max(_heap!.header.capacity * 2, 8)
                         let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: newCapacity)
-                        heap._moveAllElements(to: newStorage)
+                        _heap!._moveAllElements(to: newStorage)
                         _updateHeapPointers(newStorage)
-                        heap = newStorage
                     }
-                    index = heap.header.count
+                    index = _heap!.header.count
                 }
 
-                // Increment token
-                if let tokens = _heap!._tokens {
-                    unsafe (tokens[index] &+= 1)
-                }
+                // Increment token (use fresh pointers after potential growth)
+                unsafe (_heapTokens![index] &+= 1)
                 let token = unsafe _heapTokens![index]
 
                 _heap!._initializeNode(at: index, element: element, parentIndex: parent.index)
