@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 import Testing
+import Synchronization
 @testable import Tree_Primitives
 
 // MARK: - Tree.Binary Tests
@@ -135,7 +136,7 @@ struct TreeBinaryTests {
         var tree = Tree.Binary<Int>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
-        let right = try tree.insert(3, at: .right(of: root))
+        _ = try tree.insert(3, at: .right(of: root))
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
@@ -149,7 +150,7 @@ struct TreeBinaryTests {
         var tree = Tree.Binary<Int>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
-        let right = try tree.insert(3, at: .right(of: root))
+        _ = try tree.insert(3, at: .right(of: root))
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
@@ -163,7 +164,7 @@ struct TreeBinaryTests {
         var tree = Tree.Binary<Int>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
-        let right = try tree.insert(3, at: .right(of: root))
+        _ = try tree.insert(3, at: .right(of: root))
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
@@ -177,7 +178,7 @@ struct TreeBinaryTests {
         var tree = Tree.Binary<Int>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
-        let right = try tree.insert(3, at: .right(of: root))
+        _ = try tree.insert(3, at: .right(of: root))
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
@@ -295,10 +296,11 @@ struct TreeBinaryInlineTests {
 
     @Test("Inline initialization")
     func inlineInit() {
-        let tree = Tree.Binary<Int>.Inline<8>()
-        #expect(tree.isEmpty)
-        #expect(tree.count == 0)
-        #expect(!tree.isFull)
+        var tree = Tree.Binary<Int>.Inline<8>()
+        // Cannot use #expect on ~Copyable types, use assertions
+        assert(tree.isEmpty)
+        assert(tree.count == 0)
+        assert(!tree.isFull)
     }
 
     @Test("Inline insert")
@@ -308,9 +310,14 @@ struct TreeBinaryInlineTests {
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
 
-        #expect(tree.count == 3)
-        #expect(tree.peek(at: root) == 1)
-        #expect(tree.peek(at: left) == 2)
+        let count = tree.count
+        #expect(count == 3)
+
+        let rootValue = tree.peek(at: root)
+        #expect(rootValue == 1)
+
+        let leftValue = tree.peek(at: left)
+        #expect(leftValue == 2)
     }
 
     @Test("Inline overflow")
@@ -320,7 +327,8 @@ struct TreeBinaryInlineTests {
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
 
-        #expect(tree.isFull)
+        let isFull = tree.isFull
+        #expect(isFull)
 
         #expect(throws: __TreeBinaryInlineError.overflow) {
             try tree.insert(4, at: .left(of: left))
@@ -339,6 +347,26 @@ struct TreeBinaryInlineTests {
         tree.forEachInOrder { result.append($0) }
         #expect(result == [4, 2, 1, 3])
     }
+
+    @Test("Inline remove and reuse")
+    func inlineRemoveAndReuse() throws {
+        var tree = Tree.Binary<Int>.Inline<4>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+        _ = try tree.insert(3, at: .right(of: root))
+
+        // Remove left leaf
+        let removed = try tree.remove(at: left)
+        #expect(removed == 2)
+
+        let countAfterRemove = tree.count
+        #expect(countAfterRemove == 2)
+
+        // Insert new left child - should reuse slot
+        let newLeft = try tree.insert(4, at: .left(of: root))
+        let newLeftValue = tree.peek(at: newLeft)
+        #expect(newLeftValue == 4)
+    }
 }
 
 // MARK: - Tree.Binary.Small Tests
@@ -348,10 +376,11 @@ struct TreeBinarySmallTests {
 
     @Test("Small initialization")
     func smallInit() {
-        let tree = Tree.Binary<Int>.Small<4>()
-        #expect(tree.isEmpty)
-        #expect(tree.count == 0)
-        #expect(!tree.isSpilled)
+        var tree = Tree.Binary<Int>.Small<4>()
+        // Cannot use #expect on ~Copyable types, use assertions
+        assert(tree.isEmpty)
+        assert(tree.count == 0)
+        assert(!tree.isSpilled)
     }
 
     @Test("Small inline storage")
@@ -361,8 +390,11 @@ struct TreeBinarySmallTests {
         _ = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
 
-        #expect(tree.count == 3)
-        #expect(!tree.isSpilled)
+        let count = tree.count
+        #expect(count == 3)
+
+        let isSpilled = tree.isSpilled
+        #expect(!isSpilled)
     }
 
     @Test("Small spill to heap")
@@ -372,12 +404,16 @@ struct TreeBinarySmallTests {
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
 
-        #expect(!tree.isSpilled)
+        let beforeSpill = tree.isSpilled
+        #expect(!beforeSpill)
 
         _ = try tree.insert(4, at: .left(of: left))
 
-        #expect(tree.isSpilled)
-        #expect(tree.count == 4)
+        let afterSpill = tree.isSpilled
+        #expect(afterSpill)
+
+        let count = tree.count
+        #expect(count == 4)
     }
 
     @Test("Small traversal after spill")
@@ -390,7 +426,8 @@ struct TreeBinarySmallTests {
         _ = try tree.insert(3, at: .right(of: root))
         _ = try tree.insert(4, at: .left(of: left))
 
-        #expect(tree.isSpilled)
+        let isSpilled = tree.isSpilled
+        #expect(isSpilled)
 
         var result: [Int] = []
         tree.forEachInOrder { result.append($0) }
@@ -418,7 +455,7 @@ struct TreeBinaryNonCopyableTests {
         }
     }
 
-    /// Tracks deinit order.
+    /// Tracks deinit order using Synchronization framework.
     final class DeinitTracker: Sendable {
         private let _order: Mutex<[Int]> = Mutex([])
 
@@ -519,7 +556,7 @@ struct TreeBinaryConditionalCopyableTests {
 @Suite("Tree.Binary.Sendable")
 struct TreeBinarySendableTests {
 
-    func requireSendable<T: Sendable>(_: T) {}
+    func requireSendable<T: Sendable & ~Copyable>(_: borrowing T) {}
 
     @Test("Sendable when element is Sendable")
     func sendableWhenElementSendable() throws {
@@ -543,6 +580,7 @@ struct TreeBinarySendableTests {
         var tree = Tree.Binary<Int>.Inline<8>()
         _ = try tree.insert(42, at: .root)
 
+        // Inline is ~Copyable but Sendable
         requireSendable(tree)
     }
 
@@ -551,23 +589,7 @@ struct TreeBinarySendableTests {
         var tree = Tree.Binary<Int>.Small<4>()
         _ = try tree.insert(42, at: .root)
 
+        // Small is ~Copyable but Sendable
         requireSendable(tree)
-    }
-}
-
-// MARK: - Mutex helper for thread-safe tracking
-
-final class Mutex<Value>: @unchecked Sendable {
-    private var _value: Value
-    private let lock = NSLock()
-
-    init(_ value: Value) {
-        self._value = value
-    }
-
-    func withLock<R>(_ body: (inout Value) throws -> R) rethrows -> R {
-        lock.lock()
-        defer { lock.unlock() }
-        return try body(&_value)
     }
 }
