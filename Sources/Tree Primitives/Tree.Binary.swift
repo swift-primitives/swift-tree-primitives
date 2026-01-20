@@ -183,29 +183,29 @@ extension Tree {
                 // Iterative post-order traversal to deinit children before parents
                 // Uses explicit stack to avoid stack overflow on deep trees
                 _ = unsafe withUnsafeMutablePointerToElements { nodes in
-                    var stack = Stack<Int>()
+                    var pending = Stack<Int>()
                     var lastVisited: Int = -1
 
                     if header.rootIndex >= 0 {
-                        stack.push(header.rootIndex)
+                        pending.push(header.rootIndex)
                     }
 
-                    while !stack.isEmpty {
-                        let current = stack.peek()!
+                    while !pending.isEmpty {
+                        let current = pending.peek()!
                         let leftIndex = unsafe nodes[current].leftIndex
                         let rightIndex = unsafe nodes[current].rightIndex
 
                         // If there's an unvisited left child (and we haven't come up from right), go left
                         if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                            stack.push(leftIndex)
+                            pending.push(leftIndex)
                         }
                         // Else if there's an unvisited right child, go right
                         else if rightIndex >= 0 && rightIndex != lastVisited {
-                            stack.push(rightIndex)
+                            pending.push(rightIndex)
                         }
                         // Else we're done with children, process current node
                         else {
-                            _ = stack.pop()
+                            _ = pending.pop()
                             unsafe (nodes + current).deinitialize(count: 1)
                             lastVisited = current
                         }
@@ -282,11 +282,17 @@ extension Tree {
                 }
 
                 // Copy nodes maintaining their indices (for correct parent/child references)
+                // Uses iterative traversal to avoid stack overflow on deep trees
                 _ = unsafe withUnsafeMutablePointerToElements { src in
                     unsafe newStorage.withUnsafeMutablePointerToElements { dst in
-                        // Move only active nodes (traverse from root)
-                        func moveSubtree(at index: Int) {
-                            guard index >= 0 else { return }
+                        var pending = Stack<Int>()
+                        if header.rootIndex >= 0 {
+                            pending.push(header.rootIndex)
+                        }
+
+                        while !pending.isEmpty {
+                            let index = pending.pop()!
+
                             let leftIndex = unsafe src[index].leftIndex
                             let rightIndex = unsafe src[index].rightIndex
                             let parentIndex = unsafe src[index].parentIndex
@@ -298,11 +304,14 @@ extension Tree {
                                 parentIndex: parentIndex
                             ))
 
-                            moveSubtree(at: leftIndex)
-                            moveSubtree(at: rightIndex)
+                            // Push right first so left is processed first
+                            if rightIndex >= 0 {
+                                pending.push(rightIndex)
+                            }
+                            if leftIndex >= 0 {
+                                pending.push(leftIndex)
+                            }
                         }
-
-                        moveSubtree(at: header.rootIndex)
                     }
                 }
 
@@ -343,11 +352,17 @@ extension Tree {
                 guard count > 0 else { return }
 
                 // Copy nodes maintaining their indices (for correct parent/child references)
+                // Uses iterative traversal to avoid stack overflow on deep trees
                 _ = unsafe withUnsafeMutablePointerToElements { src in
                     unsafe newStorage.withUnsafeMutablePointerToElements { dst in
-                        // Copy only active nodes (traverse from root)
-                        func copySubtree(at index: Int) {
-                            guard index >= 0 else { return }
+                        var pending = Stack<Int>()
+                        if header.rootIndex >= 0 {
+                            pending.push(header.rootIndex)
+                        }
+
+                        while !pending.isEmpty {
+                            let index = pending.pop()!
+
                             let element = unsafe src[index].element
                             let leftIndex = unsafe src[index].leftIndex
                             let rightIndex = unsafe src[index].rightIndex
@@ -360,11 +375,14 @@ extension Tree {
                                 parentIndex: parentIndex
                             ))
 
-                            copySubtree(at: leftIndex)
-                            copySubtree(at: rightIndex)
+                            // Push right first so left is processed first
+                            if rightIndex >= 0 {
+                                pending.push(rightIndex)
+                            }
+                            if leftIndex >= 0 {
+                                pending.push(leftIndex)
+                            }
                         }
-
-                        copySubtree(at: header.rootIndex)
                     }
                 }
                 // NOTE: Do NOT reset old header - source storage remains valid
@@ -546,33 +564,33 @@ extension Tree {
                 guard count > 0 else { return }
 
                 // Iterative post-order collection using explicit stack
-                var postOrderIndices = Queue<Int>()
-                postOrderIndices.reserve(count)
+                var `deinit` = Queue<Int>()
+                `deinit`.reserve(count)
 
-                var stack = Stack<Int>()
+                var pending = Stack<Int>()
                 var lastVisited: Int = -1
 
                 if _rootIndex >= 0 {
-                    stack.push(_rootIndex)
+                    pending.push(_rootIndex)
                 }
 
-                while !stack.isEmpty {
-                    let current = stack.peek()!
+                while !pending.isEmpty {
+                    let current = pending.peek()!
                     let leftIndex = _storage[current].leftIndex
                     let rightIndex = _storage[current].rightIndex
 
                     // If there's an unvisited left child (and we haven't come up from right), go left
                     if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                        stack.push(leftIndex)
+                        pending.push(leftIndex)
                     }
                     // Else if there's an unvisited right child, go right
                     else if rightIndex >= 0 && rightIndex != lastVisited {
-                        stack.push(rightIndex)
+                        pending.push(rightIndex)
                     }
                     // Else we're done with children, collect current node
                     else {
-                        _ = stack.pop()
-                        postOrderIndices.enqueue(current)
+                        _ = pending.pop()
+                        `deinit`.enqueue(current)
                         lastVisited = current
                     }
                 }
@@ -583,8 +601,8 @@ extension Tree {
 
                 unsafe Swift.withUnsafePointer(to: _storage) { storagePtr in
                     let basePtr = unsafe UnsafeMutableRawPointer(mutating: unsafe UnsafeRawPointer(storagePtr))
-                    while !postOrderIndices.isEmpty {
-                        let index = postOrderIndices.dequeue()!
+                    while !`deinit`.isEmpty {
+                        let index = `deinit`.dequeue()!
                         let nodePtr = unsafe basePtr + index * nodeStride
                         let elementPtr = unsafe (nodePtr + slotOffset)
                             .assumingMemoryBound(to: Element.self)
@@ -717,33 +735,33 @@ extension Tree {
                     heap.header.count = _count
                 } else {
                     // Iterative post-order collection using explicit stack
-                    var postOrderIndices = Queue<Int>()
-                    postOrderIndices.reserve(count)
+                    var `deinit` = Queue<Int>()
+                    `deinit`.reserve(count)
 
-                    var stack = Stack<Int>()
+                    var pending = Stack<Int>()
                     var lastVisited: Int = -1
 
                     if _rootIndex >= 0 {
-                        stack.push(_rootIndex)
+                        pending.push(_rootIndex)
                     }
 
-                    while !stack.isEmpty {
-                        let current = stack.peek()!
+                    while !pending.isEmpty {
+                        let current = pending.peek()!
                         let leftIndex = _inline[current].leftIndex
                         let rightIndex = _inline[current].rightIndex
 
                         // If there's an unvisited left child (and we haven't come up from right), go left
                         if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                            stack.push(leftIndex)
+                            pending.push(leftIndex)
                         }
                         // Else if there's an unvisited right child, go right
                         else if rightIndex >= 0 && rightIndex != lastVisited {
-                            stack.push(rightIndex)
+                            pending.push(rightIndex)
                         }
                         // Else we're done with children, collect current node
                         else {
-                            _ = stack.pop()
-                            postOrderIndices.enqueue(current)
+                            _ = pending.pop()
+                            `deinit`.enqueue(current)
                             lastVisited = current
                         }
                     }
@@ -754,8 +772,8 @@ extension Tree {
 
                     unsafe Swift.withUnsafePointer(to: _inline) { storagePtr in
                         let basePtr = unsafe UnsafeMutableRawPointer(mutating: unsafe UnsafeRawPointer(storagePtr))
-                        while !postOrderIndices.isEmpty {
-                            let index = postOrderIndices.dequeue()!
+                        while !`deinit`.isEmpty {
+                            let index = `deinit`.dequeue()!
                             let nodePtr = unsafe basePtr + index * nodeStride
                             let elementPtr = unsafe (nodePtr + slotOffset)
                                 .assumingMemoryBound(to: Element.self)
@@ -1133,27 +1151,27 @@ extension Tree.Binary where Element: ~Copyable {
         }
 
         // Iterative post-order removal using explicit stack
-        var stack = Stack<Int>()
+        var pending = Stack<Int>()
         var lastVisited: Int = -1
 
-        stack.push(position.index)
+        pending.push(position.index)
 
-        while !stack.isEmpty {
-            let current = stack.peek()!
+        while !pending.isEmpty {
+            let current = pending.peek()!
             let leftIndex = unsafe _cachedPtr[current].leftIndex
             let rightIndex = unsafe _cachedPtr[current].rightIndex
 
             // If there's an unvisited left child (and we haven't come up from right), go left
             if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                stack.push(leftIndex)
+                pending.push(leftIndex)
             }
             // Else if there's an unvisited right child, go right
             else if rightIndex >= 0 && rightIndex != lastVisited {
-                stack.push(rightIndex)
+                pending.push(rightIndex)
             }
             // Else we're done with children, process current node
             else {
-                _ = stack.pop()
+                _ = pending.pop()
                 _storage._deinitializeNode(at: current)
                 _freeSlot(current)
                 _storage.header.count -= 1
@@ -1184,29 +1202,29 @@ extension Tree.Binary where Element: ~Copyable {
         guard _storage.header.count > 0 else { return }
 
         // Iterative post-order traversal using explicit stack
-        var stack = Stack<Int>()
+        var pending = Stack<Int>()
         var lastVisited: Int = -1
 
         if _storage.header.rootIndex >= 0 {
-            stack.push(_storage.header.rootIndex)
+            pending.push(_storage.header.rootIndex)
         }
 
-        while !stack.isEmpty {
-            let current = stack.peek()!
+        while !pending.isEmpty {
+            let current = pending.peek()!
             let leftIndex = unsafe _cachedPtr[current].leftIndex
             let rightIndex = unsafe _cachedPtr[current].rightIndex
 
             // If there's an unvisited left child (and we haven't come up from right), go left
             if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                stack.push(leftIndex)
+                pending.push(leftIndex)
             }
             // Else if there's an unvisited right child, go right
             else if rightIndex >= 0 && rightIndex != lastVisited {
-                stack.push(rightIndex)
+                pending.push(rightIndex)
             }
             // Else we're done with children, process current node
             else {
-                _ = stack.pop()
+                _ = pending.pop()
                 _storage._deinitializeNode(at: current)
                 lastVisited = current
             }
@@ -1219,44 +1237,92 @@ extension Tree.Binary where Element: ~Copyable {
 
     /// Iterates over all elements in pre-order using a borrowing closure.
     ///
+    /// Uses iterative traversal to avoid stack overflow on deep trees.
     /// - Parameter body: A closure called with each element in pre-order.
     @inlinable
     public func forEachPreOrder(_ body: (borrowing Element) -> Void) {
-        func traverse(at index: Int) {
-            guard index >= 0 else { return }
-            unsafe body(_cachedPtr[index].element)
-            traverse(at: unsafe _cachedPtr[index].leftIndex)
-            traverse(at: unsafe _cachedPtr[index].rightIndex)
+        var pending = Stack<Int>()
+        if _storage.header.rootIndex >= 0 {
+            pending.push(_storage.header.rootIndex)
         }
-        traverse(at: _storage.header.rootIndex)
+
+        while !pending.isEmpty {
+            let index = pending.pop()!
+            unsafe body(_cachedPtr[index].element)
+
+            // Push right first so left is processed first
+            let rightIndex = unsafe _cachedPtr[index].rightIndex
+            let leftIndex = unsafe _cachedPtr[index].leftIndex
+            if rightIndex >= 0 { pending.push(rightIndex) }
+            if leftIndex >= 0 { pending.push(leftIndex) }
+        }
     }
 
     /// Iterates over all elements in in-order using a borrowing closure.
     ///
+    /// Uses iterative traversal to avoid stack overflow on deep trees.
     /// - Parameter body: A closure called with each element in in-order.
     @inlinable
     public func forEachInOrder(_ body: (borrowing Element) -> Void) {
-        func traverse(at index: Int) {
-            guard index >= 0 else { return }
-            traverse(at: unsafe _cachedPtr[index].leftIndex)
-            unsafe body(_cachedPtr[index].element)
-            traverse(at: unsafe _cachedPtr[index].rightIndex)
+        var pending = Stack<Int>()
+        var current = _storage.header.rootIndex
+
+        while current >= 0 || !pending.isEmpty {
+            // Go to leftmost node
+            while current >= 0 {
+                pending.push(current)
+                current = unsafe _cachedPtr[current].leftIndex
+            }
+
+            // Process node
+            current = pending.pop()!
+            unsafe body(_cachedPtr[current].element)
+
+            // Move to right subtree
+            current = unsafe _cachedPtr[current].rightIndex
         }
-        traverse(at: _storage.header.rootIndex)
     }
 
     /// Iterates over all elements in post-order using a borrowing closure.
     ///
+    /// Uses iterative traversal to avoid stack overflow on deep trees.
     /// - Parameter body: A closure called with each element in post-order.
     @inlinable
     public func forEachPostOrder(_ body: (borrowing Element) -> Void) {
-        func traverse(at index: Int) {
-            guard index >= 0 else { return }
-            traverse(at: unsafe _cachedPtr[index].leftIndex)
-            traverse(at: unsafe _cachedPtr[index].rightIndex)
-            unsafe body(_cachedPtr[index].element)
+        var pending = Stack<Int>()
+        var lastVisited: Int = -1
+
+        if _storage.header.rootIndex >= 0 {
+            pending.push(_storage.header.rootIndex)
         }
-        traverse(at: _storage.header.rootIndex)
+
+        while !pending.isEmpty {
+            let current = pending.peek()!
+            let leftIndex = unsafe _cachedPtr[current].leftIndex
+            let rightIndex = unsafe _cachedPtr[current].rightIndex
+
+            // Process current if:
+            // 1. It's a leaf, OR
+            // 2. We came from right child (right exists AND equals lastVisited), OR
+            // 3. We came from left child AND no right child exists
+            let isLeaf = leftIndex < 0 && rightIndex < 0
+            let cameFromRight = rightIndex >= 0 && rightIndex == lastVisited
+            let cameFromLeftNoRight = leftIndex >= 0 && leftIndex == lastVisited && rightIndex < 0
+
+            if isLeaf || cameFromRight || cameFromLeftNoRight {
+                _ = pending.pop()
+                unsafe body(_cachedPtr[current].element)
+                lastVisited = current
+            } else {
+                // Push children (right first so left is processed first)
+                if rightIndex >= 0 {
+                    pending.push(rightIndex)
+                }
+                if leftIndex >= 0 {
+                    pending.push(leftIndex)
+                }
+            }
+        }
     }
 
     /// Iterates over all elements in level-order (breadth-first) using a borrowing closure.
@@ -1266,11 +1332,11 @@ extension Tree.Binary where Element: ~Copyable {
     public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
         guard _storage.header.rootIndex >= 0 else { return }
 
-        var queue = Queue<Int>()
-        queue.enqueue(_storage.header.rootIndex)
+        var pending = Queue<Int>()
+        pending.enqueue(_storage.header.rootIndex)
 
-        while !queue.isEmpty {
-            let index = queue.dequeue()!
+        while !pending.isEmpty {
+            let index = pending.dequeue()!
 
             unsafe body(_cachedPtr[index].element)
 
@@ -1278,10 +1344,10 @@ extension Tree.Binary where Element: ~Copyable {
             let rightIndex = unsafe _cachedPtr[index].rightIndex
 
             if leftIndex >= 0 {
-                queue.enqueue(leftIndex)
+                pending.enqueue(leftIndex)
             }
             if rightIndex >= 0 {
-                queue.enqueue(rightIndex)
+                pending.enqueue(rightIndex)
             }
         }
     }
@@ -1290,15 +1356,33 @@ extension Tree.Binary where Element: ~Copyable {
     ///
     /// The height is the length of the longest path from the root to a leaf.
     /// An empty tree has height -1, a single-node tree has height 0.
+    ///
+    /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
     public var height: Int {
-        func computeHeight(at index: Int) -> Int {
-            guard index >= 0 else { return -1 }
-            let leftHeight = computeHeight(at: unsafe _cachedPtr[index].leftIndex)
-            let rightHeight = computeHeight(at: unsafe _cachedPtr[index].rightIndex)
-            return 1 + Swift.max(leftHeight, rightHeight)
+        let rootIndex = _storage.header.rootIndex
+        guard rootIndex >= 0 else { return -1 }
+
+        var maxHeight = 0
+        var pending = Stack<(index: Int, depth: Int)>()
+        pending.push((rootIndex, 0))
+
+        while !pending.isEmpty {
+            let (index, depth) = pending.pop()!
+            maxHeight = Swift.max(maxHeight, depth)
+
+            let leftIndex = unsafe _cachedPtr[index].leftIndex
+            let rightIndex = unsafe _cachedPtr[index].rightIndex
+
+            if leftIndex >= 0 {
+                pending.push((leftIndex, depth + 1))
+            }
+            if rightIndex >= 0 {
+                pending.push((rightIndex, depth + 1))
+            }
         }
-        return computeHeight(at: _storage.header.rootIndex)
+
+        return maxHeight
     }
 }
 

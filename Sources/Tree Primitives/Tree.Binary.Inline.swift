@@ -300,36 +300,40 @@ extension Tree.Binary.Inline where Element: ~Copyable {
         }
 
         // Iterative post-order removal using explicit stack
-        var stack = Stack<Int>()
+        var pending = Stack<Int>()
         var lastVisited: Int = -1
 
-        stack.push(position.index)
+        pending.push(position.index)
 
-        while !stack.isEmpty {
-            let current = stack.peek()!
+        while !pending.isEmpty {
+            let current = pending.peek()!
             guard _storage[current].isOccupied else {
-                _ = stack.pop()
+                _ = pending.pop()
                 continue
             }
 
             let leftIndex = _storage[current].leftIndex
             let rightIndex = _storage[current].rightIndex
 
-            let leftDone = leftIndex < 0 || leftIndex == lastVisited || !_storage[leftIndex].isOccupied
-            let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_storage[rightIndex].isOccupied
+            let leftExists = leftIndex >= 0 && _storage[leftIndex].isOccupied
+            let rightExists = rightIndex >= 0 && _storage[rightIndex].isOccupied
 
-            if leftDone && rightDone {
-                _ = stack.pop()
+            let isLeaf = !leftExists && !rightExists
+            let cameFromRight = rightExists && rightIndex == lastVisited
+            let cameFromLeftNoRight = leftExists && leftIndex == lastVisited && !rightExists
+
+            if isLeaf || cameFromRight || cameFromLeftNoRight {
+                _ = pending.pop()
                 unsafe _elementPointer(at: current).deinitialize(count: 1)
                 _freeSlot(current)
                 _count -= 1
                 lastVisited = current
             } else {
-                if rightIndex >= 0 && rightIndex != lastVisited && _storage[rightIndex].isOccupied {
-                    stack.push(rightIndex)
+                if rightExists {
+                    pending.push(rightIndex)
                 }
-                if leftIndex >= 0 && leftIndex != lastVisited && _storage[leftIndex].isOccupied {
-                    stack.push(leftIndex)
+                if leftExists {
+                    pending.push(leftIndex)
                 }
             }
         }
@@ -355,37 +359,41 @@ extension Tree.Binary.Inline where Element: ~Copyable {
         guard _count > 0 else { return }
 
         // Iterative post-order traversal using explicit stack
-        var stack = Stack<Int>()
+        var pending = Stack<Int>()
         var lastVisited: Int = -1
 
         if _rootIndex >= 0 {
-            stack.push(_rootIndex)
+            pending.push(_rootIndex)
         }
 
-        while !stack.isEmpty {
-            let current = stack.peek()!
+        while !pending.isEmpty {
+            let current = pending.peek()!
             guard _storage[current].isOccupied else {
-                _ = stack.pop()
+                _ = pending.pop()
                 continue
             }
 
             let leftIndex = _storage[current].leftIndex
             let rightIndex = _storage[current].rightIndex
 
-            let leftDone = leftIndex < 0 || leftIndex == lastVisited || !_storage[leftIndex].isOccupied
-            let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_storage[rightIndex].isOccupied
+            let leftExists = leftIndex >= 0 && _storage[leftIndex].isOccupied
+            let rightExists = rightIndex >= 0 && _storage[rightIndex].isOccupied
 
-            if leftDone && rightDone {
-                _ = stack.pop()
+            let isLeaf = !leftExists && !rightExists
+            let cameFromRight = rightExists && rightIndex == lastVisited
+            let cameFromLeftNoRight = leftExists && leftIndex == lastVisited && !rightExists
+
+            if isLeaf || cameFromRight || cameFromLeftNoRight {
+                _ = pending.pop()
                 unsafe _elementPointer(at: current).deinitialize(count: 1)
                 _freeSlot(current)
                 lastVisited = current
             } else {
-                if rightIndex >= 0 && rightIndex != lastVisited && _storage[rightIndex].isOccupied {
-                    stack.push(rightIndex)
+                if rightExists {
+                    pending.push(rightIndex)
                 }
-                if leftIndex >= 0 && leftIndex != lastVisited && _storage[leftIndex].isOccupied {
-                    stack.push(leftIndex)
+                if leftExists {
+                    pending.push(leftIndex)
                 }
             }
         }
@@ -396,39 +404,94 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     }
 
     /// Iterates over all elements in pre-order.
+    ///
+    /// Uses iterative traversal for consistency with other tree types.
     @inlinable
     public func forEachPreOrder(_ body: (borrowing Element) -> Void) {
-        func traverse(at index: Int) {
-            guard index >= 0 && _storage[index].isOccupied else { return }
-            unsafe body(_readElementPointer(at: index).pointee)
-            traverse(at: _storage[index].leftIndex)
-            traverse(at: _storage[index].rightIndex)
+        var pending = Stack<Int>()
+        if _rootIndex >= 0 {
+            pending.push(_rootIndex)
         }
-        traverse(at: _rootIndex)
+
+        while !pending.isEmpty {
+            let index = pending.pop()!
+            guard _storage[index].isOccupied else { continue }
+            unsafe body(_readElementPointer(at: index).pointee)
+
+            let rightIndex = _storage[index].rightIndex
+            let leftIndex = _storage[index].leftIndex
+            if rightIndex >= 0 { pending.push(rightIndex) }
+            if leftIndex >= 0 { pending.push(leftIndex) }
+        }
     }
 
     /// Iterates over all elements in in-order.
+    ///
+    /// Uses iterative traversal for consistency with other tree types.
     @inlinable
     public func forEachInOrder(_ body: (borrowing Element) -> Void) {
-        func traverse(at index: Int) {
-            guard index >= 0 && _storage[index].isOccupied else { return }
-            traverse(at: _storage[index].leftIndex)
-            unsafe body(_readElementPointer(at: index).pointee)
-            traverse(at: _storage[index].rightIndex)
+        var pending = Stack<Int>()
+        var current = _rootIndex
+
+        while current >= 0 || !pending.isEmpty {
+            while current >= 0 && _storage[current].isOccupied {
+                pending.push(current)
+                current = _storage[current].leftIndex
+            }
+
+            guard !pending.isEmpty else { break }
+            current = pending.pop()!
+            guard _storage[current].isOccupied else {
+                current = -1
+                continue
+            }
+            unsafe body(_readElementPointer(at: current).pointee)
+            current = _storage[current].rightIndex
         }
-        traverse(at: _rootIndex)
     }
 
     /// Iterates over all elements in post-order.
+    ///
+    /// Uses iterative traversal for consistency with other tree types.
     @inlinable
     public func forEachPostOrder(_ body: (borrowing Element) -> Void) {
-        func traverse(at index: Int) {
-            guard index >= 0 && _storage[index].isOccupied else { return }
-            traverse(at: _storage[index].leftIndex)
-            traverse(at: _storage[index].rightIndex)
-            unsafe body(_readElementPointer(at: index).pointee)
+        var pending = Stack<Int>()
+        var lastVisited: Int = -1
+
+        if _rootIndex >= 0 {
+            pending.push(_rootIndex)
         }
-        traverse(at: _rootIndex)
+
+        while !pending.isEmpty {
+            let current = pending.peek()!
+            guard _storage[current].isOccupied else {
+                _ = pending.pop()
+                continue
+            }
+
+            let leftIndex = _storage[current].leftIndex
+            let rightIndex = _storage[current].rightIndex
+
+            let leftExists = leftIndex >= 0 && _storage[leftIndex].isOccupied
+            let rightExists = rightIndex >= 0 && _storage[rightIndex].isOccupied
+
+            let isLeaf = !leftExists && !rightExists
+            let cameFromRight = rightExists && rightIndex == lastVisited
+            let cameFromLeftNoRight = leftExists && leftIndex == lastVisited && !rightExists
+
+            if isLeaf || cameFromRight || cameFromLeftNoRight {
+                _ = pending.pop()
+                unsafe body(_readElementPointer(at: current).pointee)
+                lastVisited = current
+            } else {
+                if rightExists {
+                    pending.push(rightIndex)
+                }
+                if leftExists {
+                    pending.push(leftIndex)
+                }
+            }
+        }
     }
 
     /// Iterates over all elements in level-order.
@@ -436,11 +499,11 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
         guard _rootIndex >= 0 else { return }
 
-        var queue = Queue<Int>()
-        queue.enqueue(_rootIndex)
+        var pending = Queue<Int>()
+        pending.enqueue(_rootIndex)
 
-        while !queue.isEmpty {
-            let index = queue.dequeue()!
+        while !pending.isEmpty {
+            let index = pending.dequeue()!
 
             guard _storage[index].isOccupied else { continue }
 
@@ -449,21 +512,40 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             let leftIndex = _storage[index].leftIndex
             let rightIndex = _storage[index].rightIndex
 
-            if leftIndex >= 0 { queue.enqueue(leftIndex) }
-            if rightIndex >= 0 { queue.enqueue(rightIndex) }
+            if leftIndex >= 0 { pending.enqueue(leftIndex) }
+            if rightIndex >= 0 { pending.enqueue(rightIndex) }
         }
     }
 
     /// Computes the height of the tree.
+    ///
+    /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
     public var height: Int {
-        func computeHeight(at index: Int) -> Int {
-            guard index >= 0 && _storage[index].isOccupied else { return -1 }
-            let leftHeight = computeHeight(at: _storage[index].leftIndex)
-            let rightHeight = computeHeight(at: _storage[index].rightIndex)
-            return 1 + Swift.max(leftHeight, rightHeight)
+        guard _rootIndex >= 0 else { return -1 }
+
+        var maxHeight = 0
+        var pending = Stack<(index: Int, depth: Int)>()
+        pending.push((_rootIndex, 0))
+
+        while !pending.isEmpty {
+            let (index, depth) = pending.pop()!
+            guard _storage[index].isOccupied else { continue }
+
+            maxHeight = Swift.max(maxHeight, depth)
+
+            let leftIndex = _storage[index].leftIndex
+            let rightIndex = _storage[index].rightIndex
+
+            if leftIndex >= 0 {
+                pending.push((leftIndex, depth + 1))
+            }
+            if rightIndex >= 0 {
+                pending.push((rightIndex, depth + 1))
+            }
         }
-        return computeHeight(at: _rootIndex)
+
+        return maxHeight
     }
 }
 

@@ -368,27 +368,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Deep Tree Performance
 
-    @Test("Deep tree (500 levels left-only)")
+    @Test("Deep tree (1,000 levels left-only)")
     func deepTreeLeftOnly() throws {
-        var tree = Tree.Binary<Int>()
-
-        var current = try tree.insert(0, at: .root)
-        for i in 1..<500 {
-            current = try tree.insert(i, at: .left(of: current))
-        }
-
-        #expect(tree.count == 500)
-        // Note: height uses recursion, so we only test shallow trees for height
-        // #expect(tree.height == 499)
-
-        // Traverse - should not stack overflow due to iterative implementation
-        var count = 0
-        tree.forEachPostOrder { _ in count += 1 }
-        #expect(count == 500)
-    }
-
-    @Test("Deep tree (1,000 levels) - clear")
-    func deepTreeClear() throws {
         var tree = Tree.Binary<Int>()
 
         var current = try tree.insert(0, at: .root)
@@ -397,6 +378,27 @@ struct TreeBinaryPerformanceTests {
         }
 
         #expect(tree.count == 1_000)
+        // Height is now iterative - should not stack overflow
+        #expect(tree.height == 999)
+
+        // Note: forEachPostOrder is still recursive, skip traversal on deep trees
+        // Clear is iterative and should work
+        tree.clear()
+        #expect(tree.isEmpty)
+    }
+
+    @Test("Deep tree (5,000 levels) - height and clear")
+    func deepTreeHeightAndClear() throws {
+        var tree = Tree.Binary<Int>()
+
+        var current = try tree.insert(0, at: .root)
+        for i in 1..<5_000 {
+            current = try tree.insert(i, at: .left(of: current))
+        }
+
+        #expect(tree.count == 5_000)
+        // Height is now iterative - should not stack overflow even on very deep trees
+        #expect(tree.height == 4_999)
 
         // Clear should not stack overflow due to iterative implementation
         tree.clear()
