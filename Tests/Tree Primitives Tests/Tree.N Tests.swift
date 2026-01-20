@@ -295,8 +295,8 @@ struct TreeNBoundedTests {
 struct TreeNInlineTests {
 
     @Test("Inline initialization")
-    func inlineInit() {
-        var tree = Tree.N<Int, 2>.Inline<8>()
+    func inlineInit() throws {
+        var tree = try Tree.N<Int, 2>.Inline<8>()
         // Cannot use #expect on ~Copyable types, use assertions
         assert(tree.isEmpty)
         assert(tree.count == 0)
@@ -305,7 +305,7 @@ struct TreeNInlineTests {
 
     @Test("Inline insert")
     func inlineInsert() throws {
-        var tree = Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree.N<Int, 2>.Inline<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -322,7 +322,7 @@ struct TreeNInlineTests {
 
     @Test("Inline overflow")
     func inlineOverflow() throws {
-        var tree = Tree.N<Int, 2>.Inline<3>()
+        var tree = try Tree.N<Int, 2>.Inline<3>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -337,7 +337,7 @@ struct TreeNInlineTests {
 
     @Test("Inline traversal")
     func inlineTraversal() throws {
-        var tree = Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree.N<Int, 2>.Inline<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -350,7 +350,7 @@ struct TreeNInlineTests {
 
     @Test("Inline remove and reuse")
     func inlineRemoveAndReuse() throws {
-        var tree = Tree.N<Int, 2>.Inline<4>()
+        var tree = try Tree.N<Int, 2>.Inline<4>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -375,8 +375,8 @@ struct TreeNInlineTests {
 struct TreeNSmallTests {
 
     @Test("Small initialization")
-    func smallInit() {
-        var tree = Tree.N<Int, 2>.Small<4>()
+    func smallInit() throws {
+        var tree = try Tree.N<Int, 2>.Small<4>()
         // Cannot use #expect on ~Copyable types, use assertions
         assert(tree.isEmpty)
         assert(tree.count == 0)
@@ -385,7 +385,7 @@ struct TreeNSmallTests {
 
     @Test("Small inline storage")
     func smallInline() throws {
-        var tree = Tree.N<Int, 2>.Small<4>()
+        var tree = try Tree.N<Int, 2>.Small<4>()
         let root = try tree.insert(1, at: .root)
         _ = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -399,7 +399,7 @@ struct TreeNSmallTests {
 
     @Test("Small spill to heap")
     func smallSpill() throws {
-        var tree = Tree.N<Int, 2>.Small<3>()
+        var tree = try Tree.N<Int, 2>.Small<3>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -418,7 +418,7 @@ struct TreeNSmallTests {
 
     @Test("Small traversal after spill")
     func smallTraversalAfterSpill() throws {
-        var tree = Tree.N<Int, 2>.Small<2>()
+        var tree = try Tree.N<Int, 2>.Small<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -577,7 +577,7 @@ struct TreeNSendableTests {
 
     @Test("Sendable inline")
     func sendableInline() throws {
-        var tree = Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree.N<Int, 2>.Inline<8>()
         _ = try tree.insert(42, at: .root)
 
         // Inline is ~Copyable but Sendable
@@ -586,7 +586,7 @@ struct TreeNSendableTests {
 
     @Test("Sendable small")
     func sendableSmall() throws {
-        var tree = Tree.N<Int, 2>.Small<4>()
+        var tree = try Tree.N<Int, 2>.Small<4>()
         _ = try tree.insert(42, at: .root)
 
         // Small is ~Copyable but Sendable
@@ -739,7 +739,7 @@ struct TreeNStalePositionTests {
 
     @Test("Inline stale position detection")
     func inlineStalePosition() throws {
-        var tree = Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree.N<Int, 2>.Inline<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -758,7 +758,7 @@ struct TreeNStalePositionTests {
 
     @Test("Small stale position detection - inline")
     func smallStalePositionInline() throws {
-        var tree = Tree.N<Int, 2>.Small<8>()
+        var tree = try Tree.N<Int, 2>.Small<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -779,7 +779,7 @@ struct TreeNStalePositionTests {
 
     @Test("Small stale position detection - after spill")
     func smallStalePositionAfterSpill() throws {
-        var tree = Tree.N<Int, 2>.Small<2>()
+        var tree = try Tree.N<Int, 2>.Small<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 

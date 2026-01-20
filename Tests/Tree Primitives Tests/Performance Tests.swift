@@ -292,7 +292,7 @@ struct TreeBinaryPerformanceTests {
 
     @Test("Small spill and grow to 1,000 nodes")
     func smallSpillToThousand() throws {
-        var tree = Tree.Binary<Int>.Small<8>()
+        var tree = try Tree.Binary<Int>.Small<8>()
         var positions: [Tree.Position] = []
         positions.reserveCapacity(1_000)
 

@@ -613,152 +613,18 @@ extension Tree.N.Bounded where Element: Copyable {
 extension Tree.N.Bounded where Element: Copyable {
 
     /// A sequence that yields elements in pre-order.
-    public var preOrder: PreOrderSequence {
-        PreOrderSequence(tree: self)
+    public var preOrder: Order.Pre.Sequence {
+        Order.Pre.Sequence(tree: self)
     }
 
     /// A sequence that yields elements in post-order.
-    public var postOrder: PostOrderSequence {
-        PostOrderSequence(tree: self)
+    public var postOrder: Order.Post.Sequence {
+        Order.Post.Sequence(tree: self)
     }
 
     /// A sequence that yields elements in level-order.
-    public var levelOrder: LevelOrderSequence {
-        LevelOrderSequence(tree: self)
-    }
-
-    public struct PreOrderSequence: Sequence {
-        let tree: Tree.N<Element, n>.Bounded
-
-        public func makeIterator() -> PreOrderIterator {
-            PreOrderIterator(tree: tree)
-        }
-    }
-
-    public struct PreOrderIterator: IteratorProtocol {
-        let tree: Tree.N<Element, n>.Bounded
-        var pending: Stack<Int>
-
-        init(tree: Tree.N<Element, n>.Bounded) {
-            self.tree = tree
-            self.pending = Stack<Int>()
-            if tree._storage.header.rootIndex >= 0 {
-                self.pending.push(tree._storage.header.rootIndex)
-            }
-        }
-
-        public mutating func next() -> Element? {
-            guard !pending.isEmpty else { return nil }
-
-            let index = pending.pop()!
-            let ptr = unsafe tree._cachedPtr
-            let element = unsafe ptr[index].element
-
-            for slot in stride(from: n - 1, through: 0, by: -1) {
-                let childIndex = unsafe ptr[index].childIndices[slot]
-                if childIndex >= 0 {
-                    pending.push(childIndex)
-                }
-            }
-
-            return element
-        }
-    }
-
-    public struct PostOrderSequence: Sequence {
-        let tree: Tree.N<Element, n>.Bounded
-
-        public func makeIterator() -> PostOrderIterator {
-            PostOrderIterator(tree: tree)
-        }
-    }
-
-    public struct PostOrderIterator: IteratorProtocol {
-        let tree: Tree.N<Element, n>.Bounded
-        var pending: Stack<Int>
-        var lastVisited: Int
-
-        init(tree: Tree.N<Element, n>.Bounded) {
-            self.tree = tree
-            self.pending = Stack<Int>()
-            self.lastVisited = -1
-            if tree._storage.header.rootIndex >= 0 {
-                pending.push(tree._storage.header.rootIndex)
-            }
-        }
-
-        public mutating func next() -> Element? {
-            let ptr = unsafe tree._cachedPtr
-
-            while !pending.isEmpty {
-                let current = pending.peek()!
-
-                var hasUnvisitedChild = false
-                for slot in stride(from: n - 1, through: 0, by: -1) {
-                    let childIndex = unsafe ptr[current].childIndices[slot]
-                    if childIndex >= 0 && childIndex != lastVisited {
-                        var laterChildVisited = false
-                        for laterSlot in (slot + 1)..<n {
-                            if unsafe ptr[current].childIndices[laterSlot] == lastVisited {
-                                laterChildVisited = true
-                                break
-                            }
-                        }
-                        if !laterChildVisited {
-                            pending.push(childIndex)
-                            hasUnvisitedChild = true
-                            break
-                        }
-                    }
-                }
-
-                if !hasUnvisitedChild {
-                    _ = pending.pop()
-                    lastVisited = current
-                    return unsafe ptr[current].element
-                }
-            }
-
-            return nil
-        }
-    }
-
-    public struct LevelOrderSequence: Sequence {
-        let tree: Tree.N<Element, n>.Bounded
-
-        public func makeIterator() -> LevelOrderIterator {
-            LevelOrderIterator(tree: tree)
-        }
-    }
-
-    public struct LevelOrderIterator: IteratorProtocol {
-        let tree: Tree.N<Element, n>.Bounded
-        var pending: Queue<Int>
-
-        init(tree: Tree.N<Element, n>.Bounded) {
-            self.tree = tree
-            self.pending = Queue<Int>()
-            if tree._storage.header.rootIndex >= 0 {
-                pending.enqueue(tree._storage.header.rootIndex)
-            }
-        }
-
-        public mutating func next() -> Element? {
-            guard !pending.isEmpty else { return nil }
-
-            let index = pending.dequeue()!
-            let ptr = unsafe tree._cachedPtr
-            let element = unsafe ptr[index].element
-
-            for slot in 0..<n {
-                let childIndex = unsafe ptr[index].childIndices[slot]
-                if childIndex >= 0 {
-                    pending.enqueue(childIndex)
-                }
-            }
-
-            return element
-        }
+    public var levelOrder: Order.Level.Sequence {
+        Order.Level.Sequence(tree: self)
     }
 }
 
@@ -767,46 +633,8 @@ extension Tree.N.Bounded where Element: Copyable {
 extension Tree.N.Bounded where Element: Copyable, n == 2 {
 
     /// A sequence that yields elements in in-order.
-    public var inOrder: InOrderSequence {
-        InOrderSequence(tree: self)
-    }
-
-    public struct InOrderSequence: Sequence {
-        let tree: Tree.N<Element, n>.Bounded
-
-        public func makeIterator() -> InOrderIterator {
-            InOrderIterator(tree: tree)
-        }
-    }
-
-    public struct InOrderIterator: IteratorProtocol {
-        let tree: Tree.N<Element, n>.Bounded
-        var pending: Stack<Int>
-        var current: Int
-
-        init(tree: Tree.N<Element, n>.Bounded) {
-            self.tree = tree
-            self.pending = Stack<Int>()
-            self.current = tree._storage.header.rootIndex
-        }
-
-        public mutating func next() -> Element? {
-            let ptr = unsafe tree._cachedPtr
-
-            while current >= 0 || !pending.isEmpty {
-                while current >= 0 {
-                    pending.push(current)
-                    current = unsafe ptr[current].childIndices[0]
-                }
-
-                current = pending.pop()!
-                let element = unsafe ptr[current].element
-                current = unsafe ptr[current].childIndices[1]
-
-                return element
-            }
-            return nil
-        }
+    public var inOrder: Order.In.Sequence {
+        Order.In.Sequence(tree: self)
     }
 }
 

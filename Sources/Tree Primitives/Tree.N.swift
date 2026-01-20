@@ -472,9 +472,12 @@ extension Tree {
         /// Creates an empty n-ary tree with reserved capacity.
         ///
         /// - Parameter minimumCapacity: The minimum number of nodes to reserve space for.
+        /// - Throws: ``Error/invalidCapacity`` if capacity is negative.
         @inlinable
-        public init(minimumCapacity: Int) {
-            precondition(minimumCapacity >= 0, "Capacity must be non-negative")
+        public init(minimumCapacity: Int) throws(__TreeNError) {
+            guard minimumCapacity >= 0 else {
+                throw .invalidCapacity
+            }
             self._storage = Storage.create(minimumCapacity: minimumCapacity)
             unsafe (self._cachedPtr = self._storage._nodesPointer)
             unsafe (self._tokens = self._storage._tokens)

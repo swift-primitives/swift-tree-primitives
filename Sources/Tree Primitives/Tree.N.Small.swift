@@ -111,16 +111,17 @@ extension Tree.N where Element: ~Copyable {
         var _heapNextFree: UnsafeMutablePointer<Int>?
 
         /// Creates an empty small n-ary tree.
+        ///
+        /// - Throws: ``Error/elementStrideTooLarge`` if the element stride exceeds inline storage,
+        ///           ``Error/elementAlignmentTooLarge`` if the element alignment exceeds inline slot alignment.
         @inlinable
-        public init() {
-            precondition(
-                MemoryLayout<Element>.stride <= Self._maxStride,
-                "Element stride (\(MemoryLayout<Element>.stride)) exceeds inline storage slot size (\(Self._maxStride) bytes). Use N.Bounded instead."
-            )
-            precondition(
-                MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment,
-                "Element alignment (\(MemoryLayout<Element>.alignment)) exceeds inline slot alignment (\(MemoryLayout<Int>.alignment) bytes). Use N.Bounded instead."
-            )
+        public init() throws(__TreeNSmallError) {
+            guard MemoryLayout<Element>.stride <= Self._maxStride else {
+                throw .elementStrideTooLarge
+            }
+            guard MemoryLayout<Element>.alignment <= MemoryLayout<Int>.alignment else {
+                throw .elementAlignmentTooLarge
+            }
             self._inline = InlineArray(repeating: InlineNode())
             self._inlineTokens = InlineArray(repeating: 0)  // All start as free (even)
             self._inlineNextFree = InlineArray(repeating: -1)
