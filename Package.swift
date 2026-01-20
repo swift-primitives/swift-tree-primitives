@@ -14,8 +14,14 @@ let package = Package(
     products: [
         .library(name: "Tree Primitives", targets: ["Tree Primitives"])
     ],
+    dependencies: [
+        .package(path: "../swift-stack-primitives")
+    ],
     targets: [
-        .target(name: "Tree Primitives"),
+        .target(
+            name: "Tree Primitives",
+            dependencies: [.product(name: "Stack Primitives", package: "swift-stack-primitives")]
+        ),
         .testTarget(name: "Tree Primitives Tests", dependencies: ["Tree Primitives"])
     ],
     swiftLanguageModes: [.v6]

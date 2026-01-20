@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Stack_Primitives
+
 // MARK: - Traversal Sequences (Copyable elements only)
 
 extension Tree.Binary where Element: Copyable {
@@ -47,20 +49,20 @@ extension Tree.Binary where Element: Copyable {
     /// An iterator for pre-order traversal.
     public struct PreOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>
-        var stack: [Int]
+        var stack: Stack<Int>
 
         init(tree: Tree.Binary<Element>) {
             self.tree = tree
-            self.stack = []
+            self.stack = Stack<Int>()
             if tree._storage.header.rootIndex >= 0 {
-                self.stack.append(tree._storage.header.rootIndex)
+                self.stack.push(tree._storage.header.rootIndex)
             }
         }
 
         public mutating func next() -> Element? {
             guard !stack.isEmpty else { return nil }
 
-            let index = stack.removeLast()
+            let index = stack.pop()!
             let ptr = unsafe tree._cachedPtr
             let element = unsafe ptr[index].element
             let leftIndex = unsafe ptr[index].leftIndex
@@ -68,10 +70,10 @@ extension Tree.Binary where Element: Copyable {
 
             // Push right first so left is processed first
             if rightIndex >= 0 {
-                stack.append(rightIndex)
+                stack.push(rightIndex)
             }
             if leftIndex >= 0 {
-                stack.append(leftIndex)
+                stack.push(leftIndex)
             }
 
             return element
@@ -92,12 +94,12 @@ extension Tree.Binary where Element: Copyable {
     /// An iterator for in-order traversal.
     public struct InOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>
-        var stack: [Int]
+        var stack: Stack<Int>
         var current: Int
 
         init(tree: Tree.Binary<Element>) {
             self.tree = tree
-            self.stack = []
+            self.stack = Stack<Int>()
             self.current = tree._storage.header.rootIndex
         }
 
@@ -107,12 +109,12 @@ extension Tree.Binary where Element: Copyable {
             while current >= 0 || !stack.isEmpty {
                 // Go to leftmost node
                 while current >= 0 {
-                    stack.append(current)
+                    stack.push(current)
                     current = unsafe ptr[current].leftIndex
                 }
 
                 // Process node
-                current = stack.removeLast()
+                current = stack.pop()!
                 let element = unsafe ptr[current].element
 
                 // Move to right subtree
@@ -139,17 +141,17 @@ extension Tree.Binary where Element: Copyable {
     /// An iterator for post-order traversal.
     public struct PostOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>
-        var stack: [Int]
+        var stack: Stack<Int>
         var lastVisited: Int
 
         init(tree: Tree.Binary<Element>) {
             self.tree = tree
-            self.stack = []
+            self.stack = Stack<Int>()
             self.lastVisited = -1
 
             // Push root if exists
             if tree._storage.header.rootIndex >= 0 {
-                stack.append(tree._storage.header.rootIndex)
+                stack.push(tree._storage.header.rootIndex)
             }
         }
 
@@ -157,7 +159,7 @@ extension Tree.Binary where Element: Copyable {
             let ptr = unsafe tree._cachedPtr
 
             while !stack.isEmpty {
-                let current = stack.last!
+                let current = stack.peek()!
                 let leftIndex = unsafe ptr[current].leftIndex
                 let rightIndex = unsafe ptr[current].rightIndex
 
@@ -165,7 +167,7 @@ extension Tree.Binary where Element: Copyable {
                 if rightIndex < 0 || rightIndex == lastVisited {
                     // Also check if we came from left child and there's no right child
                     if leftIndex < 0 || leftIndex == lastVisited || rightIndex == lastVisited {
-                        stack.removeLast()
+                        _ = stack.pop()
                         lastVisited = current
                         return unsafe ptr[current].element
                     }
@@ -173,10 +175,10 @@ extension Tree.Binary where Element: Copyable {
 
                 // Otherwise, traverse to children
                 if rightIndex >= 0 && rightIndex != lastVisited && leftIndex != lastVisited {
-                    stack.append(rightIndex)
+                    stack.push(rightIndex)
                 }
                 if leftIndex >= 0 && leftIndex != lastVisited {
-                    stack.append(leftIndex)
+                    stack.push(leftIndex)
                 }
             }
 
@@ -270,27 +272,27 @@ extension Tree.Binary.Bounded where Element: Copyable {
     /// An iterator for pre-order traversal.
     public struct PreOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>.Bounded
-        var stack: [Int]
+        var stack: Stack<Int>
 
         init(tree: Tree.Binary<Element>.Bounded) {
             self.tree = tree
-            self.stack = []
+            self.stack = Stack<Int>()
             if tree._storage.header.rootIndex >= 0 {
-                self.stack.append(tree._storage.header.rootIndex)
+                self.stack.push(tree._storage.header.rootIndex)
             }
         }
 
         public mutating func next() -> Element? {
             guard !stack.isEmpty else { return nil }
 
-            let index = stack.removeLast()
+            let index = stack.pop()!
             let ptr = unsafe tree._cachedPtr
             let element = unsafe ptr[index].element
             let leftIndex = unsafe ptr[index].leftIndex
             let rightIndex = unsafe ptr[index].rightIndex
 
-            if rightIndex >= 0 { stack.append(rightIndex) }
-            if leftIndex >= 0 { stack.append(leftIndex) }
+            if rightIndex >= 0 { stack.push(rightIndex) }
+            if leftIndex >= 0 { stack.push(leftIndex) }
 
             return element
         }
@@ -308,12 +310,12 @@ extension Tree.Binary.Bounded where Element: Copyable {
     /// An iterator for in-order traversal.
     public struct InOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>.Bounded
-        var stack: [Int]
+        var stack: Stack<Int>
         var current: Int
 
         init(tree: Tree.Binary<Element>.Bounded) {
             self.tree = tree
-            self.stack = []
+            self.stack = Stack<Int>()
             self.current = tree._storage.header.rootIndex
         }
 
@@ -322,11 +324,11 @@ extension Tree.Binary.Bounded where Element: Copyable {
 
             while current >= 0 || !stack.isEmpty {
                 while current >= 0 {
-                    stack.append(current)
+                    stack.push(current)
                     current = unsafe ptr[current].leftIndex
                 }
 
-                current = stack.removeLast()
+                current = stack.pop()!
                 let element = unsafe ptr[current].element
                 current = unsafe ptr[current].rightIndex
 
@@ -348,15 +350,15 @@ extension Tree.Binary.Bounded where Element: Copyable {
     /// An iterator for post-order traversal.
     public struct PostOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>.Bounded
-        var stack: [Int]
+        var stack: Stack<Int>
         var lastVisited: Int
 
         init(tree: Tree.Binary<Element>.Bounded) {
             self.tree = tree
-            self.stack = []
+            self.stack = Stack<Int>()
             self.lastVisited = -1
             if tree._storage.header.rootIndex >= 0 {
-                stack.append(tree._storage.header.rootIndex)
+                stack.push(tree._storage.header.rootIndex)
             }
         }
 
@@ -364,23 +366,23 @@ extension Tree.Binary.Bounded where Element: Copyable {
             let ptr = unsafe tree._cachedPtr
 
             while !stack.isEmpty {
-                let current = stack.last!
+                let current = stack.peek()!
                 let leftIndex = unsafe ptr[current].leftIndex
                 let rightIndex = unsafe ptr[current].rightIndex
 
                 if rightIndex < 0 || rightIndex == lastVisited {
                     if leftIndex < 0 || leftIndex == lastVisited || rightIndex == lastVisited {
-                        stack.removeLast()
+                        _ = stack.pop()
                         lastVisited = current
                         return unsafe ptr[current].element
                     }
                 }
 
                 if rightIndex >= 0 && rightIndex != lastVisited && leftIndex != lastVisited {
-                    stack.append(rightIndex)
+                    stack.push(rightIndex)
                 }
                 if leftIndex >= 0 && leftIndex != lastVisited {
-                    stack.append(leftIndex)
+                    stack.push(leftIndex)
                 }
             }
             return nil

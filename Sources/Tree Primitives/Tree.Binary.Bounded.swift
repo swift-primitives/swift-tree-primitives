@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Stack_Primitives
+
 // MARK: - Bounded Properties
 
 extension Tree.Binary.Bounded where Element: ~Copyable {
@@ -263,13 +265,13 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
         }
 
         // Iterative post-order removal using explicit stack
-        var stack: [Int] = []
+        var stack = Stack<Int>()
         var lastVisited: Int = -1
 
-        stack.append(position.index)
+        stack.push(position.index)
 
         while !stack.isEmpty {
-            let current = stack[stack.count - 1]
+            let current = stack.peek()!
             let leftIndex = unsafe _cachedPtr[current].leftIndex
             let rightIndex = unsafe _cachedPtr[current].rightIndex
 
@@ -277,17 +279,17 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             let rightDone = rightIndex < 0 || rightIndex == lastVisited
 
             if leftDone && rightDone {
-                stack.removeLast()
+                _ = stack.pop()
                 _storage._deinitializeNode(at: current)
                 _freeSlot(current)
                 _storage.header.count -= 1
                 lastVisited = current
             } else {
                 if rightIndex >= 0 && rightIndex != lastVisited {
-                    stack.append(rightIndex)
+                    stack.push(rightIndex)
                 }
                 if leftIndex >= 0 && leftIndex != lastVisited {
-                    stack.append(leftIndex)
+                    stack.push(leftIndex)
                 }
             }
         }
@@ -313,15 +315,15 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
         guard _storage.header.count > 0 else { return }
 
         // Iterative post-order traversal using explicit stack
-        var stack: [Int] = []
+        var stack = Stack<Int>()
         var lastVisited: Int = -1
 
         if _storage.header.rootIndex >= 0 {
-            stack.append(_storage.header.rootIndex)
+            stack.push(_storage.header.rootIndex)
         }
 
         while !stack.isEmpty {
-            let current = stack[stack.count - 1]
+            let current = stack.peek()!
             let leftIndex = unsafe _cachedPtr[current].leftIndex
             let rightIndex = unsafe _cachedPtr[current].rightIndex
 
@@ -329,16 +331,16 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             let rightDone = rightIndex < 0 || rightIndex == lastVisited
 
             if leftDone && rightDone {
-                stack.removeLast()
+                _ = stack.pop()
                 _storage._deinitializeNode(at: current)
                 _freeSlot(current)
                 lastVisited = current
             } else {
                 if rightIndex >= 0 && rightIndex != lastVisited {
-                    stack.append(rightIndex)
+                    stack.push(rightIndex)
                 }
                 if leftIndex >= 0 && leftIndex != lastVisited {
-                    stack.append(leftIndex)
+                    stack.push(leftIndex)
                 }
             }
         }

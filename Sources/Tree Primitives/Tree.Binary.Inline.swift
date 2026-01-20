@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Stack_Primitives
+
 // MARK: - Inline Properties
 
 extension Tree.Binary.Inline where Element: ~Copyable {
@@ -297,15 +299,15 @@ extension Tree.Binary.Inline where Element: ~Copyable {
         }
 
         // Iterative post-order removal using explicit stack
-        var stack: [Int] = []
+        var stack = Stack<Int>()
         var lastVisited: Int = -1
 
-        stack.append(position.index)
+        stack.push(position.index)
 
         while !stack.isEmpty {
-            let current = stack[stack.count - 1]
+            let current = stack.peek()!
             guard _storage[current].isOccupied else {
-                stack.removeLast()
+                _ = stack.pop()
                 continue
             }
 
@@ -316,17 +318,17 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_storage[rightIndex].isOccupied
 
             if leftDone && rightDone {
-                stack.removeLast()
+                _ = stack.pop()
                 unsafe _elementPointer(at: current).deinitialize(count: 1)
                 _freeSlot(current)
                 _count -= 1
                 lastVisited = current
             } else {
                 if rightIndex >= 0 && rightIndex != lastVisited && _storage[rightIndex].isOccupied {
-                    stack.append(rightIndex)
+                    stack.push(rightIndex)
                 }
                 if leftIndex >= 0 && leftIndex != lastVisited && _storage[leftIndex].isOccupied {
-                    stack.append(leftIndex)
+                    stack.push(leftIndex)
                 }
             }
         }
@@ -352,17 +354,17 @@ extension Tree.Binary.Inline where Element: ~Copyable {
         guard _count > 0 else { return }
 
         // Iterative post-order traversal using explicit stack
-        var stack: [Int] = []
+        var stack = Stack<Int>()
         var lastVisited: Int = -1
 
         if _rootIndex >= 0 {
-            stack.append(_rootIndex)
+            stack.push(_rootIndex)
         }
 
         while !stack.isEmpty {
-            let current = stack[stack.count - 1]
+            let current = stack.peek()!
             guard _storage[current].isOccupied else {
-                stack.removeLast()
+                _ = stack.pop()
                 continue
             }
 
@@ -373,16 +375,16 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_storage[rightIndex].isOccupied
 
             if leftDone && rightDone {
-                stack.removeLast()
+                _ = stack.pop()
                 unsafe _elementPointer(at: current).deinitialize(count: 1)
                 _freeSlot(current)
                 lastVisited = current
             } else {
                 if rightIndex >= 0 && rightIndex != lastVisited && _storage[rightIndex].isOccupied {
-                    stack.append(rightIndex)
+                    stack.push(rightIndex)
                 }
                 if leftIndex >= 0 && leftIndex != lastVisited && _storage[leftIndex].isOccupied {
-                    stack.append(leftIndex)
+                    stack.push(leftIndex)
                 }
             }
         }

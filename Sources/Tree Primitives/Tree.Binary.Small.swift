@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Stack_Primitives
+
 // MARK: - Small Properties
 
 extension Tree.Binary.Small where Element: ~Copyable {
@@ -565,13 +567,13 @@ extension Tree.Binary.Small where Element: ~Copyable {
             }
 
             // Iterative post-order removal using explicit stack
-            var stack: [Int] = []
+            var stack = Stack<Int>()
             var lastVisited: Int = -1
 
-            stack.append(position.index)
+            stack.push(position.index)
 
             while !stack.isEmpty {
-                let current = stack[stack.count - 1]
+                let current = stack.peek()!
                 let leftIndex = unsafe _heapPtr![current].leftIndex
                 let rightIndex = unsafe _heapPtr![current].rightIndex
 
@@ -579,7 +581,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 let rightDone = rightIndex < 0 || rightIndex == lastVisited
 
                 if leftDone && rightDone {
-                    stack.removeLast()
+                    _ = stack.pop()
                     _heap!._deinitializeNode(at: current)
                     unsafe (_heapTokens![current] &+= 1)
                     unsafe (_heapNextFree![current] = _heap!.header.freeHead)
@@ -589,10 +591,10 @@ extension Tree.Binary.Small where Element: ~Copyable {
                     lastVisited = current
                 } else {
                     if rightIndex >= 0 && rightIndex != lastVisited {
-                        stack.append(rightIndex)
+                        stack.push(rightIndex)
                     }
                     if leftIndex >= 0 && leftIndex != lastVisited {
-                        stack.append(leftIndex)
+                        stack.push(leftIndex)
                     }
                 }
             }
@@ -613,15 +615,15 @@ extension Tree.Binary.Small where Element: ~Copyable {
             }
 
             // Iterative post-order removal using explicit stack
-            var stack: [Int] = []
+            var stack = Stack<Int>()
             var lastVisited: Int = -1
 
-            stack.append(position.index)
+            stack.push(position.index)
 
             while !stack.isEmpty {
-                let current = stack[stack.count - 1]
+                let current = stack.peek()!
                 guard _inline[current].isOccupied else {
-                    stack.removeLast()
+                    _ = stack.pop()
                     continue
                 }
 
@@ -632,7 +634,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_inline[rightIndex].isOccupied
 
                 if leftDone && rightDone {
-                    stack.removeLast()
+                    _ = stack.pop()
                     unsafe _inlineElementPointer(at: current).deinitialize(count: 1)
                     _inline[current].isOccupied = false
                     _inlineTokens[current] &+= 1
@@ -642,10 +644,10 @@ extension Tree.Binary.Small where Element: ~Copyable {
                     lastVisited = current
                 } else {
                     if rightIndex >= 0 && rightIndex != lastVisited && _inline[rightIndex].isOccupied {
-                        stack.append(rightIndex)
+                        stack.push(rightIndex)
                     }
                     if leftIndex >= 0 && leftIndex != lastVisited && _inline[leftIndex].isOccupied {
-                        stack.append(leftIndex)
+                        stack.push(leftIndex)
                     }
                 }
             }
@@ -686,17 +688,17 @@ extension Tree.Binary.Small where Element: ~Copyable {
             unsafe (_heapNextFree = nil)
         } else {
             // Iterative post-order traversal using explicit stack
-            var stack: [Int] = []
+            var stack = Stack<Int>()
             var lastVisited: Int = -1
 
             if _rootIndex >= 0 {
-                stack.append(_rootIndex)
+                stack.push(_rootIndex)
             }
 
             while !stack.isEmpty {
-                let current = stack[stack.count - 1]
+                let current = stack.peek()!
                 guard _inline[current].isOccupied else {
-                    stack.removeLast()
+                    _ = stack.pop()
                     continue
                 }
 
@@ -707,17 +709,17 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_inline[rightIndex].isOccupied
 
                 if leftDone && rightDone {
-                    stack.removeLast()
+                    _ = stack.pop()
                     unsafe _inlineElementPointer(at: current).deinitialize(count: 1)
                     _inline[current].isOccupied = false
                     _inlineTokens[current] &+= 1
                     lastVisited = current
                 } else {
                     if rightIndex >= 0 && rightIndex != lastVisited && _inline[rightIndex].isOccupied {
-                        stack.append(rightIndex)
+                        stack.push(rightIndex)
                     }
                     if leftIndex >= 0 && leftIndex != lastVisited && _inline[leftIndex].isOccupied {
-                        stack.append(leftIndex)
+                        stack.push(leftIndex)
                     }
                 }
             }

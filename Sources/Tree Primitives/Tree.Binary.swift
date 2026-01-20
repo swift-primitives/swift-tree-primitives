@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Stack_Primitives
+
 /// A dynamically-growing binary tree supporting move-only elements.
 ///
 /// `Tree.Binary` is the general-purpose binary tree primitive. It provides O(1)
@@ -180,29 +182,29 @@ extension Tree {
                 // Iterative post-order traversal to deinit children before parents
                 // Uses explicit stack to avoid stack overflow on deep trees
                 _ = unsafe withUnsafeMutablePointerToElements { nodes in
-                    var stack: [Int] = []
+                    var stack = Stack<Int>()
                     var lastVisited: Int = -1
 
                     if header.rootIndex >= 0 {
-                        stack.append(header.rootIndex)
+                        stack.push(header.rootIndex)
                     }
 
                     while !stack.isEmpty {
-                        let current = stack[stack.count - 1]
+                        let current = stack.peek()!
                         let leftIndex = unsafe nodes[current].leftIndex
                         let rightIndex = unsafe nodes[current].rightIndex
 
                         // If there's an unvisited left child (and we haven't come up from right), go left
                         if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                            stack.append(leftIndex)
+                            stack.push(leftIndex)
                         }
                         // Else if there's an unvisited right child, go right
                         else if rightIndex >= 0 && rightIndex != lastVisited {
-                            stack.append(rightIndex)
+                            stack.push(rightIndex)
                         }
                         // Else we're done with children, process current node
                         else {
-                            stack.removeLast()
+                            _ = stack.pop()
                             unsafe (nodes + current).deinitialize(count: 1)
                             lastVisited = current
                         }
@@ -546,29 +548,29 @@ extension Tree {
                 var postOrderIndices: [Int] = []
                 postOrderIndices.reserveCapacity(count)
 
-                var stack: [Int] = []
+                var stack = Stack<Int>()
                 var lastVisited: Int = -1
 
                 if _rootIndex >= 0 {
-                    stack.append(_rootIndex)
+                    stack.push(_rootIndex)
                 }
 
                 while !stack.isEmpty {
-                    let current = stack[stack.count - 1]
+                    let current = stack.peek()!
                     let leftIndex = _storage[current].leftIndex
                     let rightIndex = _storage[current].rightIndex
 
                     // If there's an unvisited left child (and we haven't come up from right), go left
                     if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                        stack.append(leftIndex)
+                        stack.push(leftIndex)
                     }
                     // Else if there's an unvisited right child, go right
                     else if rightIndex >= 0 && rightIndex != lastVisited {
-                        stack.append(rightIndex)
+                        stack.push(rightIndex)
                     }
                     // Else we're done with children, collect current node
                     else {
-                        stack.removeLast()
+                        _ = stack.pop()
                         postOrderIndices.append(current)
                         lastVisited = current
                     }
@@ -716,29 +718,29 @@ extension Tree {
                     var postOrderIndices: [Int] = []
                     postOrderIndices.reserveCapacity(count)
 
-                    var stack: [Int] = []
+                    var stack = Stack<Int>()
                     var lastVisited: Int = -1
 
                     if _rootIndex >= 0 {
-                        stack.append(_rootIndex)
+                        stack.push(_rootIndex)
                     }
 
                     while !stack.isEmpty {
-                        let current = stack[stack.count - 1]
+                        let current = stack.peek()!
                         let leftIndex = _inline[current].leftIndex
                         let rightIndex = _inline[current].rightIndex
 
                         // If there's an unvisited left child (and we haven't come up from right), go left
                         if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                            stack.append(leftIndex)
+                            stack.push(leftIndex)
                         }
                         // Else if there's an unvisited right child, go right
                         else if rightIndex >= 0 && rightIndex != lastVisited {
-                            stack.append(rightIndex)
+                            stack.push(rightIndex)
                         }
                         // Else we're done with children, collect current node
                         else {
-                            stack.removeLast()
+                            _ = stack.pop()
                             postOrderIndices.append(current)
                             lastVisited = current
                         }
@@ -1128,27 +1130,27 @@ extension Tree.Binary where Element: ~Copyable {
         }
 
         // Iterative post-order removal using explicit stack
-        var stack: [Int] = []
+        var stack = Stack<Int>()
         var lastVisited: Int = -1
 
-        stack.append(position.index)
+        stack.push(position.index)
 
         while !stack.isEmpty {
-            let current = stack[stack.count - 1]
+            let current = stack.peek()!
             let leftIndex = unsafe _cachedPtr[current].leftIndex
             let rightIndex = unsafe _cachedPtr[current].rightIndex
 
             // If there's an unvisited left child (and we haven't come up from right), go left
             if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                stack.append(leftIndex)
+                stack.push(leftIndex)
             }
             // Else if there's an unvisited right child, go right
             else if rightIndex >= 0 && rightIndex != lastVisited {
-                stack.append(rightIndex)
+                stack.push(rightIndex)
             }
             // Else we're done with children, process current node
             else {
-                stack.removeLast()
+                _ = stack.pop()
                 _storage._deinitializeNode(at: current)
                 _freeSlot(current)
                 _storage.header.count -= 1
@@ -1179,29 +1181,29 @@ extension Tree.Binary where Element: ~Copyable {
         guard _storage.header.count > 0 else { return }
 
         // Iterative post-order traversal using explicit stack
-        var stack: [Int] = []
+        var stack = Stack<Int>()
         var lastVisited: Int = -1
 
         if _storage.header.rootIndex >= 0 {
-            stack.append(_storage.header.rootIndex)
+            stack.push(_storage.header.rootIndex)
         }
 
         while !stack.isEmpty {
-            let current = stack[stack.count - 1]
+            let current = stack.peek()!
             let leftIndex = unsafe _cachedPtr[current].leftIndex
             let rightIndex = unsafe _cachedPtr[current].rightIndex
 
             // If there's an unvisited left child (and we haven't come up from right), go left
             if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
-                stack.append(leftIndex)
+                stack.push(leftIndex)
             }
             // Else if there's an unvisited right child, go right
             else if rightIndex >= 0 && rightIndex != lastVisited {
-                stack.append(rightIndex)
+                stack.push(rightIndex)
             }
             // Else we're done with children, process current node
             else {
-                stack.removeLast()
+                _ = stack.pop()
                 _storage._deinitializeNode(at: current)
                 lastVisited = current
             }
