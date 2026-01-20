@@ -264,6 +264,58 @@ extension Tree {
                 header.count = 0
                 header.freeHead = -1
             }
+
+            /// Copies all elements to new storage (for CoW).
+            ///
+            /// Unlike `_moveAllElements`, this preserves the source storage.
+            /// Only available for Copyable elements.
+            @usableFromInline
+            func _copyAllElements(to newStorage: Storage) where Element: Copyable {
+                let count = header.count
+                guard count > 0 else { return }
+
+                // Copy nodes maintaining their indices (for correct parent/child references)
+                _ = unsafe withUnsafeMutablePointerToElements { src in
+                    unsafe newStorage.withUnsafeMutablePointerToElements { dst in
+                        // Copy only active nodes (traverse from root)
+                        func copySubtree(at index: Int) {
+                            guard index >= 0 else { return }
+                            let element = unsafe src[index].element
+                            let leftIndex = unsafe src[index].leftIndex
+                            let rightIndex = unsafe src[index].rightIndex
+                            let parentIndex = unsafe src[index].parentIndex
+
+                            unsafe (dst + index).initialize(to: Node(
+                                element: element,
+                                leftIndex: leftIndex,
+                                rightIndex: rightIndex,
+                                parentIndex: parentIndex
+                            ))
+
+                            copySubtree(at: leftIndex)
+                            copySubtree(at: rightIndex)
+                        }
+
+                        copySubtree(at: header.rootIndex)
+                    }
+                }
+
+                // Copy header state
+                newStorage.header.rootIndex = header.rootIndex
+                newStorage.header.count = header.count
+                newStorage.header.freeHead = header.freeHead
+
+                // Rebuild free list for new storage (copy free slot pointers)
+                if header.freeHead >= 0 {
+                    var freeIndex = header.freeHead
+                    while freeIndex >= 0 {
+                        let nextFree = _loadFreeNext(at: freeIndex)
+                        newStorage._storeFreeNext(at: freeIndex, next: nextFree)
+                        freeIndex = nextFree
+                    }
+                }
+                // NOTE: Do NOT reset old header - source storage remains valid
+            }
         }
 
         @usableFromInline
@@ -976,7 +1028,7 @@ extension Tree.Binary where Element: Copyable {
     mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
             let newStorage = Storage.create(minimumCapacity: _storage.capacity)
-            _storage._moveAllElements(to: newStorage)
+            _storage._copyAllElements(to: newStorage)
             _storage = newStorage
             // CRITICAL: Update cached pointer
             unsafe (_cachedPtr = _storage._nodesPointer)

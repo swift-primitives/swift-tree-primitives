@@ -338,7 +338,7 @@ extension Tree.Binary.Bounded where Element: Copyable {
     mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
             let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: capacity)
-            _storage._moveAllElements(to: newStorage)
+            _storage._copyAllElements(to: newStorage)
             _storage = newStorage
             unsafe (_cachedPtr = _storage._nodesPointer)
         }
