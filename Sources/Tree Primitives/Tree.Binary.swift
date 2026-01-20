@@ -546,8 +546,8 @@ extension Tree {
                 guard count > 0 else { return }
 
                 // Iterative post-order collection using explicit stack
-                var postOrderIndices: [Int] = []
-                postOrderIndices.reserveCapacity(count)
+                var postOrderIndices = Queue<Int>()
+                postOrderIndices.reserve(count)
 
                 var stack = Stack<Int>()
                 var lastVisited: Int = -1
@@ -572,7 +572,7 @@ extension Tree {
                     // Else we're done with children, collect current node
                     else {
                         _ = stack.pop()
-                        postOrderIndices.append(current)
+                        postOrderIndices.enqueue(current)
                         lastVisited = current
                     }
                 }
@@ -583,7 +583,8 @@ extension Tree {
 
                 unsafe Swift.withUnsafePointer(to: _storage) { storagePtr in
                     let basePtr = unsafe UnsafeMutableRawPointer(mutating: unsafe UnsafeRawPointer(storagePtr))
-                    for index in postOrderIndices {
+                    while !postOrderIndices.isEmpty {
+                        let index = postOrderIndices.dequeue()!
                         let nodePtr = unsafe basePtr + index * nodeStride
                         let elementPtr = unsafe (nodePtr + slotOffset)
                             .assumingMemoryBound(to: Element.self)
@@ -716,8 +717,8 @@ extension Tree {
                     heap.header.count = _count
                 } else {
                     // Iterative post-order collection using explicit stack
-                    var postOrderIndices: [Int] = []
-                    postOrderIndices.reserveCapacity(count)
+                    var postOrderIndices = Queue<Int>()
+                    postOrderIndices.reserve(count)
 
                     var stack = Stack<Int>()
                     var lastVisited: Int = -1
@@ -742,7 +743,7 @@ extension Tree {
                         // Else we're done with children, collect current node
                         else {
                             _ = stack.pop()
-                            postOrderIndices.append(current)
+                            postOrderIndices.enqueue(current)
                             lastVisited = current
                         }
                     }
@@ -753,7 +754,8 @@ extension Tree {
 
                     unsafe Swift.withUnsafePointer(to: _inline) { storagePtr in
                         let basePtr = unsafe UnsafeMutableRawPointer(mutating: unsafe UnsafeRawPointer(storagePtr))
-                        for index in postOrderIndices {
+                        while !postOrderIndices.isEmpty {
+                            let index = postOrderIndices.dequeue()!
                             let nodePtr = unsafe basePtr + index * nodeStride
                             let elementPtr = unsafe (nodePtr + slotOffset)
                                 .assumingMemoryBound(to: Element.self)
