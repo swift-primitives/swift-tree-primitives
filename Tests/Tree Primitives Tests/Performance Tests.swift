@@ -22,7 +22,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Insert 10,000 nodes")
     func insertTenThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         // Insert root
@@ -45,7 +45,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Insert 50,000 nodes")
     func insertFiftyThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(50_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -68,7 +68,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Navigate 100,000 positions")
     func navigateHundredThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(1_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -101,7 +101,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Pre-order traversal 10,000 nodes")
     func preOrderTenThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -123,7 +123,7 @@ struct TreeBinaryPerformanceTests {
     @Test("In-order traversal 10,000 nodes")
     func inOrderTenThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -145,7 +145,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Post-order traversal 10,000 nodes")
     func postOrderTenThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -167,7 +167,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Level-order traversal 10,000 nodes")
     func levelOrderTenThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -191,7 +191,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Remove subtree 5,000 nodes")
     func removeSubtreeFiveThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -215,7 +215,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Clear 10,000 nodes")
     func clearTenThousand() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -238,7 +238,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Copy-on-write with 10,000 nodes")
     func cowTenThousand() throws {
         var tree1 = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree1.insert(0, at: .root))
@@ -270,7 +270,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Bounded insert 10,000 nodes")
     func boundedInsertTenThousand() throws {
         var tree = try Tree.Binary<Int>.Bounded(capacity: 10_000)
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(10_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -293,7 +293,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Small spill and grow to 1,000 nodes")
     func smallSpillToThousand() throws {
         var tree = Tree.Binary<Int>.Small<8>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(1_000)
 
         positions.append(try tree.insert(0, at: .root))
@@ -318,8 +318,8 @@ struct TreeBinaryPerformanceTests {
     @Test("Memory layout sizes")
     func memoryLayoutSizes() {
         // Verify struct sizes are reasonable
-        let positionSize = MemoryLayout<Tree.Binary<Int>.Position>.size
-        let nodeSize = MemoryLayout<Tree.Binary<Int>.Node>.size
+        let positionSize = MemoryLayout<Tree.Position>.size
+        let nodeSize = MemoryLayout<Tree.N<Int, 2>.Node>.size
 
         // Position should be compact (index + token)
         #expect(positionSize <= 16)  // Int + UInt32 + padding
@@ -330,8 +330,8 @@ struct TreeBinaryPerformanceTests {
         // Print for manual inspection
         print("Position size: \(positionSize) bytes")
         print("Node size: \(nodeSize) bytes")
-        print("Position stride: \(MemoryLayout<Tree.Binary<Int>.Position>.stride) bytes")
-        print("Node stride: \(MemoryLayout<Tree.Binary<Int>.Node>.stride) bytes")
+        print("Position stride: \(MemoryLayout<Tree.Position>.stride) bytes")
+        print("Node stride: \(MemoryLayout<Tree.N<Int, 2>.Node>.stride) bytes")
     }
 
     // MARK: - Token Validation Performance
@@ -339,7 +339,7 @@ struct TreeBinaryPerformanceTests {
     @Test("Token validation 100,000 operations")
     func tokenValidationPerformance() throws {
         var tree = Tree.Binary<Int>()
-        var positions: [Tree.Binary<Int>.Position] = []
+        var positions: [Tree.Position] = []
         positions.reserveCapacity(100)
 
         positions.append(try tree.insert(0, at: .root))

@@ -219,32 +219,46 @@ extension Tree {
 
                     while !pending.isEmpty {
                         let current = pending.peek()!
+                        let childIndices = unsafe nodes[current].childIndices
 
-                        // Find rightmost unvisited child
-                        var hasUnvisitedChild = false
+                        // Find rightmost existing child index
+                        var rightmostChildIndex: Int = -1
                         for slot in stride(from: n - 1, through: 0, by: -1) {
-                            let childIndex = unsafe nodes[current].childIndices[slot]
-                            if childIndex >= 0 && childIndex != lastVisited {
-                                // Check if we've already processed any later children
-                                var laterChildVisited = false
-                                for laterSlot in (slot + 1)..<n {
-                                    if unsafe nodes[current].childIndices[laterSlot] == lastVisited {
-                                        laterChildVisited = true
-                                        break
-                                    }
-                                }
-                                if !laterChildVisited {
-                                    pending.push(childIndex)
-                                    hasUnvisitedChild = true
-                                    break
-                                }
+                            if childIndices[slot] >= 0 {
+                                rightmostChildIndex = childIndices[slot]
+                                break
                             }
                         }
 
-                        if !hasUnvisitedChild {
+                        // Find leftmost existing child index
+                        var leftmostChildIndex: Int = -1
+                        for slot in 0..<n {
+                            if childIndices[slot] >= 0 {
+                                leftmostChildIndex = childIndices[slot]
+                                break
+                            }
+                        }
+
+                        // Process current if:
+                        // 1. It's a leaf (no children), OR
+                        // 2. We came from the rightmost child, OR
+                        // 3. We came from leftmost child AND no other children exist
+                        let isLeaf = rightmostChildIndex < 0
+                        let cameFromRightmost = rightmostChildIndex >= 0 && rightmostChildIndex == lastVisited
+                        let cameFromLeftmostNoOther = leftmostChildIndex >= 0 && leftmostChildIndex == lastVisited && leftmostChildIndex == rightmostChildIndex
+
+                        if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
                             _ = pending.pop()
                             unsafe (nodes + current).deinitialize(count: 1)
                             lastVisited = current
+                        } else {
+                            // Push children in reverse order (rightmost first so leftmost is processed first)
+                            for slot in stride(from: n - 1, through: 0, by: -1) {
+                                let childIndex = childIndices[slot]
+                                if childIndex >= 0 {
+                                    pending.push(childIndex)
+                                }
+                            }
                         }
                     }
                 }
@@ -840,34 +854,48 @@ extension Tree.N where Element: ~Copyable {
 
         while !pending.isEmpty {
             let current = pending.peek()!
+            let childIndices = unsafe _cachedPtr[current].childIndices
 
-            // Find rightmost unvisited child
-            var hasUnvisitedChild = false
+            // Find rightmost existing child index
+            var rightmostChildIndex: Int = -1
             for slot in stride(from: n - 1, through: 0, by: -1) {
-                let childIndex = unsafe _cachedPtr[current].childIndices[slot]
-                if childIndex >= 0 && childIndex != lastVisited {
-                    // Check if we've already processed any later children
-                    var laterChildVisited = false
-                    for laterSlot in (slot + 1)..<n {
-                        if unsafe _cachedPtr[current].childIndices[laterSlot] == lastVisited {
-                            laterChildVisited = true
-                            break
-                        }
-                    }
-                    if !laterChildVisited {
-                        pending.push(childIndex)
-                        hasUnvisitedChild = true
-                        break
-                    }
+                if childIndices[slot] >= 0 {
+                    rightmostChildIndex = childIndices[slot]
+                    break
                 }
             }
 
-            if !hasUnvisitedChild {
+            // Find leftmost existing child index
+            var leftmostChildIndex: Int = -1
+            for slot in 0..<n {
+                if childIndices[slot] >= 0 {
+                    leftmostChildIndex = childIndices[slot]
+                    break
+                }
+            }
+
+            // Process current if:
+            // 1. It's a leaf (no children), OR
+            // 2. We came from the rightmost child, OR
+            // 3. We came from leftmost child AND no other children exist
+            let isLeaf = rightmostChildIndex < 0
+            let cameFromRightmost = rightmostChildIndex >= 0 && rightmostChildIndex == lastVisited
+            let cameFromLeftmostNoOther = leftmostChildIndex >= 0 && leftmostChildIndex == lastVisited && leftmostChildIndex == rightmostChildIndex
+
+            if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
                 _ = pending.pop()
                 _storage._deinitializeNode(at: current)
                 _freeSlot(current)
                 _storage.header.count -= 1
                 lastVisited = current
+            } else {
+                // Push children in reverse order (rightmost first so leftmost is processed first)
+                for slot in stride(from: n - 1, through: 0, by: -1) {
+                    let childIndex = childIndices[slot]
+                    if childIndex >= 0 {
+                        pending.push(childIndex)
+                    }
+                }
             }
         }
     }
@@ -1012,32 +1040,46 @@ extension Tree.N where Element: ~Copyable {
 
         while !pending.isEmpty {
             let current = pending.peek()!
+            let childIndices = unsafe _cachedPtr[current].childIndices
 
-            // Find rightmost unvisited child
-            var hasUnvisitedChild = false
+            // Find rightmost existing child index
+            var rightmostChildIndex: Int = -1
             for slot in stride(from: n - 1, through: 0, by: -1) {
-                let childIndex = unsafe _cachedPtr[current].childIndices[slot]
-                if childIndex >= 0 && childIndex != lastVisited {
-                    // Check if we've already processed any later children
-                    var laterChildVisited = false
-                    for laterSlot in (slot + 1)..<n {
-                        if unsafe _cachedPtr[current].childIndices[laterSlot] == lastVisited {
-                            laterChildVisited = true
-                            break
-                        }
-                    }
-                    if !laterChildVisited {
-                        pending.push(childIndex)
-                        hasUnvisitedChild = true
-                        break
-                    }
+                if childIndices[slot] >= 0 {
+                    rightmostChildIndex = childIndices[slot]
+                    break
                 }
             }
 
-            if !hasUnvisitedChild {
+            // Find leftmost existing child index
+            var leftmostChildIndex: Int = -1
+            for slot in 0..<n {
+                if childIndices[slot] >= 0 {
+                    leftmostChildIndex = childIndices[slot]
+                    break
+                }
+            }
+
+            // Process current if:
+            // 1. It's a leaf (no children), OR
+            // 2. We came from the rightmost child, OR
+            // 3. We came from leftmost child AND no other children exist
+            let isLeaf = rightmostChildIndex < 0
+            let cameFromRightmost = rightmostChildIndex >= 0 && rightmostChildIndex == lastVisited
+            let cameFromLeftmostNoOther = leftmostChildIndex >= 0 && leftmostChildIndex == lastVisited && leftmostChildIndex == rightmostChildIndex
+
+            if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
                 _ = pending.pop()
                 unsafe body(_cachedPtr[current].element)
                 lastVisited = current
+            } else {
+                // Push children in reverse order (rightmost first so leftmost is processed first)
+                for slot in stride(from: n - 1, through: 0, by: -1) {
+                    let childIndex = childIndices[slot]
+                    if childIndex >= 0 {
+                        pending.push(childIndex)
+                    }
+                }
             }
         }
     }

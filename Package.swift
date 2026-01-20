@@ -17,7 +17,10 @@ let package = Package(
     dependencies: [
         .package(path: "../swift-stack-primitives"),
         .package(path: "../swift-queue-primitives"),
-        .package(path: "../swift-array-primitives")
+        .package(path: "../swift-array-primitives"),
+        .package(path: "../swift-index-primitives"),
+        .package(path: "../swift-input-primitives"),
+        .package(path: "../swift-bit-primitives")
     ],
     targets: [
         .target(
@@ -25,7 +28,10 @@ let package = Package(
             dependencies: [
                 .product(name: "Stack Primitives", package: "swift-stack-primitives"),
                 .product(name: "Queue Primitives", package: "swift-queue-primitives"),
-                .product(name: "Array Primitives", package: "swift-array-primitives")
+                .product(name: "Array Primitives", package: "swift-array-primitives"),
+                .product(name: "Index Primitives", package: "swift-index-primitives"),
+                .product(name: "Input Primitives", package: "swift-input-primitives"),
+                .product(name: "Bit Primitives", package: "swift-bit-primitives")
             ]
         ),
         .testTarget(name: "Tree Primitives Tests", dependencies: ["Tree Primitives"])
