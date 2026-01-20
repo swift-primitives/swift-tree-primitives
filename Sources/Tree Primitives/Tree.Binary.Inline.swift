@@ -296,19 +296,40 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             _rootIndex = -1
         }
 
-        // Post-order removal
-        func removeNode(at index: Int) {
-            guard index >= 0 && _storage[index].isOccupied else { return }
-            let leftIndex = _storage[index].leftIndex
-            let rightIndex = _storage[index].rightIndex
-            removeNode(at: leftIndex)
-            removeNode(at: rightIndex)
-            unsafe _elementPointer(at: index).deinitialize(count: 1)
-            _freeSlot(index)
-            _count -= 1
-        }
+        // Iterative post-order removal using explicit stack
+        var stack: [Int] = []
+        var lastVisited: Int = -1
 
-        removeNode(at: position.index)
+        stack.append(position.index)
+
+        while !stack.isEmpty {
+            let current = stack[stack.count - 1]
+            guard _storage[current].isOccupied else {
+                stack.removeLast()
+                continue
+            }
+
+            let leftIndex = _storage[current].leftIndex
+            let rightIndex = _storage[current].rightIndex
+
+            let leftDone = leftIndex < 0 || leftIndex == lastVisited || !_storage[leftIndex].isOccupied
+            let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_storage[rightIndex].isOccupied
+
+            if leftDone && rightDone {
+                stack.removeLast()
+                unsafe _elementPointer(at: current).deinitialize(count: 1)
+                _freeSlot(current)
+                _count -= 1
+                lastVisited = current
+            } else {
+                if rightIndex >= 0 && rightIndex != lastVisited && _storage[rightIndex].isOccupied {
+                    stack.append(rightIndex)
+                }
+                if leftIndex >= 0 && leftIndex != lastVisited && _storage[leftIndex].isOccupied {
+                    stack.append(leftIndex)
+                }
+            }
+        }
     }
 
     /// Accesses the element at the specified position via a borrowing closure.
@@ -330,17 +351,42 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     public mutating func clear() {
         guard _count > 0 else { return }
 
-        func clearSubtree(at index: Int) {
-            guard index >= 0 && _storage[index].isOccupied else { return }
-            let leftIndex = _storage[index].leftIndex
-            let rightIndex = _storage[index].rightIndex
-            clearSubtree(at: leftIndex)
-            clearSubtree(at: rightIndex)
-            unsafe _elementPointer(at: index).deinitialize(count: 1)
-            _freeSlot(index)
+        // Iterative post-order traversal using explicit stack
+        var stack: [Int] = []
+        var lastVisited: Int = -1
+
+        if _rootIndex >= 0 {
+            stack.append(_rootIndex)
         }
 
-        clearSubtree(at: _rootIndex)
+        while !stack.isEmpty {
+            let current = stack[stack.count - 1]
+            guard _storage[current].isOccupied else {
+                stack.removeLast()
+                continue
+            }
+
+            let leftIndex = _storage[current].leftIndex
+            let rightIndex = _storage[current].rightIndex
+
+            let leftDone = leftIndex < 0 || leftIndex == lastVisited || !_storage[leftIndex].isOccupied
+            let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_storage[rightIndex].isOccupied
+
+            if leftDone && rightDone {
+                stack.removeLast()
+                unsafe _elementPointer(at: current).deinitialize(count: 1)
+                _freeSlot(current)
+                lastVisited = current
+            } else {
+                if rightIndex >= 0 && rightIndex != lastVisited && _storage[rightIndex].isOccupied {
+                    stack.append(rightIndex)
+                }
+                if leftIndex >= 0 && leftIndex != lastVisited && _storage[leftIndex].isOccupied {
+                    stack.append(leftIndex)
+                }
+            }
+        }
+
         _rootIndex = -1
         _count = 0
         _freeHead = -1

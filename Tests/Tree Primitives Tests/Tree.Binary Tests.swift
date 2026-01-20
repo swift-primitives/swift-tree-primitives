@@ -593,3 +593,233 @@ struct TreeBinarySendableTests {
         requireSendable(tree)
     }
 }
+
+// MARK: - Token-Stamped Position Tests
+
+@Suite("Tree.Binary.StalePosition")
+struct TreeBinaryStalePositionTests {
+
+    @Test("Stale position after remove returns nil for navigation")
+    func stalePositionAfterRemove() throws {
+        var tree = Tree.Binary<Int>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+        _ = try tree.insert(3, at: .right(of: root))
+
+        // Remove the left node
+        _ = try tree.remove(at: left)
+
+        // The stale position should return nil for navigation
+        #expect(tree.left(of: left) == nil)
+        #expect(tree.right(of: left) == nil)
+        #expect(tree.parent(of: left) == nil)
+        #expect(tree.isLeaf(left) == false)
+        #expect(tree.peek(at: left) == nil)
+    }
+
+    @Test("Stale position after remove throws on insert")
+    func stalePositionThrowsOnInsert() throws {
+        var tree = Tree.Binary<Int>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+        _ = try tree.insert(3, at: .right(of: root))
+
+        // Remove the left node
+        _ = try tree.remove(at: left)
+
+        // Inserting at a stale position should throw
+        #expect(throws: __TreeBinaryError.invalidPosition) {
+            try tree.insert(4, at: .left(of: left))
+        }
+        #expect(throws: __TreeBinaryError.invalidPosition) {
+            try tree.insert(5, at: .right(of: left))
+        }
+    }
+
+    @Test("Position remains valid after unrelated inserts")
+    func positionValidAfterUnrelatedInserts() throws {
+        var tree = Tree.Binary<Int>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+
+        // Capture position before more inserts
+        let leftPosition = left
+
+        // Insert more nodes elsewhere
+        _ = try tree.insert(3, at: .right(of: root))
+        _ = try tree.insert(4, at: .left(of: left))
+        _ = try tree.insert(5, at: .right(of: left))
+
+        // Original position should still be valid
+        #expect(tree.peek(at: leftPosition) == 2)
+        #expect(tree.parent(of: leftPosition) == root)
+        #expect(tree.left(of: leftPosition) != nil)
+        #expect(tree.right(of: leftPosition) != nil)
+    }
+
+    @Test("Position remains valid after unrelated removes")
+    func positionValidAfterUnrelatedRemoves() throws {
+        var tree = Tree.Binary<Int>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+        let right = try tree.insert(3, at: .right(of: root))
+        let leftLeft = try tree.insert(4, at: .left(of: left))
+        _ = try tree.insert(5, at: .right(of: left))
+
+        // Remove unrelated nodes
+        _ = try tree.remove(at: right)
+        _ = try tree.remove(at: leftLeft)
+
+        // Left position should still be valid
+        #expect(tree.peek(at: left) == 2)
+        #expect(tree.parent(of: left) == root)
+    }
+
+    @Test("Position survives CoW copy")
+    func positionSurvivesCoW() throws {
+        var tree1 = Tree.Binary<Int>()
+        let root = try tree1.insert(1, at: .root)
+        let left = try tree1.insert(2, at: .left(of: root))
+
+        // Copy (shared storage)
+        var tree2 = tree1
+
+        // Mutate tree2 (triggers CoW)
+        _ = try tree2.insert(3, at: .right(of: tree2.root!))
+
+        // Position from tree1 should still work with tree1
+        #expect(tree1.peek(at: root) == 1)
+        #expect(tree1.peek(at: left) == 2)
+
+        // tree2's root should still be valid
+        #expect(tree2.peek(at: tree2.root!) == 1)
+    }
+
+    @Test("Position survives growth reallocation")
+    func positionSurvivesGrowth() throws {
+        var tree = Tree.Binary<Int>()
+
+        // Build tree and capture positions
+        let root = try tree.insert(1, at: .root)
+        var positions: [Tree.Binary<Int>.Position] = [root]
+
+        // Force multiple growths
+        for i in 0..<20 {
+            let parent = positions[i / 2]
+            if i % 2 == 0 && tree.left(of: parent) == nil {
+                positions.append(try tree.insert(i + 2, at: .left(of: parent)))
+            } else if tree.right(of: parent) == nil {
+                positions.append(try tree.insert(i + 2, at: .right(of: parent)))
+            }
+        }
+
+        // All original positions should still be valid
+        #expect(tree.peek(at: root) == 1)
+        #expect(tree.peek(at: positions[1]) != nil)
+    }
+
+    @Test("Bounded stale position detection")
+    func boundedStalePosition() throws {
+        var tree = try Tree.Binary<Int>.Bounded(capacity: 10)
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+
+        // Remove left
+        _ = try tree.remove(at: left)
+
+        // Stale position should return nil
+        #expect(tree.peek(at: left) == nil)
+        #expect(tree.left(of: left) == nil)
+
+        // Insert at stale position should throw
+        #expect(throws: __TreeBinaryBoundedError.invalidPosition) {
+            try tree.insert(3, at: .left(of: left))
+        }
+    }
+
+    @Test("Inline stale position detection")
+    func inlineStalePosition() throws {
+        var tree = Tree.Binary<Int>.Inline<8>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+
+        // Remove left
+        _ = try tree.remove(at: left)
+
+        // Stale position should return nil
+        #expect(tree.peek(at: left) == nil)
+        #expect(tree.left(of: left) == nil)
+
+        // Insert at stale position should throw
+        #expect(throws: __TreeBinaryInlineError.invalidPosition) {
+            try tree.insert(3, at: .left(of: left))
+        }
+    }
+
+    @Test("Small stale position detection - inline")
+    func smallStalePositionInline() throws {
+        var tree = Tree.Binary<Int>.Small<8>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+
+        // Remove left (still inline)
+        _ = try tree.remove(at: left)
+
+        let isSpilled = tree.isSpilled
+        #expect(!isSpilled)
+
+        // Stale position should return nil
+        #expect(tree.peek(at: left) == nil)
+
+        // Insert at stale position should throw
+        #expect(throws: __TreeBinarySmallError.invalidPosition) {
+            try tree.insert(3, at: .left(of: left))
+        }
+    }
+
+    @Test("Small stale position detection - after spill")
+    func smallStalePositionAfterSpill() throws {
+        var tree = Tree.Binary<Int>.Small<2>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+
+        // Force spill
+        _ = try tree.insert(3, at: .right(of: root))
+        _ = try tree.insert(4, at: .left(of: left))
+
+        let isSpilled = tree.isSpilled
+        #expect(isSpilled)
+
+        // Position from before spill should still work
+        #expect(tree.peek(at: root) == 1)
+        #expect(tree.peek(at: left) == 2)
+
+        // Remove a leaf and check stale detection
+        let leftLeft = tree.left(of: left)!
+        _ = try tree.remove(at: leftLeft)
+
+        #expect(tree.peek(at: leftLeft) == nil)
+    }
+
+    @Test("Removed and reallocated slot invalidates old position")
+    func removedSlotReallocationInvalidatesOldPosition() throws {
+        var tree = Tree.Binary<Int>()
+        let root = try tree.insert(1, at: .root)
+        let left = try tree.insert(2, at: .left(of: root))
+
+        // Remove left
+        _ = try tree.remove(at: left)
+
+        // Insert new node - may reuse the slot
+        let newLeft = try tree.insert(3, at: .left(of: root))
+
+        // Old position should be invalid (different token)
+        #expect(tree.peek(at: left) == nil)
+
+        // New position should be valid
+        #expect(tree.peek(at: newLeft) == 3)
+
+        // They may have the same index but different tokens
+        #expect(left != newLeft)
+    }
+}

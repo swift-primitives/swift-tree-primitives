@@ -29,7 +29,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     @inlinable
     public var root: Tree.Binary<Element>.Position? {
         let rootIndex = _storage.header.rootIndex
-        guard rootIndex >= 0, let tokens = _tokens else { return nil }
+        guard rootIndex >= 0, let tokens = unsafe _tokens else { return nil }
         return Tree.Binary<Element>.Position(index: rootIndex, token: unsafe tokens[rootIndex])
     }
 
@@ -40,7 +40,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     func _validate(_ position: Tree.Binary<Element>.Position) throws(__TreeBinaryBoundedError) {
         guard position.index >= 0,
               position.index < capacity,
-              let tokens = _tokens,
+              let tokens = unsafe _tokens,
               unsafe tokens[position.index] == position.token,
               position.token & 1 == 1 else {
             throw .invalidPosition
@@ -58,7 +58,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             return nil
         }
         let leftIndex = unsafe _cachedPtr[position.index].leftIndex
-        guard leftIndex >= 0, let tokens = _tokens else { return nil }
+        guard leftIndex >= 0, let tokens = unsafe _tokens else { return nil }
         return Tree.Binary<Element>.Position(index: leftIndex, token: unsafe tokens[leftIndex])
     }
 
@@ -71,7 +71,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             return nil
         }
         let rightIndex = unsafe _cachedPtr[position.index].rightIndex
-        guard rightIndex >= 0, let tokens = _tokens else { return nil }
+        guard rightIndex >= 0, let tokens = unsafe _tokens else { return nil }
         return Tree.Binary<Element>.Position(index: rightIndex, token: unsafe tokens[rightIndex])
     }
 
@@ -84,7 +84,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             return nil
         }
         let parentIndex = unsafe _cachedPtr[position.index].parentIndex
-        guard parentIndex >= 0, let tokens = _tokens else { return nil }
+        guard parentIndex >= 0, let tokens = unsafe _tokens else { return nil }
         return Tree.Binary<Element>.Position(index: parentIndex, token: unsafe tokens[parentIndex])
     }
 
@@ -111,7 +111,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
         // Try to reuse from free list
         if _storage.header.freeHead >= 0 {
             index = _storage.header.freeHead
-            if let nextFree = _nextFree {
+            if let nextFree = unsafe _nextFree {
                 _storage.header.freeHead = unsafe nextFree[index]
             }
         } else if _storage.header.count < capacity {
@@ -122,7 +122,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
         }
 
         // Increment token: even (free) → odd (occupied)
-        if let tokens = _tokens {
+        if let tokens = unsafe _tokens {
             unsafe (tokens[index] &+= 1)
             return (index, unsafe tokens[index])
         } else {
@@ -134,12 +134,12 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     @usableFromInline
     mutating func _freeSlot(_ index: Int) {
         // Increment token: odd (occupied) → even (free)
-        if let tokens = _tokens {
+        if let tokens = unsafe _tokens {
             unsafe (tokens[index] &+= 1)
         }
 
         // Add to free list
-        if let nextFree = _nextFree {
+        if let nextFree = unsafe _nextFree {
             unsafe (nextFree[index] = _storage.header.freeHead)
         }
         _storage.header.freeHead = index
@@ -262,19 +262,35 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             _storage.header.rootIndex = -1
         }
 
-        // Post-order removal
-        func removeNode(at index: Int) {
-            guard index >= 0 else { return }
-            let leftIndex = unsafe _cachedPtr[index].leftIndex
-            let rightIndex = unsafe _cachedPtr[index].rightIndex
-            removeNode(at: leftIndex)
-            removeNode(at: rightIndex)
-            _storage._deinitializeNode(at: index)
-            _freeSlot(index)
-            _storage.header.count -= 1
-        }
+        // Iterative post-order removal using explicit stack
+        var stack: [Int] = []
+        var lastVisited: Int = -1
 
-        removeNode(at: position.index)
+        stack.append(position.index)
+
+        while !stack.isEmpty {
+            let current = stack[stack.count - 1]
+            let leftIndex = unsafe _cachedPtr[current].leftIndex
+            let rightIndex = unsafe _cachedPtr[current].rightIndex
+
+            let leftDone = leftIndex < 0 || leftIndex == lastVisited
+            let rightDone = rightIndex < 0 || rightIndex == lastVisited
+
+            if leftDone && rightDone {
+                stack.removeLast()
+                _storage._deinitializeNode(at: current)
+                _freeSlot(current)
+                _storage.header.count -= 1
+                lastVisited = current
+            } else {
+                if rightIndex >= 0 && rightIndex != lastVisited {
+                    stack.append(rightIndex)
+                }
+                if leftIndex >= 0 && leftIndex != lastVisited {
+                    stack.append(leftIndex)
+                }
+            }
+        }
     }
 
     /// Accesses the element at the specified position via a borrowing closure.
@@ -296,17 +312,37 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     public mutating func clear() {
         guard _storage.header.count > 0 else { return }
 
-        func clearSubtree(at index: Int) {
-            guard index >= 0 else { return }
-            let leftIndex = unsafe _cachedPtr[index].leftIndex
-            let rightIndex = unsafe _cachedPtr[index].rightIndex
-            clearSubtree(at: leftIndex)
-            clearSubtree(at: rightIndex)
-            _storage._deinitializeNode(at: index)
-            _freeSlot(index)
+        // Iterative post-order traversal using explicit stack
+        var stack: [Int] = []
+        var lastVisited: Int = -1
+
+        if _storage.header.rootIndex >= 0 {
+            stack.append(_storage.header.rootIndex)
         }
 
-        clearSubtree(at: _storage.header.rootIndex)
+        while !stack.isEmpty {
+            let current = stack[stack.count - 1]
+            let leftIndex = unsafe _cachedPtr[current].leftIndex
+            let rightIndex = unsafe _cachedPtr[current].rightIndex
+
+            let leftDone = leftIndex < 0 || leftIndex == lastVisited
+            let rightDone = rightIndex < 0 || rightIndex == lastVisited
+
+            if leftDone && rightDone {
+                stack.removeLast()
+                _storage._deinitializeNode(at: current)
+                _freeSlot(current)
+                lastVisited = current
+            } else {
+                if rightIndex >= 0 && rightIndex != lastVisited {
+                    stack.append(rightIndex)
+                }
+                if leftIndex >= 0 && leftIndex != lastVisited {
+                    stack.append(leftIndex)
+                }
+            }
+        }
+
         _storage.header.rootIndex = -1
         _storage.header.count = 0
         _storage.header.freeHead = -1
@@ -392,8 +428,8 @@ extension Tree.Binary.Bounded where Element: Copyable {
     mutating func _replaceStorage(_ newStorage: Tree.Binary<Element>.Storage) {
         _storage = newStorage
         unsafe (_cachedPtr = newStorage._nodesPointer)
-        _tokens = newStorage._tokens
-        _nextFree = newStorage._nextFree
+        unsafe (_tokens = newStorage._tokens)
+        unsafe (_nextFree = newStorage._nextFree)
     }
 
     /// Makes the storage unique for copy-on-write.

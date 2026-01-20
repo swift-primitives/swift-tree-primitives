@@ -551,11 +551,10 @@ extension Tree.Binary.Small where Element: ~Copyable {
         // Validate position
         try _validate(position)
 
-        if let heapPtr = unsafe _heapPtr, let heapTokens = unsafe _heapTokens,
-           let heapNextFree = unsafe _heapNextFree {
-            let parentIndex = unsafe heapPtr[position.index].parentIndex
+        if _heap != nil {
+            let parentIndex = unsafe _heapPtr![position.index].parentIndex
             if parentIndex >= 0 {
-                if unsafe heapPtr[parentIndex].leftIndex == position.index {
+                if unsafe _heapPtr![parentIndex].leftIndex == position.index {
                     unsafe (_heapPtr![parentIndex].leftIndex = -1)
                 } else {
                     unsafe (_heapPtr![parentIndex].rightIndex = -1)
@@ -565,23 +564,38 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 _heap!.header.rootIndex = -1
             }
 
-            func removeNode(at index: Int) {
-                guard index >= 0 else { return }
-                let leftIndex = unsafe heapPtr[index].leftIndex
-                let rightIndex = unsafe heapPtr[index].rightIndex
-                removeNode(at: leftIndex)
-                removeNode(at: rightIndex)
-                _heap!._deinitializeNode(at: index)
-                // Increment token
-                unsafe (heapTokens[index] &+= 1)
-                // Add to free list
-                unsafe (heapNextFree[index] = _heap!.header.freeHead)
-                _heap!.header.freeHead = index
-                _heap!.header.count -= 1
-                _count -= 1
-            }
+            // Iterative post-order removal using explicit stack
+            var stack: [Int] = []
+            var lastVisited: Int = -1
 
-            removeNode(at: position.index)
+            stack.append(position.index)
+
+            while !stack.isEmpty {
+                let current = stack[stack.count - 1]
+                let leftIndex = unsafe _heapPtr![current].leftIndex
+                let rightIndex = unsafe _heapPtr![current].rightIndex
+
+                let leftDone = leftIndex < 0 || leftIndex == lastVisited
+                let rightDone = rightIndex < 0 || rightIndex == lastVisited
+
+                if leftDone && rightDone {
+                    stack.removeLast()
+                    _heap!._deinitializeNode(at: current)
+                    unsafe (_heapTokens![current] &+= 1)
+                    unsafe (_heapNextFree![current] = _heap!.header.freeHead)
+                    _heap!.header.freeHead = current
+                    _heap!.header.count -= 1
+                    _count -= 1
+                    lastVisited = current
+                } else {
+                    if rightIndex >= 0 && rightIndex != lastVisited {
+                        stack.append(rightIndex)
+                    }
+                    if leftIndex >= 0 && leftIndex != lastVisited {
+                        stack.append(leftIndex)
+                    }
+                }
+            }
         } else {
             guard _inline[position.index].isOccupied else {
                 throw .invalidPosition
@@ -598,23 +612,43 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 _rootIndex = -1
             }
 
-            func removeNode(at index: Int) {
-                guard index >= 0 && _inline[index].isOccupied else { return }
-                let leftIndex = _inline[index].leftIndex
-                let rightIndex = _inline[index].rightIndex
-                removeNode(at: leftIndex)
-                removeNode(at: rightIndex)
-                unsafe _inlineElementPointer(at: index).deinitialize(count: 1)
-                _inline[index].isOccupied = false
-                // Increment token
-                _inlineTokens[index] &+= 1
-                // Add to free list
-                _inlineNextFree[index] = _freeHead
-                _freeHead = index
-                _count -= 1
-            }
+            // Iterative post-order removal using explicit stack
+            var stack: [Int] = []
+            var lastVisited: Int = -1
 
-            removeNode(at: position.index)
+            stack.append(position.index)
+
+            while !stack.isEmpty {
+                let current = stack[stack.count - 1]
+                guard _inline[current].isOccupied else {
+                    stack.removeLast()
+                    continue
+                }
+
+                let leftIndex = _inline[current].leftIndex
+                let rightIndex = _inline[current].rightIndex
+
+                let leftDone = leftIndex < 0 || leftIndex == lastVisited || !_inline[leftIndex].isOccupied
+                let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_inline[rightIndex].isOccupied
+
+                if leftDone && rightDone {
+                    stack.removeLast()
+                    unsafe _inlineElementPointer(at: current).deinitialize(count: 1)
+                    _inline[current].isOccupied = false
+                    _inlineTokens[current] &+= 1
+                    _inlineNextFree[current] = _freeHead
+                    _freeHead = current
+                    _count -= 1
+                    lastVisited = current
+                } else {
+                    if rightIndex >= 0 && rightIndex != lastVisited && _inline[rightIndex].isOccupied {
+                        stack.append(rightIndex)
+                    }
+                    if leftIndex >= 0 && leftIndex != lastVisited && _inline[leftIndex].isOccupied {
+                        stack.append(leftIndex)
+                    }
+                }
+            }
         }
     }
 
@@ -651,19 +685,42 @@ extension Tree.Binary.Small where Element: ~Copyable {
             unsafe (_heapTokens = nil)
             unsafe (_heapNextFree = nil)
         } else {
-            func clearSubtree(at index: Int) {
-                guard index >= 0 && _inline[index].isOccupied else { return }
-                let leftIndex = _inline[index].leftIndex
-                let rightIndex = _inline[index].rightIndex
-                clearSubtree(at: leftIndex)
-                clearSubtree(at: rightIndex)
-                unsafe _inlineElementPointer(at: index).deinitialize(count: 1)
-                _inline[index].isOccupied = false
-                // Increment token
-                _inlineTokens[index] &+= 1
+            // Iterative post-order traversal using explicit stack
+            var stack: [Int] = []
+            var lastVisited: Int = -1
+
+            if _rootIndex >= 0 {
+                stack.append(_rootIndex)
             }
 
-            clearSubtree(at: _rootIndex)
+            while !stack.isEmpty {
+                let current = stack[stack.count - 1]
+                guard _inline[current].isOccupied else {
+                    stack.removeLast()
+                    continue
+                }
+
+                let leftIndex = _inline[current].leftIndex
+                let rightIndex = _inline[current].rightIndex
+
+                let leftDone = leftIndex < 0 || leftIndex == lastVisited || !_inline[leftIndex].isOccupied
+                let rightDone = rightIndex < 0 || rightIndex == lastVisited || !_inline[rightIndex].isOccupied
+
+                if leftDone && rightDone {
+                    stack.removeLast()
+                    unsafe _inlineElementPointer(at: current).deinitialize(count: 1)
+                    _inline[current].isOccupied = false
+                    _inlineTokens[current] &+= 1
+                    lastVisited = current
+                } else {
+                    if rightIndex >= 0 && rightIndex != lastVisited && _inline[rightIndex].isOccupied {
+                        stack.append(rightIndex)
+                    }
+                    if leftIndex >= 0 && leftIndex != lastVisited && _inline[leftIndex].isOccupied {
+                        stack.append(leftIndex)
+                    }
+                }
+            }
         }
 
         _rootIndex = -1

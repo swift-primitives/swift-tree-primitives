@@ -117,6 +117,7 @@ extension Tree {
         ///
         /// Also owns auxiliary buffers for token validation and free-list management,
         /// ensuring they participate in the same CoW boundary as the node storage.
+        @safe
         @usableFromInline
         final class Storage: ManagedBuffer<Header, Node> {
 
@@ -134,8 +135,8 @@ extension Tree {
             static func create() -> Storage {
                 let storage = Storage.create(minimumCapacity: 0) { _ in Header() }
                 let result = unsafe unsafeDowncast(storage, to: Storage.self)
-                result._tokens = nil
-                result._nextFree = nil
+                unsafe (result._tokens = nil)
+                unsafe (result._nextFree = nil)
                 return result
             }
 
@@ -148,16 +149,16 @@ extension Tree {
 
                 if minimumCapacity > 0 {
                     // Allocate and initialize auxiliary buffers
-                    let tokensPtr = unsafe UnsafeMutablePointer<UInt32>.allocate(capacity: minimumCapacity)
+                    let tokensPtr = UnsafeMutablePointer<UInt32>.allocate(capacity: minimumCapacity)
                     unsafe tokensPtr.initialize(repeating: 0, count: minimumCapacity)  // All start as free (even)
-                    result._tokens = tokensPtr
+                    unsafe (result._tokens = tokensPtr)
 
-                    let nextFreePtr = unsafe UnsafeMutablePointer<Int>.allocate(capacity: minimumCapacity)
+                    let nextFreePtr = UnsafeMutablePointer<Int>.allocate(capacity: minimumCapacity)
                     unsafe nextFreePtr.initialize(repeating: -1, count: minimumCapacity)
-                    result._nextFree = nextFreePtr
+                    unsafe (result._nextFree = nextFreePtr)
                 } else {
-                    result._tokens = nil
-                    result._nextFree = nil
+                    unsafe (result._tokens = nil)
+                    unsafe (result._nextFree = nil)
                 }
 
                 return result
@@ -165,10 +166,10 @@ extension Tree {
 
             deinit {
                 // Deallocate auxiliary buffers
-                if let tokens = _tokens {
+                if let tokens = unsafe _tokens {
                     unsafe tokens.deallocate()
                 }
-                if let nextFree = _nextFree {
+                if let nextFree = unsafe _nextFree {
                     unsafe nextFree.deallocate()
                 }
 
@@ -176,18 +177,36 @@ extension Tree {
                 let count = header.count
                 guard count > 0 else { return }
 
-                // Post-order traversal to deinit children before parents
-                func deinitSubtree(at index: Int, nodes: UnsafeMutablePointer<Node>) {
-                    guard index >= 0 else { return }
-                    let leftIndex = unsafe nodes[index].leftIndex
-                    let rightIndex = unsafe nodes[index].rightIndex
-                    unsafe deinitSubtree(at: leftIndex, nodes: nodes)
-                    unsafe deinitSubtree(at: rightIndex, nodes: nodes)
-                    unsafe (nodes + index).deinitialize(count: 1)
-                }
-
+                // Iterative post-order traversal to deinit children before parents
+                // Uses explicit stack to avoid stack overflow on deep trees
                 _ = unsafe withUnsafeMutablePointerToElements { nodes in
-                    unsafe deinitSubtree(at: header.rootIndex, nodes: nodes)
+                    var stack: [Int] = []
+                    var lastVisited: Int = -1
+
+                    if header.rootIndex >= 0 {
+                        stack.append(header.rootIndex)
+                    }
+
+                    while !stack.isEmpty {
+                        let current = stack[stack.count - 1]
+                        let leftIndex = unsafe nodes[current].leftIndex
+                        let rightIndex = unsafe nodes[current].rightIndex
+
+                        // If there's an unvisited left child (and we haven't come up from right), go left
+                        if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
+                            stack.append(leftIndex)
+                        }
+                        // Else if there's an unvisited right child, go right
+                        else if rightIndex >= 0 && rightIndex != lastVisited {
+                            stack.append(rightIndex)
+                        }
+                        // Else we're done with children, process current node
+                        else {
+                            stack.removeLast()
+                            unsafe (nodes + current).deinitialize(count: 1)
+                            lastVisited = current
+                        }
+                    }
                 }
             }
 
@@ -240,10 +259,10 @@ extension Tree {
                 let oldCapacity = header.capacity
 
                 // Copy auxiliary buffers (tokens and nextFree) for old capacity range
-                if oldCapacity > 0, let srcTokens = _tokens, let dstTokens = newStorage._tokens {
+                if oldCapacity > 0, let srcTokens = unsafe _tokens, let dstTokens = unsafe newStorage._tokens {
                     unsafe dstTokens.update(from: srcTokens, count: oldCapacity)
                 }
-                if oldCapacity > 0, let srcNextFree = _nextFree, let dstNextFree = newStorage._nextFree {
+                if oldCapacity > 0, let srcNextFree = unsafe _nextFree, let dstNextFree = unsafe newStorage._nextFree {
                     unsafe dstNextFree.update(from: srcNextFree, count: oldCapacity)
                 }
 
@@ -306,10 +325,10 @@ extension Tree {
                 let oldCapacity = header.capacity
 
                 // Copy auxiliary buffers (tokens and nextFree) 1:1
-                if oldCapacity > 0, let srcTokens = _tokens, let dstTokens = newStorage._tokens {
+                if oldCapacity > 0, let srcTokens = unsafe _tokens, let dstTokens = unsafe newStorage._tokens {
                     unsafe dstTokens.update(from: srcTokens, count: oldCapacity)
                 }
-                if oldCapacity > 0, let srcNextFree = _nextFree, let dstNextFree = newStorage._nextFree {
+                if oldCapacity > 0, let srcNextFree = unsafe _nextFree, let dstNextFree = unsafe newStorage._nextFree {
                     unsafe dstNextFree.update(from: srcNextFree, count: oldCapacity)
                 }
 
@@ -414,8 +433,8 @@ extension Tree {
                 self.capacity = capacity
                 self._storage = Storage.create(minimumCapacity: capacity)
                 unsafe (self._cachedPtr = self._storage._nodesPointer)
-                self._tokens = self._storage._tokens
-                self._nextFree = self._storage._nextFree
+                unsafe (self._tokens = self._storage._tokens)
+                unsafe (self._nextFree = self._storage._nextFree)
             }
         }
 
@@ -494,7 +513,9 @@ extension Tree {
             var _freeHead: Int
 
             /// Workaround for Swift compiler bug where deinit element cleanup
-            /// doesn't work correctly for ~Copyable structs without reference types.
+            /// fails for ~Copyable structs that contain only value-type properties.
+            /// Adding a reference type property (`AnyObject?`) fixes the bug.
+            /// See: https://github.com/swiftlang/swift/issues/86652
             @usableFromInline
             var _deinitWorkaround: AnyObject? = nil
 
@@ -521,19 +542,37 @@ extension Tree {
                 let count = _count
                 guard count > 0 else { return }
 
-                // Collect indices in post-order first (read-only pass)
+                // Iterative post-order collection using explicit stack
                 var postOrderIndices: [Int] = []
                 postOrderIndices.reserveCapacity(count)
 
-                func collectPostOrder(at index: Int) {
-                    guard index >= 0 else { return }
-                    let leftIndex = _storage[index].leftIndex
-                    let rightIndex = _storage[index].rightIndex
-                    collectPostOrder(at: leftIndex)
-                    collectPostOrder(at: rightIndex)
-                    postOrderIndices.append(index)
+                var stack: [Int] = []
+                var lastVisited: Int = -1
+
+                if _rootIndex >= 0 {
+                    stack.append(_rootIndex)
                 }
-                collectPostOrder(at: _rootIndex)
+
+                while !stack.isEmpty {
+                    let current = stack[stack.count - 1]
+                    let leftIndex = _storage[current].leftIndex
+                    let rightIndex = _storage[current].rightIndex
+
+                    // If there's an unvisited left child (and we haven't come up from right), go left
+                    if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
+                        stack.append(leftIndex)
+                    }
+                    // Else if there's an unvisited right child, go right
+                    else if rightIndex >= 0 && rightIndex != lastVisited {
+                        stack.append(rightIndex)
+                    }
+                    // Else we're done with children, collect current node
+                    else {
+                        stack.removeLast()
+                        postOrderIndices.append(current)
+                        lastVisited = current
+                    }
+                }
 
                 // Deinitialize elements using immutable pointer cast to mutable
                 let nodeStride = MemoryLayout<InlineNode>.stride
@@ -673,19 +712,37 @@ extension Tree {
                     heap.header.rootIndex = _rootIndex
                     heap.header.count = _count
                 } else {
-                    // Elements are inline - collect indices in post-order first
+                    // Iterative post-order collection using explicit stack
                     var postOrderIndices: [Int] = []
                     postOrderIndices.reserveCapacity(count)
 
-                    func collectPostOrder(at index: Int) {
-                        guard index >= 0 else { return }
-                        let leftIndex = _inline[index].leftIndex
-                        let rightIndex = _inline[index].rightIndex
-                        collectPostOrder(at: leftIndex)
-                        collectPostOrder(at: rightIndex)
-                        postOrderIndices.append(index)
+                    var stack: [Int] = []
+                    var lastVisited: Int = -1
+
+                    if _rootIndex >= 0 {
+                        stack.append(_rootIndex)
                     }
-                    collectPostOrder(at: _rootIndex)
+
+                    while !stack.isEmpty {
+                        let current = stack[stack.count - 1]
+                        let leftIndex = _inline[current].leftIndex
+                        let rightIndex = _inline[current].rightIndex
+
+                        // If there's an unvisited left child (and we haven't come up from right), go left
+                        if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
+                            stack.append(leftIndex)
+                        }
+                        // Else if there's an unvisited right child, go right
+                        else if rightIndex >= 0 && rightIndex != lastVisited {
+                            stack.append(rightIndex)
+                        }
+                        // Else we're done with children, collect current node
+                        else {
+                            stack.removeLast()
+                            postOrderIndices.append(current)
+                            lastVisited = current
+                        }
+                    }
 
                     // Deinitialize using immutable pointer cast to mutable
                     let nodeStride = MemoryLayout<InlineNode>.stride
@@ -751,8 +808,8 @@ extension Tree {
         public init() {
             self._storage = Storage.create()
             unsafe (self._cachedPtr = self._storage._nodesPointer)
-            self._tokens = self._storage._tokens
-            self._nextFree = self._storage._nextFree
+            unsafe (self._tokens = self._storage._tokens)
+            unsafe (self._nextFree = self._storage._nextFree)
         }
 
         /// Creates an empty binary tree with reserved capacity.
@@ -763,8 +820,8 @@ extension Tree {
             precondition(minimumCapacity >= 0, "Capacity must be non-negative")
             self._storage = Storage.create(minimumCapacity: minimumCapacity)
             unsafe (self._cachedPtr = self._storage._nodesPointer)
-            self._tokens = self._storage._tokens
-            self._nextFree = self._storage._nextFree
+            unsafe (self._tokens = self._storage._tokens)
+            unsafe (self._nextFree = self._storage._nextFree)
         }
 
         // MARK: - Storage Transition Helper
@@ -775,8 +832,8 @@ extension Tree {
         mutating func _replaceStorage(_ newStorage: Storage) {
             _storage = newStorage
             unsafe (_cachedPtr = newStorage._nodesPointer)
-            _tokens = newStorage._tokens
-            _nextFree = newStorage._nextFree
+            unsafe (_tokens = newStorage._tokens)
+            unsafe (_nextFree = newStorage._nextFree)
         }
 
         // MARK: - Properties
@@ -797,7 +854,7 @@ extension Tree {
         @inlinable
         public var root: Position? {
             let rootIndex = _storage.header.rootIndex
-            guard rootIndex >= 0, let tokens = _tokens else { return nil }
+            guard rootIndex >= 0, let tokens = unsafe _tokens else { return nil }
             return Position(index: rootIndex, token: unsafe tokens[rootIndex])
         }
 
@@ -813,7 +870,7 @@ extension Tree {
         func _validate(_ position: Position) throws(__TreeBinaryError) {
             guard position.index >= 0,
                   position.index < capacity,
-                  let tokens = _tokens,
+                  let tokens = unsafe _tokens,
                   unsafe tokens[position.index] == position.token,
                   position.token & 1 == 1 else {  // explicit "occupied" check
                 throw .invalidPosition
@@ -835,7 +892,7 @@ extension Tree {
                 return nil
             }
             let leftIndex = unsafe _cachedPtr[position.index].leftIndex
-            guard leftIndex >= 0, let tokens = _tokens else { return nil }
+            guard leftIndex >= 0, let tokens = unsafe _tokens else { return nil }
             return Position(index: leftIndex, token: unsafe tokens[leftIndex])
         }
 
@@ -852,7 +909,7 @@ extension Tree {
                 return nil
             }
             let rightIndex = unsafe _cachedPtr[position.index].rightIndex
-            guard rightIndex >= 0, let tokens = _tokens else { return nil }
+            guard rightIndex >= 0, let tokens = unsafe _tokens else { return nil }
             return Position(index: rightIndex, token: unsafe tokens[rightIndex])
         }
 
@@ -869,7 +926,7 @@ extension Tree {
                 return nil
             }
             let parentIndex = unsafe _cachedPtr[position.index].parentIndex
-            guard parentIndex >= 0, let tokens = _tokens else { return nil }
+            guard parentIndex >= 0, let tokens = unsafe _tokens else { return nil }
             return Position(index: parentIndex, token: unsafe tokens[parentIndex])
         }
 
@@ -913,7 +970,7 @@ extension Tree {
             // Try to reuse from free list
             if _storage.header.freeHead >= 0 {
                 index = _storage.header.freeHead
-                if let nextFree = _nextFree {
+                if let nextFree = unsafe _nextFree {
                     _storage.header.freeHead = unsafe nextFree[index]
                 }
             } else {
@@ -923,7 +980,7 @@ extension Tree {
             }
 
             // Increment token: even (free) → odd (occupied)
-            if let tokens = _tokens {
+            if let tokens = unsafe _tokens {
                 unsafe (tokens[index] &+= 1)
                 return (index, unsafe tokens[index])
             } else {
@@ -938,12 +995,12 @@ extension Tree {
         @usableFromInline
         mutating func _freeSlot(_ index: Int) {
             // Increment token: odd (occupied) → even (free)
-            if let tokens = _tokens {
+            if let tokens = unsafe _tokens {
                 unsafe (tokens[index] &+= 1)
             }
 
             // Add to free list
-            if let nextFree = _nextFree {
+            if let nextFree = unsafe _nextFree {
                 unsafe (nextFree[index] = _storage.header.freeHead)
             }
             _storage.header.freeHead = index
@@ -1070,19 +1127,34 @@ extension Tree.Binary where Element: ~Copyable {
             _storage.header.rootIndex = -1
         }
 
-        // Post-order removal
-        func removeNode(at index: Int) {
-            guard index >= 0 else { return }
-            let leftIndex = unsafe _cachedPtr[index].leftIndex
-            let rightIndex = unsafe _cachedPtr[index].rightIndex
-            removeNode(at: leftIndex)
-            removeNode(at: rightIndex)
-            _storage._deinitializeNode(at: index)
-            _freeSlot(index)
-            _storage.header.count -= 1
-        }
+        // Iterative post-order removal using explicit stack
+        var stack: [Int] = []
+        var lastVisited: Int = -1
 
-        removeNode(at: position.index)
+        stack.append(position.index)
+
+        while !stack.isEmpty {
+            let current = stack[stack.count - 1]
+            let leftIndex = unsafe _cachedPtr[current].leftIndex
+            let rightIndex = unsafe _cachedPtr[current].rightIndex
+
+            // If there's an unvisited left child (and we haven't come up from right), go left
+            if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
+                stack.append(leftIndex)
+            }
+            // Else if there's an unvisited right child, go right
+            else if rightIndex >= 0 && rightIndex != lastVisited {
+                stack.append(rightIndex)
+            }
+            // Else we're done with children, process current node
+            else {
+                stack.removeLast()
+                _storage._deinitializeNode(at: current)
+                _freeSlot(current)
+                _storage.header.count -= 1
+                lastVisited = current
+            }
+        }
     }
 
     /// Accesses the element at the specified position via a borrowing closure.
@@ -1106,17 +1178,35 @@ extension Tree.Binary where Element: ~Copyable {
     public mutating func clear() {
         guard _storage.header.count > 0 else { return }
 
-        // Post-order traversal to deinit
-        func clearSubtree(at index: Int) {
-            guard index >= 0 else { return }
-            let leftIndex = unsafe _cachedPtr[index].leftIndex
-            let rightIndex = unsafe _cachedPtr[index].rightIndex
-            clearSubtree(at: leftIndex)
-            clearSubtree(at: rightIndex)
-            _storage._deinitializeNode(at: index)
+        // Iterative post-order traversal using explicit stack
+        var stack: [Int] = []
+        var lastVisited: Int = -1
+
+        if _storage.header.rootIndex >= 0 {
+            stack.append(_storage.header.rootIndex)
         }
 
-        clearSubtree(at: _storage.header.rootIndex)
+        while !stack.isEmpty {
+            let current = stack[stack.count - 1]
+            let leftIndex = unsafe _cachedPtr[current].leftIndex
+            let rightIndex = unsafe _cachedPtr[current].rightIndex
+
+            // If there's an unvisited left child (and we haven't come up from right), go left
+            if leftIndex >= 0 && leftIndex != lastVisited && rightIndex != lastVisited {
+                stack.append(leftIndex)
+            }
+            // Else if there's an unvisited right child, go right
+            else if rightIndex >= 0 && rightIndex != lastVisited {
+                stack.append(rightIndex)
+            }
+            // Else we're done with children, process current node
+            else {
+                stack.removeLast()
+                _storage._deinitializeNode(at: current)
+                lastVisited = current
+            }
+        }
+
         _storage.header.rootIndex = -1
         _storage.header.count = 0
         _storage.header.freeHead = -1
