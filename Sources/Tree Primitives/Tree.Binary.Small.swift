@@ -24,7 +24,34 @@ extension Tree.Binary.Small where Element: ~Copyable {
     /// The position of the root node, or `nil` if the tree is empty.
     @inlinable
     public var root: Tree.Binary<Element>.Position? {
-        _rootIndex >= 0 ? Tree.Binary<Element>.Position(index: _rootIndex) : nil
+        guard _rootIndex >= 0 else { return nil }
+        if let heapTokens = unsafe _heapTokens {
+            return Tree.Binary<Element>.Position(index: _rootIndex, token: unsafe heapTokens[_rootIndex])
+        } else {
+            return Tree.Binary<Element>.Position(index: _rootIndex, token: _inlineTokens[_rootIndex])
+        }
+    }
+
+    // MARK: - Position Validation
+
+    /// Validates that a position refers to a currently-occupied slot.
+    @usableFromInline
+    func _validate(_ position: Tree.Binary<Element>.Position) throws(__TreeBinarySmallError) {
+        if let heapTokens = unsafe _heapTokens, let heap = _heap {
+            guard position.index >= 0,
+                  position.index < heap.header.capacity,
+                  unsafe heapTokens[position.index] == position.token,
+                  position.token & 1 == 1 else {
+                throw .invalidPosition
+            }
+        } else {
+            guard position.index >= 0,
+                  position.index < inlineCapacity,
+                  _inlineTokens[position.index] == position.token,
+                  position.token & 1 == 1 else {
+                throw .invalidPosition
+            }
+        }
     }
 
     // MARK: - Navigation
@@ -32,45 +59,75 @@ extension Tree.Binary.Small where Element: ~Copyable {
     /// Returns the position of the left child of the node at the given position.
     @inlinable
     public func left(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
-        if let _ = _heap, let ptr = unsafe _heapPtr {
-            let leftIndex = unsafe ptr[position.index].leftIndex
-            return leftIndex >= 0 ? Tree.Binary<Element>.Position(index: leftIndex) : nil
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
+
+        if let heapPtr = unsafe _heapPtr, let heapTokens = unsafe _heapTokens {
+            let leftIndex = unsafe heapPtr[position.index].leftIndex
+            guard leftIndex >= 0 else { return nil }
+            return Tree.Binary<Element>.Position(index: leftIndex, token: unsafe heapTokens[leftIndex])
         } else {
             let leftIndex = _inline[position.index].leftIndex
-            return leftIndex >= 0 ? Tree.Binary<Element>.Position(index: leftIndex) : nil
+            guard leftIndex >= 0 else { return nil }
+            return Tree.Binary<Element>.Position(index: leftIndex, token: _inlineTokens[leftIndex])
         }
     }
 
     /// Returns the position of the right child of the node at the given position.
     @inlinable
     public func right(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
-        if let _ = _heap, let ptr = unsafe _heapPtr {
-            let rightIndex = unsafe ptr[position.index].rightIndex
-            return rightIndex >= 0 ? Tree.Binary<Element>.Position(index: rightIndex) : nil
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
+
+        if let heapPtr = unsafe _heapPtr, let heapTokens = unsafe _heapTokens {
+            let rightIndex = unsafe heapPtr[position.index].rightIndex
+            guard rightIndex >= 0 else { return nil }
+            return Tree.Binary<Element>.Position(index: rightIndex, token: unsafe heapTokens[rightIndex])
         } else {
             let rightIndex = _inline[position.index].rightIndex
-            return rightIndex >= 0 ? Tree.Binary<Element>.Position(index: rightIndex) : nil
+            guard rightIndex >= 0 else { return nil }
+            return Tree.Binary<Element>.Position(index: rightIndex, token: _inlineTokens[rightIndex])
         }
     }
 
     /// Returns the position of the parent of the node at the given position.
     @inlinable
     public func parent(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
-        if let _ = _heap, let ptr = unsafe _heapPtr {
-            let parentIndex = unsafe ptr[position.index].parentIndex
-            return parentIndex >= 0 ? Tree.Binary<Element>.Position(index: parentIndex) : nil
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
+
+        if let heapPtr = unsafe _heapPtr, let heapTokens = unsafe _heapTokens {
+            let parentIndex = unsafe heapPtr[position.index].parentIndex
+            guard parentIndex >= 0 else { return nil }
+            return Tree.Binary<Element>.Position(index: parentIndex, token: unsafe heapTokens[parentIndex])
         } else {
             let parentIndex = _inline[position.index].parentIndex
-            return parentIndex >= 0 ? Tree.Binary<Element>.Position(index: parentIndex) : nil
+            guard parentIndex >= 0 else { return nil }
+            return Tree.Binary<Element>.Position(index: parentIndex, token: _inlineTokens[parentIndex])
         }
     }
 
     /// Returns whether the node at the given position is a leaf.
     @inlinable
     public func isLeaf(_ position: Tree.Binary<Element>.Position) -> Bool {
-        if let _ = _heap, let ptr = unsafe _heapPtr {
-            let leftIndex = unsafe ptr[position.index].leftIndex
-            let rightIndex = unsafe ptr[position.index].rightIndex
+        do {
+            try _validate(position)
+        } catch {
+            return false
+        }
+
+        if let heapPtr = unsafe _heapPtr {
+            let leftIndex = unsafe heapPtr[position.index].leftIndex
+            let rightIndex = unsafe heapPtr[position.index].rightIndex
             return leftIndex < 0 && rightIndex < 0
         } else {
             let leftIndex = _inline[position.index].leftIndex
@@ -107,6 +164,20 @@ extension Tree.Binary.Small where Element: ~Copyable {
         let newCapacity = Swift.max(minimumCapacity, Swift.max(inlineCapacity * 2, 8))
         let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: newCapacity)
 
+        // Copy tokens from inline to heap (1:1 for inline capacity range)
+        if let heapTokens = newStorage._tokens {
+            for i in 0..<inlineCapacity {
+                unsafe (heapTokens[i] = _inlineTokens[i])
+            }
+        }
+
+        // Copy nextFree from inline to heap
+        if let heapNextFree = newStorage._nextFree {
+            for i in 0..<inlineCapacity {
+                unsafe (heapNextFree[i] = _inlineNextFree[i])
+            }
+        }
+
         // Move elements from inline to heap via post-order traversal (maintaining indices)
         func moveSubtree(at index: Int) {
             guard index >= 0 && _inline[index].isOccupied else { return }
@@ -135,22 +206,21 @@ extension Tree.Binary.Small where Element: ~Copyable {
         newStorage.header.count = _count
         newStorage.header.freeHead = _freeHead
 
-        // Copy free list pointers
-        if _freeHead >= 0 {
-            var freeIndex = _freeHead
-            while freeIndex >= 0 && freeIndex < inlineCapacity {
-                var nextFree = -1
-                unsafe Swift.withUnsafePointer(to: _inline[freeIndex].slot) { slotPtr in
-                    let ptr = unsafe UnsafeRawPointer(slotPtr)
-                    nextFree = unsafe ptr.load(as: Int.self)
-                }
-                newStorage._storeFreeNext(at: freeIndex, next: nextFree)
-                freeIndex = nextFree
-            }
-        }
-
         _heap = newStorage
         unsafe (_heapPtr = newStorage._nodesPointer)
+        unsafe (_heapTokens = newStorage._tokens)
+        unsafe (_heapNextFree = newStorage._nextFree)
+    }
+
+    // MARK: - Heap Storage Transition Helper
+
+    /// Updates cached pointers after heap storage change.
+    @usableFromInline
+    mutating func _updateHeapPointers(_ newStorage: Tree.Binary<Element>.Storage) {
+        _heap = newStorage
+        unsafe (_heapPtr = newStorage._nodesPointer)
+        unsafe (_heapTokens = newStorage._tokens)
+        unsafe (_heapNextFree = newStorage._nextFree)
     }
 }
 
@@ -166,7 +236,8 @@ extension Tree.Binary.Small where Element: ~Copyable {
         at position: Tree.Binary<Element>.InsertPosition
     ) throws(__TreeBinarySmallError) -> Tree.Binary<Element>.Position {
         // If spilled to heap, use heap storage
-        if let heap = _heap, let heapPtr = unsafe _heapPtr {
+        if var heap = _heap, let heapPtr = unsafe _heapPtr,
+           let heapTokens = unsafe _heapTokens, let heapNextFree = unsafe _heapNextFree {
             switch position {
             case .root:
                 guard _rootIndex < 0 else {
@@ -177,27 +248,33 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 var index: Int
                 if heap.header.freeHead >= 0 {
                     index = heap.header.freeHead
-                    heap.header.freeHead = heap._loadFreeNext(at: index)
+                    heap.header.freeHead = unsafe heapNextFree[index]
                 } else {
                     // Grow if needed
-                    if heap.header.count >= heap.capacity {
-                        let newCapacity = Swift.max(heap.capacity * 2, 8)
+                    if heap.header.count >= heap.header.capacity {
+                        let newCapacity = Swift.max(heap.header.capacity * 2, 8)
                         let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: newCapacity)
                         heap._moveAllElements(to: newStorage)
-                        _heap = newStorage
-                        unsafe (_heapPtr = newStorage._nodesPointer)
+                        _updateHeapPointers(newStorage)
+                        heap = newStorage
                     }
                     index = heap.header.count
                 }
+
+                // Increment token
+                unsafe (heapTokens[index] &+= 1)
+                let token = unsafe heapTokens[index]
 
                 _heap!._initializeNode(at: index, element: element)
                 _heap!.header.rootIndex = index
                 _heap!.header.count += 1
                 _rootIndex = index
                 _count += 1
-                return Tree.Binary<Element>.Position(index: index)
+                return Tree.Binary<Element>.Position(index: index, token: token)
 
             case .left(of: let parent):
+                // Validate parent position
+                try _validate(parent)
                 guard unsafe heapPtr[parent.index].leftIndex < 0 else {
                     throw .positionOccupied
                 }
@@ -205,25 +282,33 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 var index: Int
                 if heap.header.freeHead >= 0 {
                     index = heap.header.freeHead
-                    heap.header.freeHead = heap._loadFreeNext(at: index)
+                    heap.header.freeHead = unsafe heapNextFree[index]
                 } else {
-                    if heap.header.count >= heap.capacity {
-                        let newCapacity = Swift.max(heap.capacity * 2, 8)
+                    if heap.header.count >= heap.header.capacity {
+                        let newCapacity = Swift.max(heap.header.capacity * 2, 8)
                         let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: newCapacity)
                         heap._moveAllElements(to: newStorage)
-                        _heap = newStorage
-                        unsafe (_heapPtr = newStorage._nodesPointer)
+                        _updateHeapPointers(newStorage)
+                        heap = newStorage
                     }
                     index = heap.header.count
                 }
+
+                // Increment token
+                if let tokens = _heap!._tokens {
+                    unsafe (tokens[index] &+= 1)
+                }
+                let token = unsafe _heapTokens![index]
 
                 _heap!._initializeNode(at: index, element: element, parentIndex: parent.index)
                 unsafe (_heapPtr![parent.index].leftIndex = index)
                 _heap!.header.count += 1
                 _count += 1
-                return Tree.Binary<Element>.Position(index: index)
+                return Tree.Binary<Element>.Position(index: index, token: token)
 
             case .right(of: let parent):
+                // Validate parent position
+                try _validate(parent)
                 guard unsafe heapPtr[parent.index].rightIndex < 0 else {
                     throw .positionOccupied
                 }
@@ -231,23 +316,29 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 var index: Int
                 if heap.header.freeHead >= 0 {
                     index = heap.header.freeHead
-                    heap.header.freeHead = heap._loadFreeNext(at: index)
+                    heap.header.freeHead = unsafe heapNextFree[index]
                 } else {
-                    if heap.header.count >= heap.capacity {
-                        let newCapacity = Swift.max(heap.capacity * 2, 8)
+                    if heap.header.count >= heap.header.capacity {
+                        let newCapacity = Swift.max(heap.header.capacity * 2, 8)
                         let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: newCapacity)
                         heap._moveAllElements(to: newStorage)
-                        _heap = newStorage
-                        unsafe (_heapPtr = newStorage._nodesPointer)
+                        _updateHeapPointers(newStorage)
+                        heap = newStorage
                     }
                     index = heap.header.count
                 }
+
+                // Increment token
+                if let tokens = _heap!._tokens {
+                    unsafe (tokens[index] &+= 1)
+                }
+                let token = unsafe _heapTokens![index]
 
                 _heap!._initializeNode(at: index, element: element, parentIndex: parent.index)
                 unsafe (_heapPtr![parent.index].rightIndex = index)
                 _heap!.header.count += 1
                 _count += 1
-                return Tree.Binary<Element>.Position(index: index)
+                return Tree.Binary<Element>.Position(index: index, token: token)
             }
         }
 
@@ -268,15 +359,25 @@ extension Tree.Binary.Small where Element: ~Copyable {
             var index: Int
             if _freeHead >= 0 {
                 index = _freeHead
-                var nextFree: Int = -1
-                unsafe Swift.withUnsafePointer(to: _inline[index].slot) { slotPtr in
-                    let ptr = unsafe UnsafeRawPointer(slotPtr)
-                    nextFree = unsafe ptr.load(as: Int.self)
-                }
-                _freeHead = nextFree
+                _freeHead = _inlineNextFree[index]
             } else {
-                index = _count
+                // Find first unoccupied slot
+                index = -1
+                for i in 0..<inlineCapacity {
+                    if !_inline[i].isOccupied {
+                        index = i
+                        break
+                    }
+                }
+                if index < 0 {
+                    _spillToHeap(minimumCapacity: _count + 1)
+                    return try insert(element, at: position)
+                }
             }
+
+            // Increment token
+            _inlineTokens[index] &+= 1
+            let token = _inlineTokens[index]
 
             unsafe _inlineElementPointer(at: index).initialize(to: element)
             _inline[index].leftIndex = -1
@@ -285,9 +386,11 @@ extension Tree.Binary.Small where Element: ~Copyable {
             _inline[index].isOccupied = true
             _rootIndex = index
             _count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .left(of: let parent):
+            // Validate parent position
+            try _validate(parent)
             guard _inline[parent.index].leftIndex < 0 else {
                 throw .positionOccupied
             }
@@ -300,15 +403,24 @@ extension Tree.Binary.Small where Element: ~Copyable {
             var index: Int
             if _freeHead >= 0 {
                 index = _freeHead
-                var nextFree: Int = -1
-                unsafe Swift.withUnsafePointer(to: _inline[index].slot) { slotPtr in
-                    let ptr = unsafe UnsafeRawPointer(slotPtr)
-                    nextFree = unsafe ptr.load(as: Int.self)
-                }
-                _freeHead = nextFree
+                _freeHead = _inlineNextFree[index]
             } else {
-                index = _count
+                index = -1
+                for i in 0..<inlineCapacity {
+                    if !_inline[i].isOccupied {
+                        index = i
+                        break
+                    }
+                }
+                if index < 0 {
+                    _spillToHeap(minimumCapacity: _count + 1)
+                    return try insert(element, at: position)
+                }
             }
+
+            // Increment token
+            _inlineTokens[index] &+= 1
+            let token = _inlineTokens[index]
 
             unsafe _inlineElementPointer(at: index).initialize(to: element)
             _inline[index].leftIndex = -1
@@ -317,9 +429,11 @@ extension Tree.Binary.Small where Element: ~Copyable {
             _inline[index].isOccupied = true
             _inline[parent.index].leftIndex = index
             _count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .right(of: let parent):
+            // Validate parent position
+            try _validate(parent)
             guard _inline[parent.index].rightIndex < 0 else {
                 throw .positionOccupied
             }
@@ -332,15 +446,24 @@ extension Tree.Binary.Small where Element: ~Copyable {
             var index: Int
             if _freeHead >= 0 {
                 index = _freeHead
-                var nextFree: Int = -1
-                unsafe Swift.withUnsafePointer(to: _inline[index].slot) { slotPtr in
-                    let ptr = unsafe UnsafeRawPointer(slotPtr)
-                    nextFree = unsafe ptr.load(as: Int.self)
-                }
-                _freeHead = nextFree
+                _freeHead = _inlineNextFree[index]
             } else {
-                index = _count
+                index = -1
+                for i in 0..<inlineCapacity {
+                    if !_inline[i].isOccupied {
+                        index = i
+                        break
+                    }
+                }
+                if index < 0 {
+                    _spillToHeap(minimumCapacity: _count + 1)
+                    return try insert(element, at: position)
+                }
             }
+
+            // Increment token
+            _inlineTokens[index] &+= 1
+            let token = _inlineTokens[index]
 
             unsafe _inlineElementPointer(at: index).initialize(to: element)
             _inline[index].leftIndex = -1
@@ -349,7 +472,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
             _inline[index].isOccupied = true
             _inline[parent.index].rightIndex = index
             _count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
         }
     }
 
@@ -359,7 +482,11 @@ extension Tree.Binary.Small where Element: ~Copyable {
     public mutating func remove(
         at position: Tree.Binary<Element>.Position
     ) throws(__TreeBinarySmallError) -> Element {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        // Validate position
+        try _validate(position)
+
+        if let heapPtr = unsafe _heapPtr, let heapTokens = unsafe _heapTokens,
+           let heapNextFree = unsafe _heapNextFree {
             let leftIndex = unsafe heapPtr[position.index].leftIndex
             let rightIndex = unsafe heapPtr[position.index].rightIndex
             guard leftIndex < 0 && rightIndex < 0 else {
@@ -379,7 +506,11 @@ extension Tree.Binary.Small where Element: ~Copyable {
             }
 
             let element = _heap!._moveElement(at: position.index)
-            _heap!._storeFreeNext(at: position.index, next: _heap!.header.freeHead)
+
+            // Increment token (occupied → free)
+            unsafe (heapTokens[position.index] &+= 1)
+            // Add to free list
+            unsafe (heapNextFree[position.index] = _heap!.header.freeHead)
             _heap!.header.freeHead = position.index
             _heap!.header.count -= 1
             _count -= 1
@@ -408,11 +539,11 @@ extension Tree.Binary.Small where Element: ~Copyable {
 
             let element = unsafe _inlineElementPointer(at: position.index).move()
             _inline[position.index].isOccupied = false
-            let oldFreeHead = _freeHead
-            unsafe Swift.withUnsafeMutablePointer(to: &_inline[position.index].slot) { slotPtr in
-                let ptr = UnsafeMutableRawPointer(slotPtr)
-                unsafe ptr.storeBytes(of: oldFreeHead, as: Int.self)
-            }
+
+            // Increment token (occupied → free)
+            _inlineTokens[position.index] &+= 1
+            // Add to free list
+            _inlineNextFree[position.index] = _freeHead
             _freeHead = position.index
             _count -= 1
 
@@ -425,7 +556,11 @@ extension Tree.Binary.Small where Element: ~Copyable {
     public mutating func removeSubtree(
         at position: Tree.Binary<Element>.Position
     ) throws(__TreeBinarySmallError) {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        // Validate position
+        try _validate(position)
+
+        if let heapPtr = unsafe _heapPtr, let heapTokens = unsafe _heapTokens,
+           let heapNextFree = unsafe _heapNextFree {
             let parentIndex = unsafe heapPtr[position.index].parentIndex
             if parentIndex >= 0 {
                 if unsafe heapPtr[parentIndex].leftIndex == position.index {
@@ -445,7 +580,10 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 removeNode(at: leftIndex)
                 removeNode(at: rightIndex)
                 _heap!._deinitializeNode(at: index)
-                _heap!._storeFreeNext(at: index, next: _heap!.header.freeHead)
+                // Increment token
+                unsafe (heapTokens[index] &+= 1)
+                // Add to free list
+                unsafe (heapNextFree[index] = _heap!.header.freeHead)
                 _heap!.header.freeHead = index
                 _heap!.header.count -= 1
                 _count -= 1
@@ -476,11 +614,10 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 removeNode(at: rightIndex)
                 unsafe _inlineElementPointer(at: index).deinitialize(count: 1)
                 _inline[index].isOccupied = false
-                let oldFreeHead = _freeHead
-                unsafe Swift.withUnsafeMutablePointer(to: &_inline[index].slot) { slotPtr in
-                    let ptr = UnsafeMutableRawPointer(slotPtr)
-                    unsafe ptr.storeBytes(of: oldFreeHead, as: Int.self)
-                }
+                // Increment token
+                _inlineTokens[index] &+= 1
+                // Add to free list
+                _inlineNextFree[index] = _freeHead
                 _freeHead = index
                 _count -= 1
             }
@@ -495,12 +632,15 @@ extension Tree.Binary.Small where Element: ~Copyable {
         at position: Tree.Binary<Element>.Position,
         _ body: (borrowing Element) -> R
     ) -> R? {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
+
+        if let heapPtr = unsafe _heapPtr {
             return unsafe body(heapPtr[position.index].element)
         } else {
-            guard _inline[position.index].isOccupied else {
-                return nil
-            }
             return unsafe body(_inlineReadElementPointer(at: position.index).pointee)
         }
     }
@@ -516,6 +656,8 @@ extension Tree.Binary.Small where Element: ~Copyable {
             heap.header.count = _count
             _heap = nil
             unsafe (_heapPtr = nil)
+            unsafe (_heapTokens = nil)
+            unsafe (_heapNextFree = nil)
         } else {
             func clearSubtree(at index: Int) {
                 guard index >= 0 && _inline[index].isOccupied else { return }
@@ -525,6 +667,8 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 clearSubtree(at: rightIndex)
                 unsafe _inlineElementPointer(at: index).deinitialize(count: 1)
                 _inline[index].isOccupied = false
+                // Increment token
+                _inlineTokens[index] &+= 1
             }
 
             clearSubtree(at: _rootIndex)
@@ -538,7 +682,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
     /// Iterates over all elements in pre-order.
     @inlinable
     public func forEachPreOrder(_ body: (borrowing Element) -> Void) {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        if let heapPtr = unsafe _heapPtr {
             func traverse(at index: Int) {
                 guard index >= 0 else { return }
                 unsafe body(heapPtr[index].element)
@@ -560,7 +704,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
     /// Iterates over all elements in in-order.
     @inlinable
     public func forEachInOrder(_ body: (borrowing Element) -> Void) {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        if let heapPtr = unsafe _heapPtr {
             func traverse(at index: Int) {
                 guard index >= 0 else { return }
                 traverse(at: unsafe heapPtr[index].leftIndex)
@@ -582,7 +726,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
     /// Iterates over all elements in post-order.
     @inlinable
     public func forEachPostOrder(_ body: (borrowing Element) -> Void) {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        if let heapPtr = unsafe _heapPtr {
             func traverse(at index: Int) {
                 guard index >= 0 else { return }
                 traverse(at: unsafe heapPtr[index].leftIndex)
@@ -606,7 +750,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
     public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
         guard _rootIndex >= 0 else { return }
 
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        if let heapPtr = unsafe _heapPtr {
             var queue: [Int] = [_rootIndex]
             var head = 0
 
@@ -646,7 +790,7 @@ extension Tree.Binary.Small where Element: ~Copyable {
     /// Computes the height of the tree.
     @inlinable
     public var height: Int {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        if let heapPtr = unsafe _heapPtr {
             func computeHeight(at index: Int) -> Int {
                 guard index >= 0 else { return -1 }
                 let leftHeight = computeHeight(at: unsafe heapPtr[index].leftIndex)
@@ -673,12 +817,15 @@ extension Tree.Binary.Small where Element: Copyable {
     /// Returns the element at the specified position.
     @inlinable
     public func peek(at position: Tree.Binary<Element>.Position) -> Element? {
-        if let _ = _heap, let heapPtr = unsafe _heapPtr {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
+
+        if let heapPtr = unsafe _heapPtr {
             return unsafe heapPtr[position.index].element
         } else {
-            guard _inline[position.index].isOccupied else {
-                return nil
-            }
             return unsafe _inlineReadElementPointer(at: position.index).pointee
         }
     }

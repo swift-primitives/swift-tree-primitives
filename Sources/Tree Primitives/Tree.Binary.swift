@@ -114,13 +114,29 @@ extension Tree {
         /// Uses `ManagedBuffer` for efficient single-allocation storage.
         /// Declared as a nested class so that `Element` inherits the `~Copyable`
         /// suppression from the outer type.
+        ///
+        /// Also owns auxiliary buffers for token validation and free-list management,
+        /// ensuring they participate in the same CoW boundary as the node storage.
         @usableFromInline
         final class Storage: ManagedBuffer<Header, Node> {
+
+            /// Token buffer for position validation. Each slot's token alternates:
+            /// even = free, odd = occupied. Incremented on allocate and free.
+            @usableFromInline
+            var _tokens: UnsafeMutablePointer<UInt32>?
+
+            /// Free-list next pointers stored separately (not in freed node memory).
+            /// _nextFree[i] contains the next free slot index when slot i is free.
+            @usableFromInline
+            var _nextFree: UnsafeMutablePointer<Int>?
 
             @usableFromInline
             static func create() -> Storage {
                 let storage = Storage.create(minimumCapacity: 0) { _ in Header() }
-                return unsafe unsafeDowncast(storage, to: Storage.self)
+                let result = unsafe unsafeDowncast(storage, to: Storage.self)
+                result._tokens = nil
+                result._nextFree = nil
+                return result
             }
 
             @usableFromInline
@@ -128,10 +144,35 @@ extension Tree {
                 var header = Header()
                 header.capacity = minimumCapacity
                 let storage = Storage.create(minimumCapacity: minimumCapacity) { _ in header }
-                return unsafe unsafeDowncast(storage, to: Storage.self)
+                let result = unsafe unsafeDowncast(storage, to: Storage.self)
+
+                if minimumCapacity > 0 {
+                    // Allocate and initialize auxiliary buffers
+                    let tokensPtr = unsafe UnsafeMutablePointer<UInt32>.allocate(capacity: minimumCapacity)
+                    unsafe tokensPtr.initialize(repeating: 0, count: minimumCapacity)  // All start as free (even)
+                    result._tokens = tokensPtr
+
+                    let nextFreePtr = unsafe UnsafeMutablePointer<Int>.allocate(capacity: minimumCapacity)
+                    unsafe nextFreePtr.initialize(repeating: -1, count: minimumCapacity)
+                    result._nextFree = nextFreePtr
+                } else {
+                    result._tokens = nil
+                    result._nextFree = nil
+                }
+
+                return result
             }
 
             deinit {
+                // Deallocate auxiliary buffers
+                if let tokens = _tokens {
+                    unsafe tokens.deallocate()
+                }
+                if let nextFree = _nextFree {
+                    unsafe nextFree.deallocate()
+                }
+
+                // Deinit nodes if any
                 let count = header.count
                 guard count > 0 else { return }
 
@@ -188,36 +229,35 @@ extension Tree {
                 }
             }
 
-            // MARK: - Free-List Raw Byte Helpers
-
-            /// Loads the free-list next index from a freed slot.
-            ///
-            /// - Precondition: The slot at `index` must be deinitialized/free.
-            @usableFromInline
-            func _loadFreeNext(at index: Int) -> Int {
-                unsafe withUnsafeMutablePointerToElements { ptr in
-                    unsafe UnsafeRawPointer(ptr.advanced(by: index)).load(as: Int.self)
-                }
-            }
-
-            /// Stores the free-list next index into a freed slot.
-            ///
-            /// - Precondition: The slot at `index` must be deinitialized/free.
-            @usableFromInline
-            func _storeFreeNext(at index: Int, next: Int) {
-                unsafe withUnsafeMutablePointerToElements { ptr in
-                    unsafe UnsafeMutableRawPointer(ptr.advanced(by: index)).storeBytes(of: next, as: Int.self)
-                }
-            }
-
             /// Moves all elements to new storage.
             ///
             /// After this call, `self` is in an empty state so that
             /// `deinit` won't double-destroy the moved elements.
+            /// Auxiliary buffers (tokens, nextFree) are copied 1:1 for the old capacity range.
             @usableFromInline
             func _moveAllElements(to newStorage: Storage) {
                 let count = header.count
-                guard count > 0 else { return }
+                let oldCapacity = header.capacity
+
+                // Copy auxiliary buffers (tokens and nextFree) for old capacity range
+                if oldCapacity > 0, let srcTokens = _tokens, let dstTokens = newStorage._tokens {
+                    unsafe dstTokens.update(from: srcTokens, count: oldCapacity)
+                }
+                if oldCapacity > 0, let srcNextFree = _nextFree, let dstNextFree = newStorage._nextFree {
+                    unsafe dstNextFree.update(from: srcNextFree, count: oldCapacity)
+                }
+
+                guard count > 0 else {
+                    // Copy header state even for empty trees (to preserve freeHead)
+                    newStorage.header.rootIndex = header.rootIndex
+                    newStorage.header.count = header.count
+                    newStorage.header.freeHead = header.freeHead
+                    // Reset old header
+                    header.rootIndex = -1
+                    header.count = 0
+                    header.freeHead = -1
+                    return
+                }
 
                 // Copy nodes maintaining their indices (for correct parent/child references)
                 _ = unsafe withUnsafeMutablePointerToElements { src in
@@ -249,16 +289,6 @@ extension Tree {
                 newStorage.header.count = header.count
                 newStorage.header.freeHead = header.freeHead
 
-                // Rebuild free list for new storage (copy free slot pointers)
-                if header.freeHead >= 0 {
-                    var freeIndex = header.freeHead
-                    while freeIndex >= 0 {
-                        let nextFree = _loadFreeNext(at: freeIndex)
-                        newStorage._storeFreeNext(at: freeIndex, next: nextFree)
-                        freeIndex = nextFree
-                    }
-                }
-
                 // Reset old header so deinit doesn't traverse moved nodes
                 header.rootIndex = -1
                 header.count = 0
@@ -268,10 +298,26 @@ extension Tree {
             /// Copies all elements to new storage (for CoW).
             ///
             /// Unlike `_moveAllElements`, this preserves the source storage.
+            /// Auxiliary buffers (tokens, nextFree) are copied 1:1.
             /// Only available for Copyable elements.
             @usableFromInline
             func _copyAllElements(to newStorage: Storage) where Element: Copyable {
                 let count = header.count
+                let oldCapacity = header.capacity
+
+                // Copy auxiliary buffers (tokens and nextFree) 1:1
+                if oldCapacity > 0, let srcTokens = _tokens, let dstTokens = newStorage._tokens {
+                    unsafe dstTokens.update(from: srcTokens, count: oldCapacity)
+                }
+                if oldCapacity > 0, let srcNextFree = _nextFree, let dstNextFree = newStorage._nextFree {
+                    unsafe dstNextFree.update(from: srcNextFree, count: oldCapacity)
+                }
+
+                // Copy header state (even for empty trees to preserve freeHead)
+                newStorage.header.rootIndex = header.rootIndex
+                newStorage.header.count = header.count
+                newStorage.header.freeHead = header.freeHead
+
                 guard count > 0 else { return }
 
                 // Copy nodes maintaining their indices (for correct parent/child references)
@@ -299,21 +345,6 @@ extension Tree {
                         copySubtree(at: header.rootIndex)
                     }
                 }
-
-                // Copy header state
-                newStorage.header.rootIndex = header.rootIndex
-                newStorage.header.count = header.count
-                newStorage.header.freeHead = header.freeHead
-
-                // Rebuild free list for new storage (copy free slot pointers)
-                if header.freeHead >= 0 {
-                    var freeIndex = header.freeHead
-                    while freeIndex >= 0 {
-                        let nextFree = _loadFreeNext(at: freeIndex)
-                        newStorage._storeFreeNext(at: freeIndex, next: nextFree)
-                        freeIndex = nextFree
-                    }
-                }
                 // NOTE: Do NOT reset old header - source storage remains valid
             }
         }
@@ -325,6 +356,16 @@ extension Tree {
         /// CRITICAL: Must be updated whenever _storage is replaced (reallocation, CoW copy).
         @usableFromInline
         var _cachedPtr: UnsafeMutablePointer<Node>
+
+        /// Cached pointer to token buffer (owned by Storage).
+        /// CRITICAL: Must be updated whenever _storage is replaced.
+        @usableFromInline
+        var _tokens: UnsafeMutablePointer<UInt32>?
+
+        /// Cached pointer to free-list next buffer (owned by Storage).
+        /// CRITICAL: Must be updated whenever _storage is replaced.
+        @usableFromInline
+        var _nextFree: UnsafeMutablePointer<Int>?
 
         // MARK: - Bounded (declared here for ~Copyable propagation)
 
@@ -350,6 +391,14 @@ extension Tree {
             @usableFromInline
             var _cachedPtr: UnsafeMutablePointer<Node>
 
+            /// Cached pointer to token buffer (owned by Storage).
+            @usableFromInline
+            var _tokens: UnsafeMutablePointer<UInt32>?
+
+            /// Cached pointer to free-list next buffer (owned by Storage).
+            @usableFromInline
+            var _nextFree: UnsafeMutablePointer<Int>?
+
             /// The maximum number of nodes the tree can hold.
             public let capacity: Int
 
@@ -365,6 +414,8 @@ extension Tree {
                 self.capacity = capacity
                 self._storage = Storage.create(minimumCapacity: capacity)
                 unsafe (self._cachedPtr = self._storage._nodesPointer)
+                self._tokens = self._storage._tokens
+                self._nextFree = self._storage._nextFree
             }
         }
 
@@ -424,6 +475,15 @@ extension Tree {
             @usableFromInline
             var _storage: InlineArray<capacity, InlineNode>
 
+            /// Token buffer for position validation. Each slot's token alternates:
+            /// even = free, odd = occupied. Incremented on allocate and free.
+            @usableFromInline
+            var _tokens: InlineArray<capacity, UInt32>
+
+            /// Free-list next pointers stored separately (not in freed node memory).
+            @usableFromInline
+            var _nextFree: InlineArray<capacity, Int>
+
             @usableFromInline
             var _rootIndex: Int
 
@@ -446,6 +506,8 @@ extension Tree {
                     "Element stride (\(MemoryLayout<Element>.stride)) exceeds inline storage slot size (\(Self._maxStride) bytes). Use Binary.Bounded instead."
                 )
                 self._storage = InlineArray(repeating: InlineNode())
+                self._tokens = InlineArray(repeating: 0)  // All start as free (even)
+                self._nextFree = InlineArray(repeating: -1)
                 self._rootIndex = -1
                 self._count = 0
                 self._freeHead = -1
@@ -538,6 +600,14 @@ extension Tree {
             @usableFromInline
             var _inline: InlineArray<inlineCapacity, InlineNode>
 
+            /// Token buffer for inline position validation.
+            @usableFromInline
+            var _inlineTokens: InlineArray<inlineCapacity, UInt32>
+
+            /// Free-list next pointers for inline storage.
+            @usableFromInline
+            var _inlineNextFree: InlineArray<inlineCapacity, Int>
+
             @usableFromInline
             var _rootIndex: Int
 
@@ -555,6 +625,14 @@ extension Tree {
             @usableFromInline
             var _heapPtr: UnsafeMutablePointer<Node>?
 
+            /// Cached pointer to heap tokens. Only valid when _heap is non-nil.
+            @usableFromInline
+            var _heapTokens: UnsafeMutablePointer<UInt32>?
+
+            /// Cached pointer to heap nextFree. Only valid when _heap is non-nil.
+            @usableFromInline
+            var _heapNextFree: UnsafeMutablePointer<Int>?
+
             /// Creates an empty small binary tree.
             @inlinable
             public init() {
@@ -563,11 +641,15 @@ extension Tree {
                     "Element stride (\(MemoryLayout<Element>.stride)) exceeds inline storage slot size (\(Self._maxStride) bytes). Use Binary.Bounded instead."
                 )
                 self._inline = InlineArray(repeating: InlineNode())
+                self._inlineTokens = InlineArray(repeating: 0)  // All start as free (even)
+                self._inlineNextFree = InlineArray(repeating: -1)
                 self._rootIndex = -1
                 self._count = 0
                 self._freeHead = -1
                 self._heap = nil
                 unsafe (self._heapPtr = nil)
+                unsafe (self._heapTokens = nil)
+                unsafe (self._heapNextFree = nil)
             }
 
             /// Whether the tree is currently using heap storage.
@@ -621,13 +703,26 @@ extension Tree {
         /// `Position` is a lightweight, type-safe handle for navigating and
         /// operating on tree nodes. Positions are invalidated when the referenced
         /// node is removed.
+        ///
+        /// ## Token-Based Validation
+        ///
+        /// Each position carries a token that is validated against the tree's internal
+        /// token buffer before any node access. This provides O(1) safety checking:
+        /// - Stale positions (after removal) are detected and rejected
+        /// - No node memory is accessed without validation
+        /// - Tokens use odd/even scheme: odd = occupied, even = free
         public struct Position: Sendable, Equatable, Hashable {
             @usableFromInline
             let index: Int
 
+            /// Token for validity checking (odd = occupied, even = free).
             @usableFromInline
-            init(index: Int) {
+            let token: UInt32
+
+            @usableFromInline
+            init(index: Int, token: UInt32) {
                 self.index = index
+                self.token = token
             }
         }
 
@@ -648,6 +743,8 @@ extension Tree {
         public init() {
             self._storage = Storage.create()
             unsafe (self._cachedPtr = self._storage._nodesPointer)
+            self._tokens = self._storage._tokens
+            self._nextFree = self._storage._nextFree
         }
 
         /// Creates an empty binary tree with reserved capacity.
@@ -658,6 +755,20 @@ extension Tree {
             precondition(minimumCapacity >= 0, "Capacity must be non-negative")
             self._storage = Storage.create(minimumCapacity: minimumCapacity)
             unsafe (self._cachedPtr = self._storage._nodesPointer)
+            self._tokens = self._storage._tokens
+            self._nextFree = self._storage._nextFree
+        }
+
+        // MARK: - Storage Transition Helper
+
+        /// Single point of truth for all storage transitions.
+        /// Updates _storage and all cached pointers atomically.
+        @usableFromInline
+        mutating func _replaceStorage(_ newStorage: Storage) {
+            _storage = newStorage
+            unsafe (_cachedPtr = newStorage._nodesPointer)
+            _tokens = newStorage._tokens
+            _nextFree = newStorage._nextFree
         }
 
         // MARK: - Properties
@@ -670,11 +781,35 @@ extension Tree {
         @inlinable
         public var isEmpty: Bool { _storage.header.count == 0 }
 
+        /// The current capacity of the tree.
+        @inlinable
+        public var capacity: Int { _storage.header.capacity }
+
         /// The position of the root node, or `nil` if the tree is empty.
         @inlinable
         public var root: Position? {
             let rootIndex = _storage.header.rootIndex
-            return rootIndex >= 0 ? Position(index: rootIndex) : nil
+            guard rootIndex >= 0, let tokens = _tokens else { return nil }
+            return Position(index: rootIndex, token: unsafe tokens[rootIndex])
+        }
+
+        // MARK: - Position Validation
+
+        /// Validates that a position refers to a currently-occupied slot.
+        ///
+        /// Token validation provides O(1) safety checking:
+        /// - Stale positions (after removal) are detected and rejected
+        /// - No node memory is accessed without validation
+        /// - Tokens use odd/even scheme: odd = occupied, even = free
+        @usableFromInline
+        func _validate(_ position: Position) throws(__TreeBinaryError) {
+            guard position.index >= 0,
+                  position.index < capacity,
+                  let tokens = _tokens,
+                  unsafe tokens[position.index] == position.token,
+                  position.token & 1 == 1 else {  // explicit "occupied" check
+                throw .invalidPosition
+            }
         }
 
         // MARK: - Navigation
@@ -683,38 +818,65 @@ extension Tree {
         ///
         /// - Parameter position: The position of the parent node.
         /// - Returns: The position of the left child, or `nil` if there is no left child.
+        /// - Note: Returns `nil` if the position is invalid (stale or out of bounds).
         @inlinable
         public func left(of position: Position) -> Position? {
+            do {
+                try _validate(position)
+            } catch {
+                return nil
+            }
             let leftIndex = unsafe _cachedPtr[position.index].leftIndex
-            return leftIndex >= 0 ? Position(index: leftIndex) : nil
+            guard leftIndex >= 0, let tokens = _tokens else { return nil }
+            return Position(index: leftIndex, token: unsafe tokens[leftIndex])
         }
 
         /// Returns the position of the right child of the node at the given position.
         ///
         /// - Parameter position: The position of the parent node.
         /// - Returns: The position of the right child, or `nil` if there is no right child.
+        /// - Note: Returns `nil` if the position is invalid (stale or out of bounds).
         @inlinable
         public func right(of position: Position) -> Position? {
+            do {
+                try _validate(position)
+            } catch {
+                return nil
+            }
             let rightIndex = unsafe _cachedPtr[position.index].rightIndex
-            return rightIndex >= 0 ? Position(index: rightIndex) : nil
+            guard rightIndex >= 0, let tokens = _tokens else { return nil }
+            return Position(index: rightIndex, token: unsafe tokens[rightIndex])
         }
 
         /// Returns the position of the parent of the node at the given position.
         ///
         /// - Parameter position: The position of the child node.
         /// - Returns: The position of the parent, or `nil` if the node is the root.
+        /// - Note: Returns `nil` if the position is invalid (stale or out of bounds).
         @inlinable
         public func parent(of position: Position) -> Position? {
+            do {
+                try _validate(position)
+            } catch {
+                return nil
+            }
             let parentIndex = unsafe _cachedPtr[position.index].parentIndex
-            return parentIndex >= 0 ? Position(index: parentIndex) : nil
+            guard parentIndex >= 0, let tokens = _tokens else { return nil }
+            return Position(index: parentIndex, token: unsafe tokens[parentIndex])
         }
 
         /// Returns whether the node at the given position is a leaf (has no children).
         ///
         /// - Parameter position: The position to check.
         /// - Returns: `true` if the node has no children, `false` otherwise.
+        /// - Note: Returns `false` if the position is invalid (stale or out of bounds).
         @inlinable
         public func isLeaf(_ position: Position) -> Bool {
+            do {
+                try _validate(position)
+            } catch {
+                return false
+            }
             let leftIndex = unsafe _cachedPtr[position.index].leftIndex
             let rightIndex = unsafe _cachedPtr[position.index].rightIndex
             return leftIndex < 0 && rightIndex < 0
@@ -725,35 +887,57 @@ extension Tree {
         /// Ensures the tree has capacity for at least the specified number of nodes.
         @usableFromInline
         mutating func ensureCapacity(_ minimumCapacity: Int) {
-            guard minimumCapacity > _storage.capacity else { return }
+            guard minimumCapacity > _storage.header.capacity else { return }
 
-            let newCapacity = Swift.max(minimumCapacity, Swift.max(_storage.capacity * 2, 4))
+            let newCapacity = Swift.max(minimumCapacity, Swift.max(_storage.header.capacity * 2, 4))
             let newStorage = Storage.create(minimumCapacity: newCapacity)
             _storage._moveAllElements(to: newStorage)
-            _storage = newStorage
-            // CRITICAL: Update cached pointer
-            unsafe (_cachedPtr = _storage._nodesPointer)
+            _replaceStorage(newStorage)
         }
 
-        /// Allocates a slot for a new node.
+        /// Allocates a slot for a new node, returning a token-stamped position.
+        ///
+        /// The returned token is guaranteed to be odd (occupied state).
         @usableFromInline
-        mutating func _allocateSlot() -> Int {
+        mutating func _allocateSlot() -> (index: Int, token: UInt32) {
+            let index: Int
+
             // Try to reuse from free list
             if _storage.header.freeHead >= 0 {
-                let index = _storage.header.freeHead
-                _storage.header.freeHead = _storage._loadFreeNext(at: index)
-                return index
+                index = _storage.header.freeHead
+                if let nextFree = _nextFree {
+                    _storage.header.freeHead = unsafe nextFree[index]
+                }
+            } else {
+                // Allocate at end
+                ensureCapacity(_storage.header.count + 1)
+                index = _storage.header.count
             }
 
-            // Allocate at end
-            ensureCapacity(_storage.header.count + 1)
-            return _storage.header.count
+            // Increment token: even (free) → odd (occupied)
+            if let tokens = _tokens {
+                unsafe (tokens[index] &+= 1)
+                return (index, unsafe tokens[index])
+            } else {
+                // Zero capacity - should not happen after ensureCapacity
+                return (index, 1)
+            }
         }
 
         /// Returns a slot to the free list.
+        ///
+        /// Increments the token: odd (occupied) → even (free).
         @usableFromInline
         mutating func _freeSlot(_ index: Int) {
-            _storage._storeFreeNext(at: index, next: _storage.header.freeHead)
+            // Increment token: odd (occupied) → even (free)
+            if let tokens = _tokens {
+                unsafe (tokens[index] &+= 1)
+            }
+
+            // Add to free list
+            if let nextFree = _nextFree {
+                unsafe (nextFree[index] = _storage.header.freeHead)
+            }
             _storage.header.freeHead = index
         }
     }
@@ -768,9 +952,9 @@ extension Tree.Binary where Element: ~Copyable {
     /// - Parameters:
     ///   - element: The element to insert.
     ///   - position: Where to insert the element.
-    /// - Returns: The position of the newly inserted node.
+    /// - Returns: The position of the newly inserted node (with token for validation).
     /// - Throws: ``Error/positionOccupied`` if the position is already occupied,
-    ///           ``Error/invalidPosition`` if the parent position is invalid.
+    ///           ``Error/invalidPosition`` if the parent position is invalid or stale.
     @inlinable
     @discardableResult
     public mutating func insert(
@@ -782,37 +966,35 @@ extension Tree.Binary where Element: ~Copyable {
             guard _storage.header.rootIndex < 0 else {
                 throw .positionOccupied
             }
-            let index = _allocateSlot()
+            let (index, token) = _allocateSlot()
             _storage._initializeNode(at: index, element: element)
             _storage.header.rootIndex = index
             _storage.header.count += 1
-            return Position(index: index)
+            return Position(index: index, token: token)
 
         case .left(of: let parent):
-            guard parent.index >= 0 && parent.index < _storage.capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].leftIndex < 0 else {
                 throw .positionOccupied
             }
-            let index = _allocateSlot()
+            let (index, token) = _allocateSlot()
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].leftIndex = index)
             _storage.header.count += 1
-            return Position(index: index)
+            return Position(index: index, token: token)
 
         case .right(of: let parent):
-            guard parent.index >= 0 && parent.index < _storage.capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].rightIndex < 0 else {
                 throw .positionOccupied
             }
-            let index = _allocateSlot()
+            let (index, token) = _allocateSlot()
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].rightIndex = index)
             _storage.header.count += 1
-            return Position(index: index)
+            return Position(index: index, token: token)
         }
     }
 
@@ -820,14 +1002,13 @@ extension Tree.Binary where Element: ~Copyable {
     ///
     /// - Parameter position: The position of the node to remove. Must be a leaf.
     /// - Returns: The element that was stored at the position.
-    /// - Throws: ``Error/invalidPosition`` if the position is invalid,
+    /// - Throws: ``Error/invalidPosition`` if the position is invalid or stale,
     ///           ``Error/cannotRemoveNonLeaf`` if the node has children.
     @inlinable
     @discardableResult
     public mutating func remove(at position: Position) throws(__TreeBinaryError) -> Element {
-        guard position.index >= 0 && position.index < _storage.capacity else {
-            throw .invalidPosition
-        }
+        // Validate position (token check)
+        try _validate(position)
 
         let leftIndex = unsafe _cachedPtr[position.index].leftIndex
         let rightIndex = unsafe _cachedPtr[position.index].rightIndex
@@ -862,12 +1043,11 @@ extension Tree.Binary where Element: ~Copyable {
     /// in post-order (children before parents).
     ///
     /// - Parameter position: The position of the root of the subtree to remove.
-    /// - Throws: ``Error/invalidPosition`` if the position is invalid.
+    /// - Throws: ``Error/invalidPosition`` if the position is invalid or stale.
     @inlinable
     public mutating func removeSubtree(at position: Position) throws(__TreeBinaryError) {
-        guard position.index >= 0 && position.index < _storage.capacity else {
-            throw .invalidPosition
-        }
+        // Validate position (token check)
+        try _validate(position)
 
         // Update parent's child pointer
         let parentIndex = unsafe _cachedPtr[position.index].parentIndex
@@ -902,10 +1082,12 @@ extension Tree.Binary where Element: ~Copyable {
     /// - Parameters:
     ///   - position: The position of the node.
     ///   - body: A closure that receives a borrowing reference to the element.
-    /// - Returns: The value returned by `body`, or `nil` if the position is invalid.
+    /// - Returns: The value returned by `body`, or `nil` if the position is invalid or stale.
     @inlinable
     public func peek<R>(at position: Position, _ body: (borrowing Element) -> R) -> R? {
-        guard position.index >= 0 && position.index < _storage.capacity else {
+        do {
+            try _validate(position)
+        } catch {
             return nil
         }
         return unsafe body(_cachedPtr[position.index].element)
@@ -1024,14 +1206,13 @@ extension Tree.Binary where Element: ~Copyable {
 extension Tree.Binary where Element: Copyable {
 
     /// Makes the storage unique, copying if necessary for copy-on-write.
+    /// Also copies the auxiliary buffers (tokens, nextFree) via Storage.
     @usableFromInline
     mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
-            let newStorage = Storage.create(minimumCapacity: _storage.capacity)
+            let newStorage = Storage.create(minimumCapacity: _storage.header.capacity)
             _storage._copyAllElements(to: newStorage)
-            _storage = newStorage
-            // CRITICAL: Update cached pointer
-            unsafe (_cachedPtr = _storage._nodesPointer)
+            _replaceStorage(newStorage)
         }
     }
 
@@ -1049,47 +1230,47 @@ extension Tree.Binary where Element: Copyable {
             guard _storage.header.rootIndex < 0 else {
                 throw .positionOccupied
             }
-            let index = _allocateSlot()
+            let (index, token) = _allocateSlot()
             _storage._initializeNode(at: index, element: element)
             _storage.header.rootIndex = index
             _storage.header.count += 1
-            return Position(index: index)
+            return Position(index: index, token: token)
 
         case .left(of: let parent):
-            guard parent.index >= 0 && parent.index < _storage.capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].leftIndex < 0 else {
                 throw .positionOccupied
             }
-            let index = _allocateSlot()
+            let (index, token) = _allocateSlot()
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].leftIndex = index)
             _storage.header.count += 1
-            return Position(index: index)
+            return Position(index: index, token: token)
 
         case .right(of: let parent):
-            guard parent.index >= 0 && parent.index < _storage.capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].rightIndex < 0 else {
                 throw .positionOccupied
             }
-            let index = _allocateSlot()
+            let (index, token) = _allocateSlot()
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].rightIndex = index)
             _storage.header.count += 1
-            return Position(index: index)
+            return Position(index: index, token: token)
         }
     }
 
     /// Returns the element at the specified position.
     ///
     /// - Parameter position: The position of the node.
-    /// - Returns: The element at the position, or `nil` if invalid.
+    /// - Returns: The element at the position, or `nil` if invalid or stale.
     @inlinable
     public func peek(at position: Position) -> Element? {
-        guard position.index >= 0 && position.index < _storage.capacity else {
+        do {
+            try _validate(position)
+        } catch {
             return nil
         }
         return unsafe _cachedPtr[position.index].element

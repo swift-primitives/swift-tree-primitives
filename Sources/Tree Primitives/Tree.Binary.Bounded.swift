@@ -29,7 +29,22 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     @inlinable
     public var root: Tree.Binary<Element>.Position? {
         let rootIndex = _storage.header.rootIndex
-        return rootIndex >= 0 ? Tree.Binary<Element>.Position(index: rootIndex) : nil
+        guard rootIndex >= 0, let tokens = _tokens else { return nil }
+        return Tree.Binary<Element>.Position(index: rootIndex, token: unsafe tokens[rootIndex])
+    }
+
+    // MARK: - Position Validation
+
+    /// Validates that a position refers to a currently-occupied slot.
+    @usableFromInline
+    func _validate(_ position: Tree.Binary<Element>.Position) throws(__TreeBinaryBoundedError) {
+        guard position.index >= 0,
+              position.index < capacity,
+              let tokens = _tokens,
+              unsafe tokens[position.index] == position.token,
+              position.token & 1 == 1 else {
+            throw .invalidPosition
+        }
     }
 
     // MARK: - Navigation
@@ -37,27 +52,50 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     /// Returns the position of the left child of the node at the given position.
     @inlinable
     public func left(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
         let leftIndex = unsafe _cachedPtr[position.index].leftIndex
-        return leftIndex >= 0 ? Tree.Binary<Element>.Position(index: leftIndex) : nil
+        guard leftIndex >= 0, let tokens = _tokens else { return nil }
+        return Tree.Binary<Element>.Position(index: leftIndex, token: unsafe tokens[leftIndex])
     }
 
     /// Returns the position of the right child of the node at the given position.
     @inlinable
     public func right(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
         let rightIndex = unsafe _cachedPtr[position.index].rightIndex
-        return rightIndex >= 0 ? Tree.Binary<Element>.Position(index: rightIndex) : nil
+        guard rightIndex >= 0, let tokens = _tokens else { return nil }
+        return Tree.Binary<Element>.Position(index: rightIndex, token: unsafe tokens[rightIndex])
     }
 
     /// Returns the position of the parent of the node at the given position.
     @inlinable
     public func parent(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
         let parentIndex = unsafe _cachedPtr[position.index].parentIndex
-        return parentIndex >= 0 ? Tree.Binary<Element>.Position(index: parentIndex) : nil
+        guard parentIndex >= 0, let tokens = _tokens else { return nil }
+        return Tree.Binary<Element>.Position(index: parentIndex, token: unsafe tokens[parentIndex])
     }
 
     /// Returns whether the node at the given position is a leaf.
     @inlinable
     public func isLeaf(_ position: Tree.Binary<Element>.Position) -> Bool {
+        do {
+            try _validate(position)
+        } catch {
+            return false
+        }
         let leftIndex = unsafe _cachedPtr[position.index].leftIndex
         let rightIndex = unsafe _cachedPtr[position.index].rightIndex
         return leftIndex < 0 && rightIndex < 0
@@ -65,28 +103,45 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
 
     // MARK: - Slot Management
 
-    /// Allocates a slot for a new node.
+    /// Allocates a slot for a new node, returning a token-stamped position.
     @usableFromInline
-    mutating func _allocateSlot() -> Int? {
+    mutating func _allocateSlot() -> (index: Int, token: UInt32)? {
+        let index: Int
+
         // Try to reuse from free list
         if _storage.header.freeHead >= 0 {
-            let index = _storage.header.freeHead
-            _storage.header.freeHead = _storage._loadFreeNext(at: index)
-            return index
+            index = _storage.header.freeHead
+            if let nextFree = _nextFree {
+                _storage.header.freeHead = unsafe nextFree[index]
+            }
+        } else if _storage.header.count < capacity {
+            // Allocate at end if space available
+            index = _storage.header.count
+        } else {
+            return nil
         }
 
-        // Allocate at end if space available
-        if _storage.header.count < capacity {
-            return _storage.header.count
+        // Increment token: even (free) → odd (occupied)
+        if let tokens = _tokens {
+            unsafe (tokens[index] &+= 1)
+            return (index, unsafe tokens[index])
+        } else {
+            return (index, 1)
         }
-
-        return nil
     }
 
     /// Returns a slot to the free list.
     @usableFromInline
     mutating func _freeSlot(_ index: Int) {
-        _storage._storeFreeNext(at: index, next: _storage.header.freeHead)
+        // Increment token: odd (occupied) → even (free)
+        if let tokens = _tokens {
+            unsafe (tokens[index] &+= 1)
+        }
+
+        // Add to free list
+        if let nextFree = _nextFree {
+            unsafe (nextFree[index] = _storage.header.freeHead)
+        }
         _storage.header.freeHead = index
     }
 }
@@ -100,10 +155,10 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     /// - Parameters:
     ///   - element: The element to insert.
     ///   - position: Where to insert the element.
-    /// - Returns: The position of the newly inserted node.
+    /// - Returns: The position of the newly inserted node (with token for validation).
     /// - Throws: ``Error/overflow`` if the tree is full,
     ///           ``Error/positionOccupied`` if the position is already occupied,
-    ///           ``Error/invalidPosition`` if the parent position is invalid.
+    ///           ``Error/invalidPosition`` if the parent position is invalid or stale.
     @inlinable
     @discardableResult
     public mutating func insert(
@@ -115,43 +170,41 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             guard _storage.header.rootIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             _storage._initializeNode(at: index, element: element)
             _storage.header.rootIndex = index
             _storage.header.count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .left(of: let parent):
-            guard parent.index >= 0 && parent.index < capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].leftIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].leftIndex = index)
             _storage.header.count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .right(of: let parent):
-            guard parent.index >= 0 && parent.index < capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].rightIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].rightIndex = index)
             _storage.header.count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
         }
     }
 
@@ -161,9 +214,8 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     public mutating func remove(
         at position: Tree.Binary<Element>.Position
     ) throws(__TreeBinaryBoundedError) -> Element {
-        guard position.index >= 0 && position.index < capacity else {
-            throw .invalidPosition
-        }
+        // Validate position (token check)
+        try _validate(position)
 
         let leftIndex = unsafe _cachedPtr[position.index].leftIndex
         let rightIndex = unsafe _cachedPtr[position.index].rightIndex
@@ -195,9 +247,8 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
     public mutating func removeSubtree(
         at position: Tree.Binary<Element>.Position
     ) throws(__TreeBinaryBoundedError) {
-        guard position.index >= 0 && position.index < capacity else {
-            throw .invalidPosition
-        }
+        // Validate position (token check)
+        try _validate(position)
 
         // Update parent's child pointer
         let parentIndex = unsafe _cachedPtr[position.index].parentIndex
@@ -232,7 +283,9 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
         at position: Tree.Binary<Element>.Position,
         _ body: (borrowing Element) -> R
     ) -> R? {
-        guard position.index >= 0 && position.index < capacity else {
+        do {
+            try _validate(position)
+        } catch {
             return nil
         }
         return unsafe body(_cachedPtr[position.index].element)
@@ -250,6 +303,7 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
             clearSubtree(at: leftIndex)
             clearSubtree(at: rightIndex)
             _storage._deinitializeNode(at: index)
+            _freeSlot(index)
         }
 
         clearSubtree(at: _storage.header.rootIndex)
@@ -333,14 +387,22 @@ extension Tree.Binary.Bounded where Element: ~Copyable {
 
 extension Tree.Binary.Bounded where Element: Copyable {
 
+    /// Single point of truth for storage transitions.
+    @usableFromInline
+    mutating func _replaceStorage(_ newStorage: Tree.Binary<Element>.Storage) {
+        _storage = newStorage
+        unsafe (_cachedPtr = newStorage._nodesPointer)
+        _tokens = newStorage._tokens
+        _nextFree = newStorage._nextFree
+    }
+
     /// Makes the storage unique for copy-on-write.
     @usableFromInline
     mutating func makeUnique() {
         if !isKnownUniquelyReferenced(&_storage) {
             let newStorage = Tree.Binary<Element>.Storage.create(minimumCapacity: capacity)
             _storage._copyAllElements(to: newStorage)
-            _storage = newStorage
-            unsafe (_cachedPtr = _storage._nodesPointer)
+            _replaceStorage(newStorage)
         }
     }
 
@@ -358,50 +420,50 @@ extension Tree.Binary.Bounded where Element: Copyable {
             guard _storage.header.rootIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             _storage._initializeNode(at: index, element: element)
             _storage.header.rootIndex = index
             _storage.header.count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .left(of: let parent):
-            guard parent.index >= 0 && parent.index < capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].leftIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].leftIndex = index)
             _storage.header.count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .right(of: let parent):
-            guard parent.index >= 0 && parent.index < capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard unsafe _cachedPtr[parent.index].rightIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
             unsafe (_cachedPtr[parent.index].rightIndex = index)
             _storage.header.count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
         }
     }
 
     /// Returns the element at the specified position.
     @inlinable
     public func peek(at position: Tree.Binary<Element>.Position) -> Element? {
-        guard position.index >= 0 && position.index < capacity else {
+        do {
+            try _validate(position)
+        } catch {
             return nil
         }
         return unsafe _cachedPtr[position.index].element

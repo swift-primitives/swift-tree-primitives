@@ -28,7 +28,21 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     /// The position of the root node, or `nil` if the tree is empty.
     @inlinable
     public var root: Tree.Binary<Element>.Position? {
-        _rootIndex >= 0 ? Tree.Binary<Element>.Position(index: _rootIndex) : nil
+        guard _rootIndex >= 0 else { return nil }
+        return Tree.Binary<Element>.Position(index: _rootIndex, token: _tokens[_rootIndex])
+    }
+
+    // MARK: - Position Validation
+
+    /// Validates that a position refers to a currently-occupied slot.
+    @usableFromInline
+    func _validate(_ position: Tree.Binary<Element>.Position) throws(__TreeBinaryInlineError) {
+        guard position.index >= 0,
+              position.index < capacity,
+              _tokens[position.index] == position.token,
+              position.token & 1 == 1 else {
+            throw .invalidPosition
+        }
     }
 
     // MARK: - Navigation
@@ -36,72 +50,111 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     /// Returns the position of the left child of the node at the given position.
     @inlinable
     public func left(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
         let leftIndex = _storage[position.index].leftIndex
-        return leftIndex >= 0 ? Tree.Binary<Element>.Position(index: leftIndex) : nil
+        guard leftIndex >= 0 else { return nil }
+        return Tree.Binary<Element>.Position(index: leftIndex, token: _tokens[leftIndex])
     }
 
     /// Returns the position of the right child of the node at the given position.
     @inlinable
     public func right(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
         let rightIndex = _storage[position.index].rightIndex
-        return rightIndex >= 0 ? Tree.Binary<Element>.Position(index: rightIndex) : nil
+        guard rightIndex >= 0 else { return nil }
+        return Tree.Binary<Element>.Position(index: rightIndex, token: _tokens[rightIndex])
     }
 
     /// Returns the position of the parent of the node at the given position.
     @inlinable
     public func parent(of position: Tree.Binary<Element>.Position) -> Tree.Binary<Element>.Position? {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
         let parentIndex = _storage[position.index].parentIndex
-        return parentIndex >= 0 ? Tree.Binary<Element>.Position(index: parentIndex) : nil
+        guard parentIndex >= 0 else { return nil }
+        return Tree.Binary<Element>.Position(index: parentIndex, token: _tokens[parentIndex])
     }
 
     /// Returns whether the node at the given position is a leaf.
     @inlinable
     public func isLeaf(_ position: Tree.Binary<Element>.Position) -> Bool {
+        do {
+            try _validate(position)
+        } catch {
+            return false
+        }
         let node = _storage[position.index]
         return node.leftIndex < 0 && node.rightIndex < 0
     }
 
     // MARK: - Slot Management
 
-    /// Allocates a slot for a new node.
+    /// Allocates a slot for a new node, returning a token-stamped position.
     @usableFromInline
-    mutating func _allocateSlot() -> Int? {
+    mutating func _allocateSlot() -> (index: Int, token: UInt32)? {
+        let index: Int
+
         // Try to reuse from free list
         if _freeHead >= 0 {
-            let index = _freeHead
-            // Load next free from the slot - capture into local to avoid overlap
-            var nextFree: Int = -1
-            unsafe Swift.withUnsafePointer(to: _storage[index].slot) { slotPtr in
-                let ptr = unsafe UnsafeRawPointer(slotPtr)
-                nextFree = unsafe ptr.load(as: Int.self)
-            }
-            _freeHead = nextFree
-            return index
-        }
-
-        // Allocate at end if space available
-        if _count < capacity {
+            index = _freeHead
+            _freeHead = _nextFree[index]
+        } else if _count < capacity {
             // Find first unoccupied slot
+            var found = false
+            index = _count  // Default to count
             for i in 0..<capacity {
                 if !_storage[i].isOccupied {
-                    return i
+                    // Use this slot
+                    found = true
+                    // Can't reassign index in this scope, handle differently
+                    break
                 }
             }
+            if !found {
+                return nil
+            }
+            // Find the actual slot
+            var actualIndex = -1
+            for i in 0..<capacity {
+                if !_storage[i].isOccupied {
+                    actualIndex = i
+                    break
+                }
+            }
+            if actualIndex < 0 {
+                return nil
+            }
+            // Increment token: even (free) → odd (occupied)
+            _tokens[actualIndex] &+= 1
+            return (actualIndex, _tokens[actualIndex])
+        } else {
+            return nil
         }
 
-        return nil
+        // Increment token: even (free) → odd (occupied)
+        _tokens[index] &+= 1
+        return (index, _tokens[index])
     }
 
     /// Returns a slot to the free list.
     @usableFromInline
     mutating func _freeSlot(_ index: Int) {
         _storage[index].isOccupied = false
-        // Store current free head in the slot - capture to avoid overlap
-        let oldFreeHead = _freeHead
-        unsafe Swift.withUnsafeMutablePointer(to: &_storage[index].slot) { slotPtr in
-            let ptr = unsafe UnsafeMutableRawPointer(slotPtr)
-            unsafe ptr.storeBytes(of: oldFreeHead, as: Int.self)
-        }
+        // Increment token: odd (occupied) → even (free)
+        _tokens[index] &+= 1
+        // Add to free list
+        _nextFree[index] = _freeHead
         _freeHead = index
     }
 
@@ -140,7 +193,7 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             guard _rootIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             unsafe _elementPointer(at: index).initialize(to: element)
@@ -150,16 +203,15 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             _storage[index].isOccupied = true
             _rootIndex = index
             _count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .left(of: let parent):
-            guard parent.index >= 0 && parent.index < capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard _storage[parent.index].leftIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             unsafe _elementPointer(at: index).initialize(to: element)
@@ -169,16 +221,15 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             _storage[index].isOccupied = true
             _storage[parent.index].leftIndex = index
             _count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
 
         case .right(of: let parent):
-            guard parent.index >= 0 && parent.index < capacity else {
-                throw .invalidPosition
-            }
+            // Validate parent position (token check)
+            try _validate(parent)
             guard _storage[parent.index].rightIndex < 0 else {
                 throw .positionOccupied
             }
-            guard let index = _allocateSlot() else {
+            guard let (index, token) = _allocateSlot() else {
                 throw .overflow
             }
             unsafe _elementPointer(at: index).initialize(to: element)
@@ -188,7 +239,7 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             _storage[index].isOccupied = true
             _storage[parent.index].rightIndex = index
             _count += 1
-            return Tree.Binary<Element>.Position(index: index)
+            return Tree.Binary<Element>.Position(index: index, token: token)
         }
     }
 
@@ -198,12 +249,8 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     public mutating func remove(
         at position: Tree.Binary<Element>.Position
     ) throws(__TreeBinaryInlineError) -> Element {
-        guard position.index >= 0 && position.index < capacity else {
-            throw .invalidPosition
-        }
-        guard _storage[position.index].isOccupied else {
-            throw .invalidPosition
-        }
+        // Validate position (token check)
+        try _validate(position)
 
         let node = _storage[position.index]
         guard node.leftIndex < 0 && node.rightIndex < 0 else {
@@ -234,12 +281,8 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     public mutating func removeSubtree(
         at position: Tree.Binary<Element>.Position
     ) throws(__TreeBinaryInlineError) {
-        guard position.index >= 0 && position.index < capacity else {
-            throw .invalidPosition
-        }
-        guard _storage[position.index].isOccupied else {
-            throw .invalidPosition
-        }
+        // Validate position (token check)
+        try _validate(position)
 
         // Update parent's child pointer
         let parentIndex = _storage[position.index].parentIndex
@@ -274,10 +317,9 @@ extension Tree.Binary.Inline where Element: ~Copyable {
         at position: Tree.Binary<Element>.Position,
         _ body: (borrowing Element) -> R
     ) -> R? {
-        guard position.index >= 0 && position.index < capacity else {
-            return nil
-        }
-        guard _storage[position.index].isOccupied else {
+        do {
+            try _validate(position)
+        } catch {
             return nil
         }
         return unsafe body(_readElementPointer(at: position.index).pointee)
@@ -295,7 +337,7 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             clearSubtree(at: leftIndex)
             clearSubtree(at: rightIndex)
             unsafe _elementPointer(at: index).deinitialize(count: 1)
-            _storage[index].isOccupied = false
+            _freeSlot(index)
         }
 
         clearSubtree(at: _rootIndex)
@@ -384,10 +426,9 @@ extension Tree.Binary.Inline where Element: Copyable {
     /// Returns the element at the specified position.
     @inlinable
     public func peek(at position: Tree.Binary<Element>.Position) -> Element? {
-        guard position.index >= 0 && position.index < capacity else {
-            return nil
-        }
-        guard _storage[position.index].isOccupied else {
+        do {
+            try _validate(position)
+        } catch {
             return nil
         }
         return unsafe _readElementPointer(at: position.index).pointee
