@@ -9,6 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Queue_Primitives
 public import Stack_Primitives
 
 /// A dynamically-growing binary tree supporting move-only elements.
@@ -1263,13 +1264,11 @@ extension Tree.Binary where Element: ~Copyable {
     public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
         guard _storage.header.rootIndex >= 0 else { return }
 
-        // Simple array-based queue for level-order traversal
-        var queue: [Int] = [_storage.header.rootIndex]
-        var head = 0
+        var queue = Queue<Int>()
+        queue.enqueue(_storage.header.rootIndex)
 
-        while head < queue.count {
-            let index = queue[head]
-            head += 1
+        while !queue.isEmpty {
+            let index = queue.dequeue()!
 
             unsafe body(_cachedPtr[index].element)
 
@@ -1277,10 +1276,10 @@ extension Tree.Binary where Element: ~Copyable {
             let rightIndex = unsafe _cachedPtr[index].rightIndex
 
             if leftIndex >= 0 {
-                queue.append(leftIndex)
+                queue.enqueue(leftIndex)
             }
             if rightIndex >= 0 {
-                queue.append(rightIndex)
+                queue.enqueue(rightIndex)
             }
         }
     }

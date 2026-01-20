@@ -9,6 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Queue_Primitives
 public import Stack_Primitives
 
 // MARK: - Traversal Sequences (Copyable elements only)
@@ -200,24 +201,21 @@ extension Tree.Binary where Element: Copyable {
     /// An iterator for level-order traversal.
     public struct LevelOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>
-        var queue: [Int]
-        var head: Int
+        var queue: Queue<Int>
 
         init(tree: Tree.Binary<Element>) {
             self.tree = tree
-            self.queue = []
-            self.head = 0
+            self.queue = Queue<Int>()
 
             if tree._storage.header.rootIndex >= 0 {
-                queue.append(tree._storage.header.rootIndex)
+                queue.enqueue(tree._storage.header.rootIndex)
             }
         }
 
         public mutating func next() -> Element? {
-            guard head < queue.count else { return nil }
+            guard !queue.isEmpty else { return nil }
 
-            let index = queue[head]
-            head += 1
+            let index = queue.dequeue()!
 
             let ptr = unsafe tree._cachedPtr
             let element = unsafe ptr[index].element
@@ -225,10 +223,10 @@ extension Tree.Binary where Element: Copyable {
             let rightIndex = unsafe ptr[index].rightIndex
 
             if leftIndex >= 0 {
-                queue.append(leftIndex)
+                queue.enqueue(leftIndex)
             }
             if rightIndex >= 0 {
-                queue.append(rightIndex)
+                queue.enqueue(rightIndex)
             }
 
             return element
@@ -401,31 +399,28 @@ extension Tree.Binary.Bounded where Element: Copyable {
     /// An iterator for level-order traversal.
     public struct LevelOrderIterator: IteratorProtocol {
         let tree: Tree.Binary<Element>.Bounded
-        var queue: [Int]
-        var head: Int
+        var queue: Queue<Int>
 
         init(tree: Tree.Binary<Element>.Bounded) {
             self.tree = tree
-            self.queue = []
-            self.head = 0
+            self.queue = Queue<Int>()
             if tree._storage.header.rootIndex >= 0 {
-                queue.append(tree._storage.header.rootIndex)
+                queue.enqueue(tree._storage.header.rootIndex)
             }
         }
 
         public mutating func next() -> Element? {
-            guard head < queue.count else { return nil }
+            guard !queue.isEmpty else { return nil }
 
-            let index = queue[head]
-            head += 1
+            let index = queue.dequeue()!
 
             let ptr = unsafe tree._cachedPtr
             let element = unsafe ptr[index].element
             let leftIndex = unsafe ptr[index].leftIndex
             let rightIndex = unsafe ptr[index].rightIndex
 
-            if leftIndex >= 0 { queue.append(leftIndex) }
-            if rightIndex >= 0 { queue.append(rightIndex) }
+            if leftIndex >= 0 { queue.enqueue(leftIndex) }
+            if rightIndex >= 0 { queue.enqueue(rightIndex) }
 
             return element
         }

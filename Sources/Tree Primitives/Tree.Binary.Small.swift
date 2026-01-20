@@ -9,6 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Queue_Primitives
 public import Stack_Primitives
 
 // MARK: - Small Properties
@@ -802,28 +803,26 @@ extension Tree.Binary.Small where Element: ~Copyable {
         guard _rootIndex >= 0 else { return }
 
         if let heapPtr = unsafe _heapPtr {
-            var queue: [Int] = [_rootIndex]
-            var head = 0
+            var queue = Queue<Int>()
+            queue.enqueue(_rootIndex)
 
-            while head < queue.count {
-                let index = queue[head]
-                head += 1
+            while !queue.isEmpty {
+                let index = queue.dequeue()!
 
                 unsafe body(heapPtr[index].element)
 
                 let leftIndex = unsafe heapPtr[index].leftIndex
                 let rightIndex = unsafe heapPtr[index].rightIndex
 
-                if leftIndex >= 0 { queue.append(leftIndex) }
-                if rightIndex >= 0 { queue.append(rightIndex) }
+                if leftIndex >= 0 { queue.enqueue(leftIndex) }
+                if rightIndex >= 0 { queue.enqueue(rightIndex) }
             }
         } else {
-            var queue: [Int] = [_rootIndex]
-            var head = 0
+            var queue = Queue<Int>()
+            queue.enqueue(_rootIndex)
 
-            while head < queue.count {
-                let index = queue[head]
-                head += 1
+            while !queue.isEmpty {
+                let index = queue.dequeue()!
 
                 guard _inline[index].isOccupied else { continue }
 
@@ -832,8 +831,8 @@ extension Tree.Binary.Small where Element: ~Copyable {
                 let leftIndex = _inline[index].leftIndex
                 let rightIndex = _inline[index].rightIndex
 
-                if leftIndex >= 0 { queue.append(leftIndex) }
-                if rightIndex >= 0 { queue.append(rightIndex) }
+                if leftIndex >= 0 { queue.enqueue(leftIndex) }
+                if rightIndex >= 0 { queue.enqueue(rightIndex) }
             }
         }
     }

@@ -15,12 +15,16 @@ let package = Package(
         .library(name: "Tree Primitives", targets: ["Tree Primitives"])
     ],
     dependencies: [
-        .package(path: "../swift-stack-primitives")
+        .package(path: "../swift-stack-primitives"),
+        .package(path: "../swift-queue-primitives")
     ],
     targets: [
         .target(
             name: "Tree Primitives",
-            dependencies: [.product(name: "Stack Primitives", package: "swift-stack-primitives")]
+            dependencies: [
+                .product(name: "Stack Primitives", package: "swift-stack-primitives"),
+                .product(name: "Queue Primitives", package: "swift-queue-primitives")
+            ]
         ),
         .testTarget(name: "Tree Primitives Tests", dependencies: ["Tree Primitives"])
     ],

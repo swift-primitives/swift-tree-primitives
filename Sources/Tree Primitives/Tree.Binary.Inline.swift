@@ -9,6 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Queue_Primitives
 public import Stack_Primitives
 
 // MARK: - Inline Properties
@@ -435,12 +436,11 @@ extension Tree.Binary.Inline where Element: ~Copyable {
     public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
         guard _rootIndex >= 0 else { return }
 
-        var queue: [Int] = [_rootIndex]
-        var head = 0
+        var queue = Queue<Int>()
+        queue.enqueue(_rootIndex)
 
-        while head < queue.count {
-            let index = queue[head]
-            head += 1
+        while !queue.isEmpty {
+            let index = queue.dequeue()!
 
             guard _storage[index].isOccupied else { continue }
 
@@ -449,8 +449,8 @@ extension Tree.Binary.Inline where Element: ~Copyable {
             let leftIndex = _storage[index].leftIndex
             let rightIndex = _storage[index].rightIndex
 
-            if leftIndex >= 0 { queue.append(leftIndex) }
-            if rightIndex >= 0 { queue.append(rightIndex) }
+            if leftIndex >= 0 { queue.enqueue(leftIndex) }
+            if rightIndex >= 0 { queue.enqueue(rightIndex) }
         }
     }
 
