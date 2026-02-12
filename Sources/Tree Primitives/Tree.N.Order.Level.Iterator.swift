@@ -24,8 +24,8 @@ extension Tree.N.Order.Level {
             self.tree = tree
             self.pending = Queue<Int>()
 
-            if tree._rootIndex >= 0 {
-                pending.enqueue(tree._rootIndex)
+            if let rootIndex = tree._rootIndex {
+                pending.enqueue(tree._rawIndex(rootIndex))
             }
         }
 

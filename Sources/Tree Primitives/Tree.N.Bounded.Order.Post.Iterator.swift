@@ -26,8 +26,8 @@ extension Tree.N.Bounded.Order.Post {
             self.tree = tree
             self.pending = Stack<Int>()
             self.lastVisited = -1
-            if tree._rootIndex >= 0 {
-                pending.push(tree._rootIndex)
+            if let rootIndex = tree._rootIndex {
+                pending.push(tree._rawIndex(rootIndex))
             }
         }
 

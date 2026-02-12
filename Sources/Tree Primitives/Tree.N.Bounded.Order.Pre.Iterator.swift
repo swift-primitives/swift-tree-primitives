@@ -24,8 +24,8 @@ extension Tree.N.Bounded.Order.Pre {
         init(tree: Tree.N<Element, n>.Bounded) {
             self.tree = tree
             self.pending = Stack<Int>()
-            if tree._rootIndex >= 0 {
-                self.pending.push(tree._rootIndex)
+            if let rootIndex = tree._rootIndex {
+                self.pending.push(tree._rawIndex(rootIndex))
             }
         }
 

@@ -52,5 +52,14 @@ extension Tree {
             self.index = index
             self.token = token
         }
+
+        /// Creates a position from a typed index and token.
+        ///
+        /// Boundary overload per [IMPL-010]: `Int(bitPattern:)` lives here,
+        /// not at call sites.
+        @usableFromInline
+        init<T: ~Copyable>(index: Index<T>, token: UInt32) {
+            self.init(index: Int(bitPattern: index), token: token)
+        }
     }
 }

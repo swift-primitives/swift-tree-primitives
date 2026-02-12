@@ -27,8 +27,8 @@ extension Tree.N.Order.Post {
             self.lastVisited = -1
 
             // Push root if exists
-            if tree._rootIndex >= 0 {
-                pending.push(tree._rootIndex)
+            if let rootIndex = tree._rootIndex {
+                pending.push(tree._rawIndex(rootIndex))
             }
         }
 
@@ -36,46 +36,30 @@ extension Tree.N.Order.Post {
             while !pending.isEmpty {
                 let current = pending.peek()!
                 let nodePtr = unsafe tree._arena.pointer(at: tree._slot(current))
-                let childIndices = unsafe nodePtr.pointee.childIndices
 
-                // Find rightmost existing child index
-                var rightmostChildIndex: Int = -1
+                var hasUnvisitedChild = false
                 for slot in stride(from: n - 1, through: 0, by: -1) {
-                    if childIndices[slot] >= 0 {
-                        rightmostChildIndex = childIndices[slot]
-                        break
+                    let childIndex = unsafe nodePtr.pointee.childIndices[slot]
+                    if childIndex >= 0 && childIndex != lastVisited {
+                        var laterChildVisited = false
+                        for laterSlot in (slot + 1)..<n {
+                            if unsafe nodePtr.pointee.childIndices[laterSlot] == lastVisited {
+                                laterChildVisited = true
+                                break
+                            }
+                        }
+                        if !laterChildVisited {
+                            pending.push(childIndex)
+                            hasUnvisitedChild = true
+                            break
+                        }
                     }
                 }
 
-                // Find leftmost existing child index
-                var leftmostChildIndex: Int = -1
-                for slot in 0..<n {
-                    if childIndices[slot] >= 0 {
-                        leftmostChildIndex = childIndices[slot]
-                        break
-                    }
-                }
-
-                // Process current if:
-                // 1. It's a leaf (no children), OR
-                // 2. We came from the rightmost child, OR
-                // 3. We came from leftmost child AND no other children exist
-                let isLeaf = rightmostChildIndex < 0
-                let cameFromRightmost = rightmostChildIndex >= 0 && rightmostChildIndex == lastVisited
-                let cameFromLeftmostNoOther = leftmostChildIndex >= 0 && leftmostChildIndex == lastVisited && leftmostChildIndex == rightmostChildIndex
-
-                if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
+                if !hasUnvisitedChild {
                     _ = pending.pop()
                     lastVisited = current
                     return unsafe nodePtr.pointee.element
-                } else {
-                    // Push children in reverse order (rightmost first so leftmost is processed first)
-                    for slot in stride(from: n - 1, through: 0, by: -1) {
-                        let childIndex = childIndices[slot]
-                        if childIndex >= 0 {
-                            pending.push(childIndex)
-                        }
-                    }
                 }
             }
 

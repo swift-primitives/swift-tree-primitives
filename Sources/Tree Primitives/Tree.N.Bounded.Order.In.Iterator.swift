@@ -27,7 +27,11 @@ extension Tree.N.Bounded.Order.In {
         init(tree: Tree.N<Element, n>.Bounded) {
             self.tree = tree
             self.pending = Stack<Int>()
-            self.current = tree._rootIndex
+            if let rootIndex = tree._rootIndex {
+                self.current = tree._rawIndex(rootIndex)
+            } else {
+                self.current = -1
+            }
         }
 
         public mutating func next() -> Element? {

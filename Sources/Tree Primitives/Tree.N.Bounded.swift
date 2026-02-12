@@ -42,17 +42,20 @@ extension Tree.N where Element: ~Copyable {
         @usableFromInline
         typealias Node = Tree.N<Element, n>.Node
 
+        /// Typed node count.
+        public typealias Count = Index<Node>.Count
+
         // MARK: - Storage
 
         @usableFromInline
         var _arena: Buffer<Node>.Arena.Bounded
 
-        /// Index of root node (-1 if empty).
+        /// Index of root node (nil if empty).
         @usableFromInline
-        var _rootIndex: Int
+        var _rootIndex: Index<Node>?
 
         /// The maximum number of nodes the tree can hold.
-        public let capacity: Int
+        public let capacity: Count
 
         // MARK: - Helpers
 
@@ -62,27 +65,27 @@ extension Tree.N where Element: ~Copyable {
             Index<Node>(Ordinal(UInt(index)))
         }
 
+        /// Converts a typed index to a raw Int for the bare-Int traversal domain.
+        @inlinable
+        func _rawIndex(_ index: Index<Node>) -> Int {
+            Int(bitPattern: index)
+        }
+
         /// Creates a tree with the specified capacity.
         ///
-        /// - Parameter capacity: Maximum number of nodes. Must be non-negative.
-        /// - Throws: ``Error/invalidCapacity`` if capacity is negative.
+        /// - Parameter capacity: Maximum number of nodes.
         @inlinable
-        public init(capacity: Int) throws(__TreeNBoundedError) {
-            guard capacity >= 0 else {
-                throw .invalidCapacity
-            }
+        public init(capacity: Count) {
             self.capacity = capacity
-            self._arena = Buffer<Node>.Arena.Bounded(
-                minimumCapacity: Index<Node>.Count(Cardinal(UInt(capacity)))
-            )
-            self._rootIndex = -1
+            self._arena = Buffer<Node>.Arena.Bounded(minimumCapacity: capacity)
+            self._rootIndex = nil
         }
 
         // MARK: - Properties
 
         /// The number of nodes in the tree.
         @inlinable
-        public var count: Int { Int(bitPattern: _arena.occupied) }
+        public var count: Count { _arena.occupied }
 
         /// Whether the tree is empty.
         @inlinable
@@ -95,9 +98,9 @@ extension Tree.N where Element: ~Copyable {
         /// The position of the root node, or `nil` if the tree is empty.
         @inlinable
         public var root: Tree.Position? {
-            guard _rootIndex >= 0 else { return nil }
-            let token = _arena.token(at: _slot(_rootIndex))
-            return Tree.Position(index: _rootIndex, token: token)
+            guard let rootIndex = _rootIndex else { return nil }
+            let token = _arena.token(at: rootIndex)
+            return Tree.Position(index: rootIndex, token: token)
         }
 
         // MARK: - Position Validation
@@ -140,9 +143,10 @@ extension Tree.N.Bounded where Element: ~Copyable {
         } catch {
             return nil
         }
-        let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex
-        guard parentIndex >= 0 else { return nil }
-        let token = _arena.token(at: _slot(parentIndex))
+        guard let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex else {
+            return nil
+        }
+        let token = _arena.token(at: parentIndex)
         return Tree.Position(index: parentIndex, token: token)
     }
 
@@ -199,7 +203,7 @@ extension Tree.N.Bounded where Element: ~Copyable {
     ) throws(__TreeNBoundedError) -> Tree.Position {
         switch position {
         case .root:
-            guard _rootIndex < 0 else {
+            guard _rootIndex == nil else {
                 throw .slotOccupied
             }
             guard !_arena.isFull else {
@@ -211,8 +215,8 @@ extension Tree.N.Bounded where Element: ~Copyable {
             } catch {
                 throw .overflow
             }
-            _rootIndex = Int(arenaPos.index)
-            return Tree.Position(index: Int(arenaPos.index), token: arenaPos.token)
+            _rootIndex = arenaPos.slot
+            return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
         case .child(of: let parent, slot: let slot):
             try _validate(parent)
@@ -228,16 +232,16 @@ extension Tree.N.Bounded where Element: ~Copyable {
             let arenaPos: Buffer<Node>.Arena.Position
             do {
                 arenaPos = try _arena.insert(
-                    Node(element: element, parentIndex: parent.index)
+                    Node(element: element, parentIndex: _slot(parent.index))
                 )
             } catch {
                 throw .overflow
             }
-            let index = Int(arenaPos.index)
+            let childIndex = _rawIndex(arenaPos.slot)
             let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
-            unsafe (parentPtr.pointee.childIndices[slot.index] = index)
+            unsafe (parentPtr.pointee.childIndices[slot.index] = childIndex)
             unsafe (parentPtr.pointee.childCount += 1)
-            return Tree.Position(index: index, token: arenaPos.token)
+            return Tree.Position(index: childIndex, token: arenaPos.token)
         }
     }
 
@@ -252,9 +256,8 @@ extension Tree.N.Bounded where Element: ~Copyable {
             throw .cannotRemoveNonLeaf
         }
 
-        let parentIndex = unsafe nodePtr.pointee.parentIndex
-        if parentIndex >= 0 {
-            let parentPtr = unsafe _arena.pointer(at: _slot(parentIndex))
+        if let parentIndex = unsafe nodePtr.pointee.parentIndex {
+            let parentPtr = unsafe _arena.pointer(at: parentIndex)
             for slot in 0..<n {
                 if unsafe parentPtr.pointee.childIndices[slot] == position.index {
                     unsafe (parentPtr.pointee.childIndices[slot] = -1)
@@ -263,7 +266,7 @@ extension Tree.N.Bounded where Element: ~Copyable {
                 }
             }
         } else {
-            _rootIndex = -1
+            _rootIndex = nil
         }
 
         let node = _arena.remove(at: _slot(position.index))
@@ -275,9 +278,8 @@ extension Tree.N.Bounded where Element: ~Copyable {
     public mutating func removeSubtree(at position: Tree.Position) throws(__TreeNBoundedError) {
         try _validate(position)
 
-        let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex
-        if parentIndex >= 0 {
-            let parentPtr = unsafe _arena.pointer(at: _slot(parentIndex))
+        if let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex {
+            let parentPtr = unsafe _arena.pointer(at: parentIndex)
             for slot in 0..<n {
                 if unsafe parentPtr.pointee.childIndices[slot] == position.index {
                     unsafe (parentPtr.pointee.childIndices[slot] = -1)
@@ -286,7 +288,7 @@ extension Tree.N.Bounded where Element: ~Copyable {
                 }
             }
         } else {
-            _rootIndex = -1
+            _rootIndex = nil
         }
 
         var pending = Stack<Int>()
@@ -349,17 +351,17 @@ extension Tree.N.Bounded where Element: ~Copyable {
     @inlinable
     public mutating func clear() {
         _arena.removeAll()
-        _rootIndex = -1
+        _rootIndex = nil
     }
 
     /// Computes the height of the tree.
     @inlinable
     public var height: Int {
-        guard _rootIndex >= 0 else { return -1 }
+        guard let rootIndex = _rootIndex else { return -1 }
 
         var maxHeight = 0
         var pending = Stack<(index: Int, depth: Int)>()
-        pending.push((_rootIndex, 0))
+        pending.push((_rawIndex(rootIndex), 0))
 
         while !pending.isEmpty {
             let (index, depth) = pending.pop()!
@@ -385,10 +387,9 @@ extension Tree.N.Bounded where Element: ~Copyable {
     /// Iterates over all elements in pre-order.
     @inlinable
     public func forEachPreOrder(_ body: (borrowing Element) -> Void) {
+        guard let rootIndex = _rootIndex else { return }
         var pending = Stack<Int>()
-        if _rootIndex >= 0 {
-            pending.push(_rootIndex)
-        }
+        pending.push(_rawIndex(rootIndex))
 
         while !pending.isEmpty {
             let index = pending.pop()!
@@ -407,12 +408,10 @@ extension Tree.N.Bounded where Element: ~Copyable {
     /// Iterates over all elements in post-order.
     @inlinable
     public func forEachPostOrder(_ body: (borrowing Element) -> Void) {
+        guard let rootIndex = _rootIndex else { return }
         var pending = Stack<Int>()
         var lastVisited: Int = -1
-
-        if _rootIndex >= 0 {
-            pending.push(_rootIndex)
-        }
+        pending.push(_rawIndex(rootIndex))
 
         while !pending.isEmpty {
             let current = pending.peek()!
@@ -457,10 +456,10 @@ extension Tree.N.Bounded where Element: ~Copyable {
     /// Iterates over all elements in level-order.
     @inlinable
     public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
-        guard _rootIndex >= 0 else { return }
+        guard let rootIndex = _rootIndex else { return }
 
         var pending = Queue<Int>()
-        pending.enqueue(_rootIndex)
+        pending.enqueue(_rawIndex(rootIndex))
 
         while !pending.isEmpty {
             let index = pending.dequeue()!
@@ -485,8 +484,9 @@ extension Tree.N.Bounded where Element: ~Copyable, n == 2 {
     /// Iterates over all elements in in-order.
     @inlinable
     public func forEachInOrder(_ body: (borrowing Element) -> Void) {
+        guard let rootIndex = _rootIndex else { return }
         var pending = Stack<Int>()
-        var current = _rootIndex
+        var current = _rawIndex(rootIndex)
 
         while current >= 0 || !pending.isEmpty {
             while current >= 0 {
@@ -523,7 +523,7 @@ extension Tree.N.Bounded where Element: Copyable {
 
         switch position {
         case .root:
-            guard _rootIndex < 0 else {
+            guard _rootIndex == nil else {
                 throw .slotOccupied
             }
             guard !_arena.isFull else {
@@ -535,8 +535,8 @@ extension Tree.N.Bounded where Element: Copyable {
             } catch {
                 throw .overflow
             }
-            _rootIndex = Int(arenaPos.index)
-            return Tree.Position(index: Int(arenaPos.index), token: arenaPos.token)
+            _rootIndex = arenaPos.slot
+            return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
         case .child(of: let parent, slot: let slot):
             try _validate(parent)
@@ -552,16 +552,16 @@ extension Tree.N.Bounded where Element: Copyable {
             let arenaPos: Buffer<Node>.Arena.Position
             do {
                 arenaPos = try _arena.insert(
-                    Node(element: element, parentIndex: parent.index)
+                    Node(element: element, parentIndex: _slot(parent.index))
                 )
             } catch {
                 throw .overflow
             }
-            let index = Int(arenaPos.index)
+            let childIndex = _rawIndex(arenaPos.slot)
             let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
-            unsafe (parentPtr.pointee.childIndices[slot.index] = index)
+            unsafe (parentPtr.pointee.childIndices[slot.index] = childIndex)
             unsafe (parentPtr.pointee.childCount += 1)
-            return Tree.Position(index: index, token: arenaPos.token)
+            return Tree.Position(index: childIndex, token: arenaPos.token)
         }
     }
 

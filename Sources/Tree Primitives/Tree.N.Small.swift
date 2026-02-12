@@ -55,14 +55,17 @@ extension Tree.N where Element: ~Copyable {
         @usableFromInline
         typealias Node = Tree.N<Element, n>.Node
 
+        /// Typed node count.
+        public typealias Count = Index<Node>.Count
+
         // MARK: - Storage
 
         @usableFromInline
         var _arena: Buffer<Node>.Arena.Small<inlineCapacity>
 
-        /// Index of root node (-1 if empty).
+        /// Index of root node (nil if empty).
         @usableFromInline
-        var _rootIndex: Int
+        var _rootIndex: Index<Node>?
 
         // MARK: - Helpers
 
@@ -72,11 +75,17 @@ extension Tree.N where Element: ~Copyable {
             Index<Node>(Ordinal(UInt(index)))
         }
 
+        /// Converts a typed index to a raw Int for the bare-Int traversal domain.
+        @inlinable
+        func _rawIndex(_ index: Index<Node>) -> Int {
+            Int(bitPattern: index)
+        }
+
         /// Creates an empty small n-ary tree.
         @inlinable
         public init() {
             self._arena = Buffer<Node>.Arena.Small<inlineCapacity>()
-            self._rootIndex = -1
+            self._rootIndex = nil
         }
 
         /// Whether the tree is currently using heap storage.
@@ -93,8 +102,8 @@ extension Tree.N.Small {
 
     /// The number of nodes in the tree.
     @inlinable
-    public var count: Int {
-        mutating get { Int(bitPattern: _arena.occupied) }
+    public var count: Count {
+        mutating get { _arena.occupied }
     }
 
     /// Whether the tree is empty.
@@ -106,8 +115,8 @@ extension Tree.N.Small {
     /// The position of the root node, or `nil` if the tree is empty.
     @inlinable
     public var root: Tree.Position? {
-        guard _rootIndex >= 0 else { return nil }
-        return Tree.Position(index: _rootIndex, token: _arena.token(at: _slot(_rootIndex)))
+        guard let rootIndex = _rootIndex else { return nil }
+        return Tree.Position(index: rootIndex, token: _arena.token(at: rootIndex))
     }
 
     // MARK: - Position Validation
@@ -147,18 +156,19 @@ extension Tree.N.Small {
         } catch {
             return nil
         }
-        let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex
-        guard parentIndex >= 0 else { return nil }
-        return Tree.Position(index: parentIndex, token: _arena.token(at: _slot(parentIndex)))
+        guard let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex else {
+            return nil
+        }
+        return Tree.Position(index: parentIndex, token: _arena.token(at: parentIndex))
     }
 
     /// Returns the number of children of the node at the given position.
     @inlinable
-    public mutating func childCount(of position: Tree.Position) -> Int {
+    public mutating func childCount(of position: Tree.Position) -> Int? {
         do {
             try _validate(position)
         } catch {
-            return 0
+            return nil
         }
         return unsafe _arena.pointer(at: _slot(position.index)).pointee.childCount
     }
@@ -205,12 +215,12 @@ extension Tree.N.Small {
     ) throws(__TreeNSmallError) -> Tree.Position {
         switch position {
         case .root:
-            guard _rootIndex < 0 else {
+            guard _rootIndex == nil else {
                 throw .slotOccupied
             }
             let arenaPos = _arena.insert(Node(element: element))
-            _rootIndex = Int(arenaPos.index)
-            return Tree.Position(index: Int(arenaPos.index), token: arenaPos.token)
+            _rootIndex = arenaPos.slot
+            return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
         case .child(of: let parent, slot: let slot):
             try _validate(parent)
@@ -221,14 +231,14 @@ extension Tree.N.Small {
                 }
             }
             let arenaPos = _arena.insert(
-                Node(element: element, parentIndex: parent.index)
+                Node(element: element, parentIndex: _slot(parent.index))
             )
-            let index = Int(arenaPos.index)
+            let childIndex = _rawIndex(arenaPos.slot)
             // Get fresh pointer after possible spill
             let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
-            unsafe (parentPtr.pointee.childIndices[slot.index] = index)
+            unsafe (parentPtr.pointee.childIndices[slot.index] = childIndex)
             unsafe (parentPtr.pointee.childCount += 1)
-            return Tree.Position(index: index, token: arenaPos.token)
+            return Tree.Position(index: childIndex, token: arenaPos.token)
         }
     }
 
@@ -245,9 +255,8 @@ extension Tree.N.Small {
             throw .cannotRemoveNonLeaf
         }
 
-        let parentIndex = unsafe nodePtr.pointee.parentIndex
-        if parentIndex >= 0 {
-            let parentPtr = unsafe _arena.pointer(at: _slot(parentIndex))
+        if let parentIndex = unsafe nodePtr.pointee.parentIndex {
+            let parentPtr = unsafe _arena.pointer(at: parentIndex)
             for slot in 0..<n {
                 if unsafe parentPtr.pointee.childIndices[slot] == position.index {
                     unsafe (parentPtr.pointee.childIndices[slot] = -1)
@@ -256,7 +265,7 @@ extension Tree.N.Small {
                 }
             }
         } else {
-            _rootIndex = -1
+            _rootIndex = nil
         }
 
         let node = _arena.remove(at: _slot(position.index))
@@ -270,9 +279,8 @@ extension Tree.N.Small {
     ) throws(__TreeNSmallError) {
         try _validate(position)
 
-        let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex
-        if parentIndex >= 0 {
-            let parentPtr = unsafe _arena.pointer(at: _slot(parentIndex))
+        if let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex {
+            let parentPtr = unsafe _arena.pointer(at: parentIndex)
             for slot in 0..<n {
                 if unsafe parentPtr.pointee.childIndices[slot] == position.index {
                     unsafe (parentPtr.pointee.childIndices[slot] = -1)
@@ -281,7 +289,7 @@ extension Tree.N.Small {
                 }
             }
         } else {
-            _rootIndex = -1
+            _rootIndex = nil
         }
 
         var pending = Stack<Int>()
@@ -347,7 +355,7 @@ extension Tree.N.Small {
     @inlinable
     public mutating func clear() {
         _arena.removeAll()
-        _rootIndex = -1
+        _rootIndex = nil
     }
 
     /// Iterates over all elements in pre-order.
@@ -355,10 +363,9 @@ extension Tree.N.Small {
     /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
     public mutating func forEachPreOrder(_ body: (borrowing Element) -> Void) {
+        guard let rootIndex = _rootIndex else { return }
         var pending = Stack<Int>()
-        if _rootIndex >= 0 {
-            pending.push(_rootIndex)
-        }
+        pending.push(_rawIndex(rootIndex))
 
         while !pending.isEmpty {
             let index = pending.pop()!
@@ -379,12 +386,10 @@ extension Tree.N.Small {
     /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
     public mutating func forEachPostOrder(_ body: (borrowing Element) -> Void) {
+        guard let rootIndex = _rootIndex else { return }
         var pending = Stack<Int>()
         var lastVisited: Int = -1
-
-        if _rootIndex >= 0 {
-            pending.push(_rootIndex)
-        }
+        pending.push(_rawIndex(rootIndex))
 
         while !pending.isEmpty {
             let current = pending.peek()!
@@ -429,10 +434,10 @@ extension Tree.N.Small {
     /// Iterates over all elements in level-order.
     @inlinable
     public mutating func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
-        guard _rootIndex >= 0 else { return }
+        guard let rootIndex = _rootIndex else { return }
 
         var pending = Queue<Int>()
-        pending.enqueue(_rootIndex)
+        pending.enqueue(_rawIndex(rootIndex))
 
         while !pending.isEmpty {
             let index = pending.dequeue()!
@@ -454,11 +459,11 @@ extension Tree.N.Small {
     /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
     public mutating func height() -> Int {
-        guard _rootIndex >= 0 else { return -1 }
+        guard let rootIndex = _rootIndex else { return -1 }
 
         var maxHeight = 0
         var pending = Stack<(index: Int, depth: Int)>()
-        pending.push((_rootIndex, 0))
+        pending.push((_rawIndex(rootIndex), 0))
 
         while !pending.isEmpty {
             let (index, depth) = pending.pop()!
@@ -487,8 +492,9 @@ extension Tree.N.Small where n == 2 {
     /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
     public mutating func forEachInOrder(_ body: (borrowing Element) -> Void) {
+        guard let rootIndex = _rootIndex else { return }
         var pending = Stack<Int>()
-        var current = _rootIndex
+        var current = _rawIndex(rootIndex)
 
         while current >= 0 || !pending.isEmpty {
             while current >= 0 {
