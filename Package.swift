@@ -22,6 +22,7 @@ let package = Package(
         .package(path: "../swift-input-primitives"),
         .package(path: "../swift-bit-primitives"),
         .package(path: "../swift-collection-primitives"),
+        .package(path: "../swift-buffer-primitives"),
     ],
     targets: [
         .target(
@@ -34,6 +35,7 @@ let package = Package(
                 .product(name: "Input Primitives", package: "swift-input-primitives"),
                 .product(name: "Bit Primitives", package: "swift-bit-primitives"),
                 .product(name: "Collection Primitives", package: "swift-collection-primitives"),
+                .product(name: "Buffer Arena Primitives", package: "swift-buffer-primitives"),
             ]
         ),
         .testTarget(name: "Tree Primitives Tests", dependencies: ["Tree Primitives"])

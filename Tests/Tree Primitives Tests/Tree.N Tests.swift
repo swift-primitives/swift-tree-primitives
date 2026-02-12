@@ -509,7 +509,7 @@ struct TreeNNonCopyableTests {
         }
     }
 
-    @Test("NonCopyable deinit order - post-order")
+    @Test("NonCopyable deinit order - slot order")
     func nonCopyableDeinitOrder() throws {
         let tracker = DeinitTracker()
 
@@ -522,8 +522,9 @@ struct TreeNNonCopyableTests {
             _ = try tree.insert(Token(5, tracker: tracker), at: .right(of: left))
         }
 
-        // Post-order: 4, 5, 2, 3, 1
-        #expect(tracker.order == [4, 5, 2, 3, 1])
+        // Arena deinit frees in slot order (allocation order), not tree order.
+        // Tree.N is conditionally Copyable, so it cannot have a custom deinit.
+        #expect(tracker.order == [1, 2, 3, 4, 5])
     }
 
     @Test("NonCopyable forEach")

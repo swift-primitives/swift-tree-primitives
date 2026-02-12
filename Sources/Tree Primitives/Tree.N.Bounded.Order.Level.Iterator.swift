@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 internal import Queue_Primitives
+internal import Buffer_Arena_Primitives
 
 // MARK: - Level-Order Iterator
 
@@ -23,8 +24,8 @@ extension Tree.N.Bounded.Order.Level {
         init(tree: Tree.N<Element, n>.Bounded) {
             self.tree = tree
             self.pending = Queue<Int>()
-            if tree._storage.header.rootIndex >= 0 {
-                pending.enqueue(tree._storage.header.rootIndex)
+            if tree._rootIndex >= 0 {
+                pending.enqueue(tree._rootIndex)
             }
         }
 
@@ -32,11 +33,11 @@ extension Tree.N.Bounded.Order.Level {
             guard !pending.isEmpty else { return nil }
 
             let index = pending.dequeue()!
-            let ptr = unsafe tree._cachedPtr
-            let element = unsafe ptr[index].element
+            let nodePtr = unsafe tree._arena.pointer(at: tree._slot(index))
+            let element = unsafe nodePtr.pointee.element
 
             for slot in 0..<n {
-                let childIndex = unsafe ptr[index].childIndices[slot]
+                let childIndex = unsafe nodePtr.pointee.childIndices[slot]
                 if childIndex >= 0 {
                     pending.enqueue(childIndex)
                 }

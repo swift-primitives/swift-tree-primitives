@@ -24,8 +24,8 @@ extension Tree.N.Order.Level {
             self.tree = tree
             self.pending = Queue<Int>()
 
-            if tree._storage.header.rootIndex >= 0 {
-                pending.enqueue(tree._storage.header.rootIndex)
+            if tree._rootIndex >= 0 {
+                pending.enqueue(tree._rootIndex)
             }
         }
 
@@ -34,9 +34,9 @@ extension Tree.N.Order.Level {
 
             let index = pending.dequeue()!
 
-            let ptr = unsafe tree._cachedPtr
-            let element = unsafe ptr[index].element
-            let childIndices = unsafe ptr[index].childIndices
+            let nodePtr = unsafe tree._arena.pointer(at: tree._slot(index))
+            let element = unsafe nodePtr.pointee.element
+            let childIndices = unsafe nodePtr.pointee.childIndices
 
             for slot in 0..<n {
                 let childIndex = childIndices[slot]

@@ -33,5 +33,5 @@ extension Tree {
     /// ```swift
     /// let nodeIdx: Tree.Index<Int> = 0  // Root node index
     /// ```
-    public typealias Index<Element> = Index_Primitives.Index<Element>
+    public typealias Index<Element: ~Copyable> = Index_Primitives.Index<Element>
 }

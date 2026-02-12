@@ -11,6 +11,7 @@
 
 public import Queue_Primitives
 public import Stack_Primitives
+public import Buffer_Arena_Primitives
 
 /// A dynamically-growing n-ary tree with compile-time bounded arity.
 ///
@@ -68,9 +69,9 @@ public import Stack_Primitives
 ///
 /// ## Arena-Based Storage
 ///
-/// Uses arena-based storage where all nodes are stored contiguously. Nodes
-/// reference each other by index rather than pointer, improving cache locality.
-/// Removed nodes are recycled via a free-list for efficient reuse.
+/// Uses `Buffer<Node>.Arena` for storage — all nodes are stored contiguously
+/// with generation-token validation, LIFO free-list recycling, and automatic
+/// growth. Nodes reference each other by index rather than pointer.
 ///
 /// - Note: This type is declared inside `Tree<Element>`'s primary struct
 ///   declaration (not in an extension) per [TREE-008] to ensure proper
@@ -90,29 +91,6 @@ extension Tree {
 
         /// Specifies where to insert a new node.
         public typealias InsertPosition = __TreeNInsertPosition<n>
-
-        // MARK: - Header
-
-        /// Header for arena-based n-ary tree storage.
-        @usableFromInline
-        struct Header {
-            /// Index of root node (-1 if empty).
-            @usableFromInline var rootIndex: Int
-            /// Number of active nodes.
-            @usableFromInline var count: Int
-            /// Index of first free slot (-1 if none).
-            @usableFromInline var freeHead: Int
-            /// Total node capacity.
-            @usableFromInline var capacity: Int
-
-            @usableFromInline
-            init() {
-                self.rootIndex = -1
-                self.count = 0
-                self.freeHead = -1
-                self.capacity = 0
-            }
-        }
 
         // MARK: - Node
 
@@ -139,334 +117,28 @@ extension Tree {
 
         // MARK: - Storage
 
-        /// Internal storage class for arena-based n-ary tree.
-        ///
-        /// Uses `ManagedBuffer` for efficient single-allocation storage.
-        /// Declared as a nested class so that `Element` inherits the `~Copyable`
-        /// suppression from the outer type.
-        ///
-        /// Also owns auxiliary buffers for token validation and free-list management,
-        /// ensuring they participate in the same CoW boundary as the node storage.
-        @safe
         @usableFromInline
-        final class Storage: ManagedBuffer<Header, Node> {
+        var _arena: Buffer<Node>.Arena
 
-            /// Token buffer for position validation. Each slot's token alternates:
-            /// even = free, odd = occupied. Incremented on allocate and free.
-            @usableFromInline
-            var _tokens: UnsafeMutablePointer<UInt32>?
+        /// Index of root node (-1 if empty).
+        @usableFromInline
+        var _rootIndex: Int
 
-            /// Free-list next pointers stored separately (not in freed node memory).
-            /// _nextFree[i] contains the next free slot index when slot i is free.
-            @usableFromInline
-            var _nextFree: UnsafeMutablePointer<Int>?
+        // MARK: - Helpers
 
-            @usableFromInline
-            static func create() -> Storage {
-                let storage = Storage.create(minimumCapacity: 0) { _ in Header() }
-                let result = unsafe unsafeDowncast(storage, to: Storage.self)
-                unsafe (result._tokens = nil)
-                unsafe (result._nextFree = nil)
-                return result
-            }
-
-            @usableFromInline
-            static func create(minimumCapacity: Int) -> Storage {
-                var header = Header()
-                header.capacity = minimumCapacity
-                let storage = Storage.create(minimumCapacity: minimumCapacity) { _ in header }
-                let result = unsafe unsafeDowncast(storage, to: Storage.self)
-
-                if minimumCapacity > 0 {
-                    // Allocate and initialize auxiliary buffers
-                    let tokensPtr = UnsafeMutablePointer<UInt32>.allocate(capacity: minimumCapacity)
-                    unsafe tokensPtr.initialize(repeating: 0, count: minimumCapacity)  // All start as free (even)
-                    unsafe (result._tokens = tokensPtr)
-
-                    let nextFreePtr = UnsafeMutablePointer<Int>.allocate(capacity: minimumCapacity)
-                    unsafe nextFreePtr.initialize(repeating: -1, count: minimumCapacity)
-                    unsafe (result._nextFree = nextFreePtr)
-                } else {
-                    unsafe (result._tokens = nil)
-                    unsafe (result._nextFree = nil)
-                }
-
-                return result
-            }
-
-            deinit {
-                // Deallocate auxiliary buffers
-                if let tokens = unsafe _tokens {
-                    unsafe tokens.deallocate()
-                }
-                if let nextFree = unsafe _nextFree {
-                    unsafe nextFree.deallocate()
-                }
-
-                // Deinit nodes if any
-                let count = header.count
-                guard count > 0 else { return }
-
-                // Iterative post-order traversal to deinit children before parents
-                // Uses explicit stack to avoid stack overflow on deep trees
-                _ = unsafe withUnsafeMutablePointerToElements { nodes in
-                    var pending = Stack<Int>()
-                    var lastVisited: Int = -1
-
-                    if header.rootIndex >= 0 {
-                        pending.push(header.rootIndex)
-                    }
-
-                    while !pending.isEmpty {
-                        let current = pending.peek()!
-                        let childIndices = unsafe nodes[current].childIndices
-
-                        // Find rightmost existing child index
-                        var rightmostChildIndex: Int = -1
-                        for slot in stride(from: n - 1, through: 0, by: -1) {
-                            if childIndices[slot] >= 0 {
-                                rightmostChildIndex = childIndices[slot]
-                                break
-                            }
-                        }
-
-                        // Find leftmost existing child index
-                        var leftmostChildIndex: Int = -1
-                        for slot in 0..<n {
-                            if childIndices[slot] >= 0 {
-                                leftmostChildIndex = childIndices[slot]
-                                break
-                            }
-                        }
-
-                        // Process current if:
-                        // 1. It's a leaf (no children), OR
-                        // 2. We came from the rightmost child, OR
-                        // 3. We came from leftmost child AND no other children exist
-                        let isLeaf = rightmostChildIndex < 0
-                        let cameFromRightmost = rightmostChildIndex >= 0 && rightmostChildIndex == lastVisited
-                        let cameFromLeftmostNoOther = leftmostChildIndex >= 0 && leftmostChildIndex == lastVisited && leftmostChildIndex == rightmostChildIndex
-
-                        if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
-                            _ = pending.pop()
-                            unsafe (nodes + current).deinitialize(count: 1)
-                            lastVisited = current
-                        } else {
-                            // Push children in reverse order (rightmost first so leftmost is processed first)
-                            for slot in stride(from: n - 1, through: 0, by: -1) {
-                                let childIndex = childIndices[slot]
-                                if childIndex >= 0 {
-                                    pending.push(childIndex)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            @usableFromInline
-            var _nodesPointer: UnsafeMutablePointer<Node> {
-                unsafe withUnsafeMutablePointerToElements { unsafe $0 }
-            }
-
-            /// Initializes a node at the given index.
-            @usableFromInline
-            func _initializeNode(
-                at index: Int,
-                element: consuming Element,
-                parentIndex: Int = -1
-            ) {
-                let ptr = unsafe withUnsafeMutablePointerToElements { unsafe $0 + index }
-                unsafe ptr.initialize(to: Node(
-                    element: element,
-                    parentIndex: parentIndex
-                ))
-            }
-
-            /// Deinitializes the node at the given index.
-            @usableFromInline
-            func _deinitializeNode(at index: Int) {
-                let ptr = unsafe _nodesPointer + index
-                unsafe ptr.deinitialize(count: 1)
-            }
-
-            /// Moves element from the node at the given index.
-            @usableFromInline
-            func _moveElement(at index: Int) -> Element {
-                unsafe withUnsafeMutablePointerToElements { nodes in
-                    unsafe (nodes + index).move().element
-                }
-            }
-
-            /// Moves all elements to new storage.
-            ///
-            /// After this call, `self` is in an empty state so that
-            /// `deinit` won't double-destroy the moved elements.
-            /// Auxiliary buffers (tokens, nextFree) are copied 1:1 for the old capacity range.
-            @usableFromInline
-            func _moveAllElements(to newStorage: Storage) {
-                let count = header.count
-                let oldCapacity = header.capacity
-
-                // Copy auxiliary buffers (tokens and nextFree) for old capacity range
-                if oldCapacity > 0, let srcTokens = unsafe _tokens, let dstTokens = unsafe newStorage._tokens {
-                    unsafe dstTokens.update(from: srcTokens, count: oldCapacity)
-                }
-                if oldCapacity > 0, let srcNextFree = unsafe _nextFree, let dstNextFree = unsafe newStorage._nextFree {
-                    unsafe dstNextFree.update(from: srcNextFree, count: oldCapacity)
-                }
-
-                guard count > 0 else {
-                    // Copy header state even for empty trees (to preserve freeHead)
-                    newStorage.header.rootIndex = header.rootIndex
-                    newStorage.header.count = header.count
-                    newStorage.header.freeHead = header.freeHead
-                    // Reset old header
-                    header.rootIndex = -1
-                    header.count = 0
-                    header.freeHead = -1
-                    return
-                }
-
-                // Copy nodes maintaining their indices (for correct parent/child references)
-                // Uses iterative traversal to avoid stack overflow on deep trees
-                _ = unsafe withUnsafeMutablePointerToElements { src in
-                    unsafe newStorage.withUnsafeMutablePointerToElements { dst in
-                        var pending = Stack<Int>()
-                        if header.rootIndex >= 0 {
-                            pending.push(header.rootIndex)
-                        }
-
-                        while !pending.isEmpty {
-                            let index = pending.pop()!
-
-                            let childIndices = unsafe src[index].childIndices
-                            let childCount = unsafe src[index].childCount
-                            let parentIndex = unsafe src[index].parentIndex
-
-                            var newNode = Node(
-                                element: unsafe (src + index).move().element,
-                                parentIndex: parentIndex
-                            )
-                            newNode.childIndices = childIndices
-                            newNode.childCount = childCount
-
-                            unsafe (dst + index).initialize(to: newNode)
-
-                            // Push children in reverse order so first child is processed first
-                            for slot in stride(from: n - 1, through: 0, by: -1) {
-                                let childIndex = childIndices[slot]
-                                if childIndex >= 0 {
-                                    pending.push(childIndex)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Copy header state
-                newStorage.header.rootIndex = header.rootIndex
-                newStorage.header.count = header.count
-                newStorage.header.freeHead = header.freeHead
-
-                // Reset old header so deinit doesn't traverse moved nodes
-                header.rootIndex = -1
-                header.count = 0
-                header.freeHead = -1
-            }
-
-            /// Copies all elements to new storage (for CoW).
-            ///
-            /// Unlike `_moveAllElements`, this preserves the source storage.
-            /// Auxiliary buffers (tokens, nextFree) are copied 1:1.
-            /// Only available for Copyable elements.
-            @usableFromInline
-            func _copyAllElements(to newStorage: Storage) where Element: Copyable {
-                let count = header.count
-                let oldCapacity = header.capacity
-
-                // Copy auxiliary buffers (tokens and nextFree) 1:1
-                if oldCapacity > 0, let srcTokens = unsafe _tokens, let dstTokens = unsafe newStorage._tokens {
-                    unsafe dstTokens.update(from: srcTokens, count: oldCapacity)
-                }
-                if oldCapacity > 0, let srcNextFree = unsafe _nextFree, let dstNextFree = unsafe newStorage._nextFree {
-                    unsafe dstNextFree.update(from: srcNextFree, count: oldCapacity)
-                }
-
-                // Copy header state (even for empty trees to preserve freeHead)
-                newStorage.header.rootIndex = header.rootIndex
-                newStorage.header.count = header.count
-                newStorage.header.freeHead = header.freeHead
-
-                guard count > 0 else { return }
-
-                // Copy nodes maintaining their indices (for correct parent/child references)
-                // Uses iterative traversal to avoid stack overflow on deep trees
-                _ = unsafe withUnsafeMutablePointerToElements { src in
-                    unsafe newStorage.withUnsafeMutablePointerToElements { dst in
-                        var pending = Stack<Int>()
-                        if header.rootIndex >= 0 {
-                            pending.push(header.rootIndex)
-                        }
-
-                        while !pending.isEmpty {
-                            let index = pending.pop()!
-
-                            let element = unsafe src[index].element
-                            let childIndices = unsafe src[index].childIndices
-                            let childCount = unsafe src[index].childCount
-                            let parentIndex = unsafe src[index].parentIndex
-
-                            var newNode = Node(
-                                element: element,
-                                parentIndex: parentIndex
-                            )
-                            newNode.childIndices = childIndices
-                            newNode.childCount = childCount
-
-                            unsafe (dst + index).initialize(to: newNode)
-
-                            // Push children in reverse order so first child is processed first
-                            for slot in stride(from: n - 1, through: 0, by: -1) {
-                                let childIndex = childIndices[slot]
-                                if childIndex >= 0 {
-                                    pending.push(childIndex)
-                                }
-                            }
-                        }
-                    }
-                }
-                // NOTE: Do NOT reset old header - source storage remains valid
-            }
+        /// Converts a raw Int index to a typed slot index.
+        @inlinable
+        func _slot(_ index: Int) -> Index<Node> {
+            Index<Node>(Ordinal(UInt(index)))
         }
-
-        @usableFromInline
-        var _storage: Storage
-
-        /// Cached pointer to node storage. Stored in struct to enable property-based access.
-        /// CRITICAL: Must be updated whenever _storage is replaced (reallocation, CoW copy).
-        @usableFromInline
-        var _cachedPtr: UnsafeMutablePointer<Node>
-
-        /// Cached pointer to token buffer (owned by Storage).
-        /// CRITICAL: Must be updated whenever _storage is replaced.
-        @usableFromInline
-        var _tokens: UnsafeMutablePointer<UInt32>?
-
-        /// Cached pointer to free-list next buffer (owned by Storage).
-        /// CRITICAL: Must be updated whenever _storage is replaced.
-        @usableFromInline
-        var _nextFree: UnsafeMutablePointer<Int>?
 
         // MARK: - Initialization
 
         /// Creates an empty n-ary tree.
         @inlinable
         public init() {
-            self._storage = Storage.create()
-            unsafe (self._cachedPtr = self._storage._nodesPointer)
-            unsafe (self._tokens = self._storage._tokens)
-            unsafe (self._nextFree = self._storage._nextFree)
+            self._arena = Buffer<Node>.Arena(minimumCapacity: .one)
+            self._rootIndex = -1
         }
 
         /// Creates an empty n-ary tree with reserved capacity.
@@ -478,37 +150,21 @@ extension Tree {
             guard minimumCapacity >= 0 else {
                 throw .invalidCapacity
             }
-            self._storage = Storage.create(minimumCapacity: minimumCapacity)
-            unsafe (self._cachedPtr = self._storage._nodesPointer)
-            unsafe (self._tokens = self._storage._tokens)
-            unsafe (self._nextFree = self._storage._nextFree)
-        }
-
-        // MARK: - Storage Transition Helper
-
-        /// Single point of truth for all storage transitions.
-        /// Updates _storage and all cached pointers atomically.
-        @usableFromInline
-        mutating func _replaceStorage(_ newStorage: Storage) {
-            _storage = newStorage
-            unsafe (_cachedPtr = newStorage._nodesPointer)
-            unsafe (_tokens = newStorage._tokens)
-            unsafe (_nextFree = newStorage._nextFree)
+            self._arena = Buffer<Node>.Arena(
+                minimumCapacity: Index<Node>.Count(Cardinal(UInt(Swift.max(minimumCapacity, 1))))
+            )
+            self._rootIndex = -1
         }
 
         // MARK: - Properties
 
         /// The number of nodes in the tree.
         @inlinable
-        public var count: Int { _storage.header.count }
+        public var count: Int { Int(bitPattern: _arena.occupied) }
 
         /// Whether the tree is empty.
         @inlinable
-        public var isEmpty: Bool { _storage.header.count == 0 }
-
-        /// The current capacity of the tree.
-        @inlinable
-        public var capacity: Int { _storage.header.capacity }
+        public var isEmpty: Bool { _arena.isEmpty }
 
         /// The maximum arity (number of children per node).
         @inlinable
@@ -517,9 +173,9 @@ extension Tree {
         /// The position of the root node, or `nil` if the tree is empty.
         @inlinable
         public var root: Tree.Position? {
-            let rootIndex = _storage.header.rootIndex
-            guard rootIndex >= 0, let tokens = unsafe _tokens else { return nil }
-            return Tree.Position(index: rootIndex, token: unsafe tokens[rootIndex])
+            guard _rootIndex >= 0 else { return nil }
+            let token = _arena.token(at: _slot(_rootIndex))
+            return Tree.Position(index: _rootIndex, token: token)
         }
 
         // MARK: - Position Validation
@@ -532,72 +188,11 @@ extension Tree {
         /// - Tokens use odd/even scheme: odd = occupied, even = free
         @usableFromInline
         func _validate(_ position: Tree.Position) throws(__TreeNError) {
-            guard position.index >= 0,
-                  position.index < capacity,
-                  let tokens = unsafe _tokens,
-                  unsafe tokens[position.index] == position.token,
-                  position.token & 1 == 1 else {  // explicit "occupied" check
-                throw .invalidPosition
-            }
-        }
-
-        // MARK: - Capacity Management
-
-        /// Ensures the tree has capacity for at least the specified number of nodes.
-        @usableFromInline
-        mutating func ensureCapacity(_ minimumCapacity: Int) {
-            guard minimumCapacity > _storage.header.capacity else { return }
-
-            let newCapacity = Swift.max(minimumCapacity, Swift.max(_storage.header.capacity * 2, 4))
-            let newStorage = Storage.create(minimumCapacity: newCapacity)
-            _storage._moveAllElements(to: newStorage)
-            _replaceStorage(newStorage)
-        }
-
-        /// Allocates a slot for a new node, returning a token-stamped position.
-        ///
-        /// The returned token is guaranteed to be odd (occupied state).
-        @usableFromInline
-        mutating func _allocateSlot() -> (index: Int, token: UInt32) {
-            let index: Int
-
-            // Try to reuse from free list
-            if _storage.header.freeHead >= 0 {
-                index = _storage.header.freeHead
-                if let nextFree = unsafe _nextFree {
-                    _storage.header.freeHead = unsafe nextFree[index]
-                }
-            } else {
-                // Allocate at end
-                ensureCapacity(_storage.header.count + 1)
-                index = _storage.header.count
-            }
-
-            // Increment token: even (free) → odd (occupied)
-            if let tokens = unsafe _tokens {
-                unsafe (tokens[index] &+= 1)
-                return (index, unsafe tokens[index])
-            } else {
-                // Zero capacity - should not happen after ensureCapacity
-                return (index, 1)
-            }
-        }
-
-        /// Returns a slot to the free list.
-        ///
-        /// Increments the token: odd (occupied) → even (free).
-        @usableFromInline
-        mutating func _freeSlot(_ index: Int) {
-            // Increment token: odd (occupied) → even (free)
-            if let tokens = unsafe _tokens {
-                unsafe (tokens[index] &+= 1)
-            }
-
-            // Add to free list
-            if let nextFree = unsafe _nextFree {
-                unsafe (nextFree[index] = _storage.header.freeHead)
-            }
-            _storage.header.freeHead = index
+            guard position.index >= 0 else { throw .invalidPosition }
+            let arenaPos = Buffer<Node>.Arena.Position(
+                index: UInt32(position.index), token: position.token
+            )
+            guard _arena.isValid(arenaPos) else { throw .invalidPosition }
         }
     }
 }
@@ -620,9 +215,11 @@ extension Tree.N where Element: ~Copyable {
         } catch {
             return nil
         }
-        let childIndex = unsafe _cachedPtr[position.index].childIndices[slot.index]
-        guard childIndex >= 0, let tokens = unsafe _tokens else { return nil }
-        return Tree.Position(index: childIndex, token: unsafe tokens[childIndex])
+        let nodePtr = unsafe _arena.pointer(at: _slot(position.index))
+        let childIndex = unsafe nodePtr.pointee.childIndices[slot.index]
+        guard childIndex >= 0 else { return nil }
+        let token = _arena.token(at: _slot(childIndex))
+        return Tree.Position(index: childIndex, token: token)
     }
 
     /// Returns the position of the parent of the node at the given position.
@@ -637,9 +234,10 @@ extension Tree.N where Element: ~Copyable {
         } catch {
             return nil
         }
-        let parentIndex = unsafe _cachedPtr[position.index].parentIndex
-        guard parentIndex >= 0, let tokens = unsafe _tokens else { return nil }
-        return Tree.Position(index: parentIndex, token: unsafe tokens[parentIndex])
+        let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex
+        guard parentIndex >= 0 else { return nil }
+        let token = _arena.token(at: _slot(parentIndex))
+        return Tree.Position(index: parentIndex, token: token)
     }
 
     /// Returns whether the node at the given position is a leaf (has no children).
@@ -654,7 +252,7 @@ extension Tree.N where Element: ~Copyable {
         } catch {
             return false
         }
-        return unsafe _cachedPtr[position.index].childCount == 0
+        return unsafe _arena.pointer(at: _slot(position.index)).pointee.childCount == 0
     }
 
     /// Returns the number of children of the node at the given position.
@@ -668,7 +266,7 @@ extension Tree.N where Element: ~Copyable {
         } catch {
             return nil
         }
-        return unsafe _cachedPtr[position.index].childCount
+        return unsafe _arena.pointer(at: _slot(position.index)).pointee.childCount
     }
 
     /// Returns the position of the leftmost (first non-empty) child.
@@ -682,10 +280,12 @@ extension Tree.N where Element: ~Copyable {
         } catch {
             return nil
         }
+        let nodePtr = unsafe _arena.pointer(at: _slot(position.index))
         for slot in 0..<n {
-            let childIndex = unsafe _cachedPtr[position.index].childIndices[slot]
-            if childIndex >= 0, let tokens = unsafe _tokens {
-                return Tree.Position(index: childIndex, token: unsafe tokens[childIndex])
+            let childIndex = unsafe nodePtr.pointee.childIndices[slot]
+            if childIndex >= 0 {
+                let token = _arena.token(at: _slot(childIndex))
+                return Tree.Position(index: childIndex, token: token)
             }
         }
         return nil
@@ -702,10 +302,12 @@ extension Tree.N where Element: ~Copyable {
         } catch {
             return nil
         }
+        let nodePtr = unsafe _arena.pointer(at: _slot(position.index))
         for slot in stride(from: n - 1, through: 0, by: -1) {
-            let childIndex = unsafe _cachedPtr[position.index].childIndices[slot]
-            if childIndex >= 0, let tokens = unsafe _tokens {
-                return Tree.Position(index: childIndex, token: unsafe tokens[childIndex])
+            let childIndex = unsafe nodePtr.pointee.childIndices[slot]
+            if childIndex >= 0 {
+                let token = _arena.token(at: _slot(childIndex))
+                return Tree.Position(index: childIndex, token: token)
             }
         }
         return nil
@@ -757,27 +359,33 @@ extension Tree.N where Element: ~Copyable {
     ) throws(__TreeNError) -> Tree.Position {
         switch position {
         case .root:
-            guard _storage.header.rootIndex < 0 else {
+            guard _rootIndex < 0 else {
                 throw .slotOccupied
             }
-            let (index, token) = _allocateSlot()
-            _storage._initializeNode(at: index, element: element)
-            _storage.header.rootIndex = index
-            _storage.header.count += 1
-            return Tree.Position(index: index, token: token)
+            let arenaPos = _arena.insert(Node(element: element))
+            _rootIndex = Int(arenaPos.index)
+            return Tree.Position(index: Int(arenaPos.index), token: arenaPos.token)
 
         case .child(of: let parent, slot: let slot):
             // Validate parent position (token check)
             try _validate(parent)
-            guard unsafe _cachedPtr[parent.index].childIndices[slot.index] < 0 else {
-                throw .slotOccupied
+            // Check child slot is empty (pointer valid before insert)
+            do {
+                let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
+                guard unsafe parentPtr.pointee.childIndices[slot.index] < 0 else {
+                    throw .slotOccupied
+                }
             }
-            let (index, token) = _allocateSlot()
-            _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
-            unsafe (_cachedPtr[parent.index].childIndices[slot.index] = index)
-            unsafe (_cachedPtr[parent.index].childCount += 1)
-            _storage.header.count += 1
-            return Tree.Position(index: index, token: token)
+            // Insert (may grow, invalidating previous pointers)
+            let arenaPos = _arena.insert(
+                Node(element: element, parentIndex: parent.index)
+            )
+            let index = Int(arenaPos.index)
+            // Get fresh pointer after possible growth
+            let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
+            unsafe (parentPtr.pointee.childIndices[slot.index] = index)
+            unsafe (parentPtr.pointee.childCount += 1)
+            return Tree.Position(index: index, token: arenaPos.token)
         }
     }
 
@@ -793,32 +401,31 @@ extension Tree.N where Element: ~Copyable {
         // Validate position (token check)
         try _validate(position)
 
-        guard unsafe _cachedPtr[position.index].childCount == 0 else {
+        let nodePtr = unsafe _arena.pointer(at: _slot(position.index))
+        guard unsafe nodePtr.pointee.childCount == 0 else {
             throw .cannotRemoveNonLeaf
         }
 
         // Update parent's child pointer
-        let parentIndex = unsafe _cachedPtr[position.index].parentIndex
+        let parentIndex = unsafe nodePtr.pointee.parentIndex
         if parentIndex >= 0 {
+            let parentPtr = unsafe _arena.pointer(at: _slot(parentIndex))
             // Find which slot this child occupies
             for slot in 0..<n {
-                if unsafe _cachedPtr[parentIndex].childIndices[slot] == position.index {
-                    unsafe (_cachedPtr[parentIndex].childIndices[slot] = -1)
-                    unsafe (_cachedPtr[parentIndex].childCount -= 1)
+                if unsafe parentPtr.pointee.childIndices[slot] == position.index {
+                    unsafe (parentPtr.pointee.childIndices[slot] = -1)
+                    unsafe (parentPtr.pointee.childCount -= 1)
                     break
                 }
             }
         } else {
             // This is the root
-            _storage.header.rootIndex = -1
+            _rootIndex = -1
         }
 
-        // Move element out and free slot
-        let element = _storage._moveElement(at: position.index)
-        _freeSlot(position.index)
-        _storage.header.count -= 1
-
-        return element
+        // Move element out and release slot
+        let node = _arena.remove(at: _slot(position.index))
+        return node.element
     }
 
     /// Removes the subtree rooted at the specified position.
@@ -834,19 +441,20 @@ extension Tree.N where Element: ~Copyable {
         try _validate(position)
 
         // Update parent's child pointer
-        let parentIndex = unsafe _cachedPtr[position.index].parentIndex
+        let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex
         if parentIndex >= 0 {
+            let parentPtr = unsafe _arena.pointer(at: _slot(parentIndex))
             // Find which slot this child occupies
             for slot in 0..<n {
-                if unsafe _cachedPtr[parentIndex].childIndices[slot] == position.index {
-                    unsafe (_cachedPtr[parentIndex].childIndices[slot] = -1)
-                    unsafe (_cachedPtr[parentIndex].childCount -= 1)
+                if unsafe parentPtr.pointee.childIndices[slot] == position.index {
+                    unsafe (parentPtr.pointee.childIndices[slot] = -1)
+                    unsafe (parentPtr.pointee.childCount -= 1)
                     break
                 }
             }
         } else {
             // This is the root
-            _storage.header.rootIndex = -1
+            _rootIndex = -1
         }
 
         // Iterative post-order removal using explicit stack
@@ -857,7 +465,8 @@ extension Tree.N where Element: ~Copyable {
 
         while !pending.isEmpty {
             let current = pending.peek()!
-            let childIndices = unsafe _cachedPtr[current].childIndices
+            let nodePtr = unsafe _arena.pointer(at: _slot(current))
+            let childIndices = unsafe nodePtr.pointee.childIndices
 
             // Find rightmost existing child index
             var rightmostChildIndex: Int = -1
@@ -887,9 +496,7 @@ extension Tree.N where Element: ~Copyable {
 
             if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
                 _ = pending.pop()
-                _storage._deinitializeNode(at: current)
-                _freeSlot(current)
-                _storage.header.count -= 1
+                _arena.free(at: _slot(current))
                 lastVisited = current
             } else {
                 // Push children in reverse order (rightmost first so leftmost is processed first)
@@ -916,56 +523,14 @@ extension Tree.N where Element: ~Copyable {
         } catch {
             return nil
         }
-        return unsafe body(_cachedPtr[position.index].element)
+        return unsafe body(_arena.pointer(at: _slot(position.index)).pointee.element)
     }
 
     /// Clears all nodes from the tree.
     @inlinable
     public mutating func clear() {
-        guard _storage.header.count > 0 else { return }
-
-        // Iterative post-order traversal using explicit stack
-        var pending = Stack<Int>()
-        var lastVisited: Int = -1
-
-        if _storage.header.rootIndex >= 0 {
-            pending.push(_storage.header.rootIndex)
-        }
-
-        while !pending.isEmpty {
-            let current = pending.peek()!
-
-            // Find rightmost unvisited child
-            var hasUnvisitedChild = false
-            for slot in stride(from: n - 1, through: 0, by: -1) {
-                let childIndex = unsafe _cachedPtr[current].childIndices[slot]
-                if childIndex >= 0 && childIndex != lastVisited {
-                    // Check if we've already processed any later children
-                    var laterChildVisited = false
-                    for laterSlot in (slot + 1)..<n {
-                        if unsafe _cachedPtr[current].childIndices[laterSlot] == lastVisited {
-                            laterChildVisited = true
-                            break
-                        }
-                    }
-                    if !laterChildVisited {
-                        pending.push(childIndex)
-                        hasUnvisitedChild = true
-                        break
-                    }
-                }
-            }
-
-            if !hasUnvisitedChild {
-                _ = pending.pop()
-                _storage._deinitializeNode(at: current)
-                lastVisited = current
-            }
-        }
-
-        _storage.header.rootIndex = -1
-        _storage.header.count = 0
-        _storage.header.freeHead = -1
+        _arena.removeAll()
+        _rootIndex = -1
     }
 
     /// Computes the height of the tree.
@@ -976,19 +541,19 @@ extension Tree.N where Element: ~Copyable {
     /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
     public var height: Int {
-        let rootIndex = _storage.header.rootIndex
-        guard rootIndex >= 0 else { return -1 }
+        guard _rootIndex >= 0 else { return -1 }
 
         var maxHeight = 0
         var pending = Stack<(index: Int, depth: Int)>()
-        pending.push((rootIndex, 0))
+        pending.push((_rootIndex, 0))
 
         while !pending.isEmpty {
             let (index, depth) = pending.pop()!
             maxHeight = Swift.max(maxHeight, depth)
 
+            let nodePtr = unsafe _arena.pointer(at: _slot(index))
             for slot in 0..<n {
-                let childIndex = unsafe _cachedPtr[index].childIndices[slot]
+                let childIndex = unsafe nodePtr.pointee.childIndices[slot]
                 if childIndex >= 0 {
                     pending.push((childIndex, depth + 1))
                 }
@@ -1010,17 +575,18 @@ extension Tree.N where Element: ~Copyable {
     @inlinable
     public func forEachPreOrder(_ body: (borrowing Element) -> Void) {
         var pending = Stack<Int>()
-        if _storage.header.rootIndex >= 0 {
-            pending.push(_storage.header.rootIndex)
+        if _rootIndex >= 0 {
+            pending.push(_rootIndex)
         }
 
         while !pending.isEmpty {
             let index = pending.pop()!
-            unsafe body(_cachedPtr[index].element)
+            let nodePtr = unsafe _arena.pointer(at: _slot(index))
+            unsafe body(nodePtr.pointee.element)
 
             // Push children in reverse order so first child is processed first
             for slot in stride(from: n - 1, through: 0, by: -1) {
-                let childIndex = unsafe _cachedPtr[index].childIndices[slot]
+                let childIndex = unsafe nodePtr.pointee.childIndices[slot]
                 if childIndex >= 0 {
                     pending.push(childIndex)
                 }
@@ -1037,13 +603,14 @@ extension Tree.N where Element: ~Copyable {
         var pending = Stack<Int>()
         var lastVisited: Int = -1
 
-        if _storage.header.rootIndex >= 0 {
-            pending.push(_storage.header.rootIndex)
+        if _rootIndex >= 0 {
+            pending.push(_rootIndex)
         }
 
         while !pending.isEmpty {
             let current = pending.peek()!
-            let childIndices = unsafe _cachedPtr[current].childIndices
+            let nodePtr = unsafe _arena.pointer(at: _slot(current))
+            let childIndices = unsafe nodePtr.pointee.childIndices
 
             // Find rightmost existing child index
             var rightmostChildIndex: Int = -1
@@ -1073,7 +640,7 @@ extension Tree.N where Element: ~Copyable {
 
             if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
                 _ = pending.pop()
-                unsafe body(_cachedPtr[current].element)
+                unsafe body(nodePtr.pointee.element)
                 lastVisited = current
             } else {
                 // Push children in reverse order (rightmost first so leftmost is processed first)
@@ -1092,18 +659,19 @@ extension Tree.N where Element: ~Copyable {
     /// - Parameter body: A closure called with each element in level-order.
     @inlinable
     public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
-        guard _storage.header.rootIndex >= 0 else { return }
+        guard _rootIndex >= 0 else { return }
 
         var pending = Queue<Int>()
-        pending.enqueue(_storage.header.rootIndex)
+        pending.enqueue(_rootIndex)
 
         while !pending.isEmpty {
             let index = pending.dequeue()!
+            let nodePtr = unsafe _arena.pointer(at: _slot(index))
 
-            unsafe body(_cachedPtr[index].element)
+            unsafe body(nodePtr.pointee.element)
 
             for slot in 0..<n {
-                let childIndex = unsafe _cachedPtr[index].childIndices[slot]
+                let childIndex = unsafe nodePtr.pointee.childIndices[slot]
                 if childIndex >= 0 {
                     pending.enqueue(childIndex)
                 }
@@ -1126,21 +694,22 @@ extension Tree.N where Element: ~Copyable, n == 2 {
     @inlinable
     public func forEachInOrder(_ body: (borrowing Element) -> Void) {
         var pending = Stack<Int>()
-        var current = _storage.header.rootIndex
+        var current = _rootIndex
 
         while current >= 0 || !pending.isEmpty {
             // Go to leftmost node
             while current >= 0 {
                 pending.push(current)
-                current = unsafe _cachedPtr[current].childIndices[0]  // left child
+                current = unsafe _arena.pointer(at: _slot(current)).pointee.childIndices[0]  // left child
             }
 
             // Process node
             current = pending.pop()!
-            unsafe body(_cachedPtr[current].element)
+            let nodePtr = unsafe _arena.pointer(at: _slot(current))
+            unsafe body(nodePtr.pointee.element)
 
             // Move to right subtree
-            current = unsafe _cachedPtr[current].childIndices[1]  // right child
+            current = unsafe nodePtr.pointee.childIndices[1]  // right child
         }
     }
 }
@@ -1149,15 +718,10 @@ extension Tree.N where Element: ~Copyable, n == 2 {
 
 extension Tree.N where Element: Copyable {
 
-    /// Makes the storage unique, copying if necessary for copy-on-write.
-    /// Also copies the auxiliary buffers (tokens, nextFree) via Storage.
+    /// Ensures unique storage, copying if necessary for copy-on-write.
     @usableFromInline
     mutating func makeUnique() {
-        if !isKnownUniquelyReferenced(&_storage) {
-            let newStorage = Storage.create(minimumCapacity: _storage.header.capacity)
-            _storage._copyAllElements(to: newStorage)
-            _replaceStorage(newStorage)
-        }
+        _arena.ensureUnique()
     }
 
     /// Inserts an element at the specified position (CoW-aware).
@@ -1171,27 +735,33 @@ extension Tree.N where Element: Copyable {
 
         switch position {
         case .root:
-            guard _storage.header.rootIndex < 0 else {
+            guard _rootIndex < 0 else {
                 throw .slotOccupied
             }
-            let (index, token) = _allocateSlot()
-            _storage._initializeNode(at: index, element: element)
-            _storage.header.rootIndex = index
-            _storage.header.count += 1
-            return Tree.Position(index: index, token: token)
+            let arenaPos = _arena.insert(Node(element: element))
+            _rootIndex = Int(arenaPos.index)
+            return Tree.Position(index: Int(arenaPos.index), token: arenaPos.token)
 
         case .child(of: let parent, slot: let slot):
             // Validate parent position (token check)
             try _validate(parent)
-            guard unsafe _cachedPtr[parent.index].childIndices[slot.index] < 0 else {
-                throw .slotOccupied
+            // Check child slot is empty (pointer valid before insert)
+            do {
+                let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
+                guard unsafe parentPtr.pointee.childIndices[slot.index] < 0 else {
+                    throw .slotOccupied
+                }
             }
-            let (index, token) = _allocateSlot()
-            _storage._initializeNode(at: index, element: element, parentIndex: parent.index)
-            unsafe (_cachedPtr[parent.index].childIndices[slot.index] = index)
-            unsafe (_cachedPtr[parent.index].childCount += 1)
-            _storage.header.count += 1
-            return Tree.Position(index: index, token: token)
+            // Insert (may grow, invalidating previous pointers)
+            let arenaPos = _arena.insert(
+                Node(element: element, parentIndex: parent.index)
+            )
+            let index = Int(arenaPos.index)
+            // Get fresh pointer after possible growth
+            let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
+            unsafe (parentPtr.pointee.childIndices[slot.index] = index)
+            unsafe (parentPtr.pointee.childCount += 1)
+            return Tree.Position(index: index, token: arenaPos.token)
         }
     }
 
@@ -1206,12 +776,13 @@ extension Tree.N where Element: Copyable {
         } catch {
             return nil
         }
-        return unsafe _cachedPtr[position.index].element
+        return unsafe _arena.pointer(at: _slot(position.index)).pointee.element
     }
 }
 
 // MARK: - Conditional Copyable
 
+extension Tree.N.Node: Copyable where Element: Copyable {}
 extension Tree.N: Copyable where Element: Copyable {}
 
 // MARK: - Sendable

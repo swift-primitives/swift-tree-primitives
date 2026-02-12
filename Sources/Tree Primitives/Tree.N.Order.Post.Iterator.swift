@@ -27,17 +27,16 @@ extension Tree.N.Order.Post {
             self.lastVisited = -1
 
             // Push root if exists
-            if tree._storage.header.rootIndex >= 0 {
-                pending.push(tree._storage.header.rootIndex)
+            if tree._rootIndex >= 0 {
+                pending.push(tree._rootIndex)
             }
         }
 
         public mutating func next() -> Element? {
-            let ptr = unsafe tree._cachedPtr
-
             while !pending.isEmpty {
                 let current = pending.peek()!
-                let childIndices = unsafe ptr[current].childIndices
+                let nodePtr = unsafe tree._arena.pointer(at: tree._slot(current))
+                let childIndices = unsafe nodePtr.pointee.childIndices
 
                 // Find rightmost existing child index
                 var rightmostChildIndex: Int = -1
@@ -68,7 +67,7 @@ extension Tree.N.Order.Post {
                 if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
                     _ = pending.pop()
                     lastVisited = current
-                    return unsafe ptr[current].element
+                    return unsafe nodePtr.pointee.element
                 } else {
                     // Push children in reverse order (rightmost first so leftmost is processed first)
                     for slot in stride(from: n - 1, through: 0, by: -1) {

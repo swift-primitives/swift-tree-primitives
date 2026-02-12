@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 internal import Stack_Primitives
+internal import Buffer_Arena_Primitives
 
 // MARK: - Pre-Order Iterator
 
@@ -23,8 +24,8 @@ extension Tree.N.Bounded.Order.Pre {
         init(tree: Tree.N<Element, n>.Bounded) {
             self.tree = tree
             self.pending = Stack<Int>()
-            if tree._storage.header.rootIndex >= 0 {
-                self.pending.push(tree._storage.header.rootIndex)
+            if tree._rootIndex >= 0 {
+                self.pending.push(tree._rootIndex)
             }
         }
 
@@ -32,11 +33,11 @@ extension Tree.N.Bounded.Order.Pre {
             guard !pending.isEmpty else { return nil }
 
             let index = pending.pop()!
-            let ptr = unsafe tree._cachedPtr
-            let element = unsafe ptr[index].element
+            let nodePtr = unsafe tree._arena.pointer(at: tree._slot(index))
+            let element = unsafe nodePtr.pointee.element
 
             for slot in stride(from: n - 1, through: 0, by: -1) {
-                let childIndex = unsafe ptr[index].childIndices[slot]
+                let childIndex = unsafe nodePtr.pointee.childIndices[slot]
                 if childIndex >= 0 {
                     pending.push(childIndex)
                 }

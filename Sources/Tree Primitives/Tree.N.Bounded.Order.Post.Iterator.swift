@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 internal import Stack_Primitives
+internal import Buffer_Arena_Primitives
 
 // MARK: - Post-Order Iterator
 
@@ -25,24 +26,23 @@ extension Tree.N.Bounded.Order.Post {
             self.tree = tree
             self.pending = Stack<Int>()
             self.lastVisited = -1
-            if tree._storage.header.rootIndex >= 0 {
-                pending.push(tree._storage.header.rootIndex)
+            if tree._rootIndex >= 0 {
+                pending.push(tree._rootIndex)
             }
         }
 
         public mutating func next() -> Element? {
-            let ptr = unsafe tree._cachedPtr
-
             while !pending.isEmpty {
                 let current = pending.peek()!
+                let nodePtr = unsafe tree._arena.pointer(at: tree._slot(current))
 
                 var hasUnvisitedChild = false
                 for slot in stride(from: n - 1, through: 0, by: -1) {
-                    let childIndex = unsafe ptr[current].childIndices[slot]
+                    let childIndex = unsafe nodePtr.pointee.childIndices[slot]
                     if childIndex >= 0 && childIndex != lastVisited {
                         var laterChildVisited = false
                         for laterSlot in (slot + 1)..<n {
-                            if unsafe ptr[current].childIndices[laterSlot] == lastVisited {
+                            if unsafe nodePtr.pointee.childIndices[laterSlot] == lastVisited {
                                 laterChildVisited = true
                                 break
                             }
@@ -58,7 +58,7 @@ extension Tree.N.Bounded.Order.Post {
                 if !hasUnvisitedChild {
                     _ = pending.pop()
                     lastVisited = current
-                    return unsafe ptr[current].element
+                    return unsafe nodePtr.pointee.element
                 }
             }
 
