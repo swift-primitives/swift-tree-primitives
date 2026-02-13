@@ -17,7 +17,7 @@ internal import Buffer_Arena_Primitives
 extension Tree.N.Bounded.Order.Pre {
 
     /// An iterator for pre-order traversal.
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>.Bounded
         var pending: Stack<Int>
 

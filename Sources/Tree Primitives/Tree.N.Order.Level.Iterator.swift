@@ -16,7 +16,7 @@ internal import Queue_Primitives
 extension Tree.N.Order.Level {
 
     /// An iterator for level-order traversal.
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>
         var pending: Queue<Int>
 

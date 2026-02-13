@@ -16,7 +16,7 @@ internal import Stack_Primitives
 extension Tree.N.Order.Post {
 
     /// An iterator for post-order traversal.
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>
         var pending: Stack<Int>
         var lastVisited: Int

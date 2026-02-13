@@ -18,7 +18,7 @@ extension Tree.N.Order.In {
     /// An iterator for in-order traversal.
     ///
     /// Only available for binary trees (n == 2).
-    public struct Iterator: IteratorProtocol {
+    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>
         var pending: Stack<Int>
         var current: Int
