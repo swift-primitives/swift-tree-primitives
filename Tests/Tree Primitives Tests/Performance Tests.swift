@@ -326,8 +326,8 @@ struct TreeBinaryPerformanceTests {
         // Position should be compact (index + token)
         #expect(positionSize <= 16)  // Int + UInt32 + padding
 
-        // Node should contain element + 3 indices
-        #expect(nodeSize <= 40)  // Int element + 3 Int indices + padding
+        // Node should contain element + InlineArray<n, Index<Node>?> + childCount + parentIndex
+        #expect(nodeSize <= 64)  // Int element + typed indices + count + padding
 
         // Print for manual inspection
         print("Position size: \(positionSize) bytes")

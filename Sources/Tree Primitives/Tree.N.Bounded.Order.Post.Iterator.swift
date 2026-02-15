@@ -35,31 +35,38 @@ extension Tree.N.Bounded.Order.Post {
             while !pending.isEmpty {
                 let current = pending.peek()!
                 let nodePtr = unsafe tree._arena.pointer(at: current)
+                let childIndices = unsafe nodePtr.pointee.childIndices
 
-                var hasUnvisitedChild = false
+                var rightmostChild: Index<Tree.N<Element, n>.Node>? = nil
                 for slot in stride(from: n - 1, through: 0, by: -1) {
-                    if let child = unsafe nodePtr.pointee.childIndices[slot] {
-                        if child != lastVisited {
-                            var laterChildVisited = false
-                            for laterSlot in (slot + 1)..<n {
-                                if unsafe nodePtr.pointee.childIndices[laterSlot] == lastVisited {
-                                    laterChildVisited = true
-                                    break
-                                }
-                            }
-                            if !laterChildVisited {
-                                pending.push(child)
-                                hasUnvisitedChild = true
-                                break
-                            }
-                        }
+                    if let child = childIndices[slot] {
+                        rightmostChild = child
+                        break
                     }
                 }
 
-                if !hasUnvisitedChild {
+                var leftmostChild: Index<Tree.N<Element, n>.Node>? = nil
+                for slot in 0..<n {
+                    if let child = childIndices[slot] {
+                        leftmostChild = child
+                        break
+                    }
+                }
+
+                let isLeaf = rightmostChild == nil
+                let cameFromRightmost = rightmostChild != nil && rightmostChild == lastVisited
+                let cameFromLeftmostNoOther = leftmostChild != nil && leftmostChild == lastVisited && leftmostChild == rightmostChild
+
+                if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
                     _ = pending.pop()
                     lastVisited = current
                     return unsafe nodePtr.pointee.element
+                } else {
+                    for slot in stride(from: n - 1, through: 0, by: -1) {
+                        if let child = childIndices[slot] {
+                            pending.push(child)
+                        }
+                    }
                 }
             }
 
