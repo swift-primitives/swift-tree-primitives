@@ -128,11 +128,11 @@ extension Tree {
 
         // MARK: - Helpers
 
-        /// Converts a raw Int index to a typed slot index.
-        /// Boundary overload per [IMPL-010]: Position stores bare Int.
+        /// Converts a Position's typed index to a typed arena slot index.
+        /// Boundary overload per [IMPL-010]: re-tags Position → Node domain.
         @inlinable
-        func _slot(_ index: Int) -> Index<Node> {
-            Index<Node>(Ordinal(UInt(index)))
+        func _slot(_ index: Index<Tree.Position>) -> Index<Node> {
+            index.retag(Node.self)
         }
 
         // MARK: - Initialization
@@ -185,9 +185,8 @@ extension Tree {
         /// - Tokens use odd/even scheme: odd = occupied, even = free
         @usableFromInline
         func _validate(_ position: Tree.Position) throws(__TreeNError) {
-            guard position.index >= 0 else { throw .invalidPosition }
             let arenaPos = Buffer<Node>.Arena.Position(
-                index: UInt32(position.index), token: position.token
+                index: UInt32(Int(bitPattern: position.index)), token: position.token
             )
             guard _arena.isValid(arenaPos) else { throw .invalidPosition }
         }

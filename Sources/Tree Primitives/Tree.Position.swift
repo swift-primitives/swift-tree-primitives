@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Index_Primitives
+
 extension Tree {
 
     /// A position (cursor) to a node in a tree.
@@ -34,32 +36,43 @@ extension Tree {
     /// This allows positions to be used uniformly regardless of tree arity.
     public struct Position: Sendable, Equatable, Hashable {
 
-        /// The index of the node in the arena storage.
+        /// The typed index of the node in the arena storage.
         @usableFromInline
-        let index: Int
+        let index: Index<Tree.Position>
 
         /// Token for validity checking (odd = occupied, even = free).
         @usableFromInline
         let token: UInt32
 
-        /// Creates a position with the given index and token.
+        /// Creates a position with the given typed index and token.
         ///
         /// - Parameters:
-        ///   - index: The arena index of the node.
+        ///   - index: The typed arena index of the node.
         ///   - token: The validation token (must be odd for valid positions).
         @usableFromInline
-        init(index: Int, token: UInt32) {
+        init(index: Index<Tree.Position>, token: UInt32) {
             self.index = index
             self.token = token
         }
 
-        /// Creates a position from a typed index and token.
+        /// Creates a position from any typed index, re-tagging to Tree.Position.
         ///
-        /// Boundary overload per [IMPL-010]: `Int(bitPattern:)` lives here,
+        /// Boundary overload per [IMPL-010]: `.retag()` lives here,
         /// not at call sites.
         @usableFromInline
         init<T: ~Copyable>(index: Index<T>, token: UInt32) {
-            self.init(index: Int(bitPattern: index), token: token)
+            self.init(index: index.retag(Tree.Position.self), token: token)
+        }
+
+        /// Creates a position from a bare Int index.
+        ///
+        /// Boundary overload for Unbounded variant's Phase 5 bare-Int domain.
+        @usableFromInline
+        init(index: Int, token: UInt32) {
+            self.init(
+                index: Index<Tree.Position>(Ordinal(UInt(index))),
+                token: token
+            )
         }
     }
 }

@@ -58,10 +58,10 @@ extension Tree.N where Element: ~Copyable {
 
         // MARK: - Helpers
 
-        /// Converts a raw Int index to a typed slot index.
+        /// Converts a Position's typed index to a typed arena slot index.
         @inlinable
-        func _slot(_ index: Int) -> Index<Node> {
-            Index<Node>(Ordinal(UInt(index)))
+        func _slot(_ index: Index<Tree.Position>) -> Index<Node> {
+            index.retag(Node.self)
         }
 
         /// Creates an empty inline n-ary tree.
@@ -96,8 +96,7 @@ extension Tree.N where Element: ~Copyable {
 
         @usableFromInline
         func _validate(_ position: Tree.Position) throws(__TreeNInlineError) {
-            guard position.index >= 0,
-                  position.index < capacity else { throw .invalidPosition }
+            guard Int(bitPattern: position.index) < capacity else { throw .invalidPosition }
             let token = _arena.token(at: _slot(position.index))
             guard token == position.token,
                   position.token & 1 == 1 else {

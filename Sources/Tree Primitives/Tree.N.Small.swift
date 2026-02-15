@@ -68,10 +68,10 @@ extension Tree.N where Element: ~Copyable {
 
         // MARK: - Helpers
 
-        /// Converts a raw Int index to a typed slot index.
+        /// Converts a Position's typed index to a typed arena slot index.
         @inlinable
-        func _slot(_ index: Int) -> Index<Node> {
-            Index<Node>(Ordinal(UInt(index)))
+        func _slot(_ index: Index<Tree.Position>) -> Index<Node> {
+            index.retag(Node.self)
         }
 
         /// Creates an empty small n-ary tree.
@@ -117,7 +117,6 @@ extension Tree.N.Small {
     /// Validates that a position refers to a currently-occupied slot.
     @usableFromInline
     func _validate(_ position: Tree.Position) throws(__TreeNSmallError) {
-        guard position.index >= 0 else { throw .invalidPosition }
         let token = _arena.token(at: _slot(position.index))
         guard token == position.token,
               position.token & 1 == 1 else {

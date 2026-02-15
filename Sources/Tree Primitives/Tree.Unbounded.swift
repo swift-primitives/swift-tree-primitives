@@ -124,9 +124,16 @@ extension Tree {
         // MARK: - Helpers
 
         /// Converts a raw Int index to a typed slot index.
+        /// Used internally where childIndices (Array<Int>) provides bare Ints.
         @inlinable
         func _slot(_ index: Int) -> Index<Node> {
             Index<Node>(Ordinal(UInt(index)))
+        }
+
+        /// Converts a Position's typed index to a typed arena slot index.
+        @inlinable
+        func _slot(_ index: Index<Tree.Position>) -> Index<Node> {
+            index.retag(Node.self)
         }
 
         /// Converts a typed index to a raw Int for the bare-Int traversal domain.
@@ -181,9 +188,8 @@ extension Tree {
         /// - Tokens use odd/even scheme: odd = occupied, even = free
         @usableFromInline
         func _validate(_ position: Tree.Position) throws(__TreeUnboundedError) {
-            guard position.index >= 0 else { throw .invalidPosition }
             let arenaPos = Buffer<Node>.Arena.Position(
-                index: UInt32(position.index), token: position.token
+                index: UInt32(Int(bitPattern: position.index)), token: position.token
             )
             guard _arena.isValid(arenaPos) else { throw .invalidPosition }
         }
@@ -368,7 +374,7 @@ extension Tree.Unbounded where Element: ~Copyable {
         // Update parent's child array
         if let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex {
             let parentPtr = unsafe _arena.pointer(at: parentIndex)
-            if let childSlot = unsafe parentPtr.pointee.childIndices.firstIndex(of: position.index) {
+            if let childSlot = unsafe parentPtr.pointee.childIndices.firstIndex(of: Int(bitPattern: position.index)) {
                 unsafe (parentPtr.pointee.childIndices.remove(at: childSlot))
             }
         } else {
@@ -396,7 +402,7 @@ extension Tree.Unbounded where Element: ~Copyable {
         // Update parent's child array
         if let parentIndex = unsafe _arena.pointer(at: _slot(position.index)).pointee.parentIndex {
             let parentPtr = unsafe _arena.pointer(at: parentIndex)
-            if let childSlot = unsafe parentPtr.pointee.childIndices.firstIndex(of: position.index) {
+            if let childSlot = unsafe parentPtr.pointee.childIndices.firstIndex(of: Int(bitPattern: position.index)) {
                 unsafe (parentPtr.pointee.childIndices.remove(at: childSlot))
             }
         } else {
@@ -408,7 +414,7 @@ extension Tree.Unbounded where Element: ~Copyable {
         var pending = Stack<Int>()
         var lastVisited: Int = -1
 
-        pending.push(position.index)
+        pending.push(Int(bitPattern: position.index))
 
         while !pending.isEmpty {
             let current = pending.peek()!
