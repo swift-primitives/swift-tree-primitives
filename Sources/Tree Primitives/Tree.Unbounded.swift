@@ -469,12 +469,12 @@ extension Tree.Unbounded where Element: ~Copyable {
     /// Computes the height of the tree.
     ///
     /// The height is the length of the longest path from the root to a leaf.
-    /// An empty tree has height -1, a single-node tree has height 0.
+    /// An empty tree returns `nil`, a single-node tree has height `.zero`.
     ///
     /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
-    public var height: Int {
-        guard let rootIndex = _rootIndex else { return -1 }
+    public var height: Count? {
+        guard let rootIndex = _rootIndex else { return nil }
 
         var maxHeight = 0
         var pending = Stack<(index: Int, depth: Int)>()
@@ -490,7 +490,7 @@ extension Tree.Unbounded where Element: ~Copyable {
             }
         }
 
-        return maxHeight
+        return Count(Cardinal(UInt(maxHeight)))
     }
 }
 

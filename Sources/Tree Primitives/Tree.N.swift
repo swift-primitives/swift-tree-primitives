@@ -527,16 +527,16 @@ extension Tree.N where Element: ~Copyable {
     /// Computes the height of the tree.
     ///
     /// The height is the length of the longest path from the root to a leaf.
-    /// An empty tree has height -1, a single-node tree has height 0.
+    /// An empty tree returns `nil`, a single-node tree has height `.zero`.
     ///
     /// Uses iterative traversal to avoid stack overflow on deep trees.
     @inlinable
-    public var height: Int {
-        guard let rootIndex = _rootIndex else { return -1 }
+    public var height: Count? {
+        guard let rootIndex = _rootIndex else { return nil }
 
-        var maxHeight = 0
-        var pending = Stack<(index: Index<Node>, depth: Int)>()
-        pending.push((rootIndex, 0))
+        var maxHeight: Count = .zero
+        var pending = Stack<(index: Index<Node>, depth: Count)>()
+        pending.push((rootIndex, .zero))
 
         while !pending.isEmpty {
             let (index, depth) = pending.pop()!
@@ -545,7 +545,7 @@ extension Tree.N where Element: ~Copyable {
             let nodePtr = unsafe _arena.pointer(at: index)
             for slot in 0..<n {
                 if let child = unsafe nodePtr.pointee.childIndices[slot] {
-                    pending.push((child, depth + 1))
+                    pending.push((child, depth + .one))
                 }
             }
         }

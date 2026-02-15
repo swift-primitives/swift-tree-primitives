@@ -51,7 +51,7 @@ struct TreeNBinaryTests {
         #expect(tree.isEmpty)
         #expect(tree.count == 0)
         #expect(tree.root == nil)
-        #expect(tree.height == -1)
+        #expect(tree.height == nil)
     }
 
     @Test("Insert root")
@@ -232,7 +232,7 @@ struct TreeNBinaryTests {
     @Test("Height calculation")
     func heightCalculation() throws {
         var tree = Tree.N<Int, 2>()
-        #expect(tree.height == -1)
+        #expect(tree.height == nil)
 
         let root = try tree.insert(1, at: .root)
         #expect(tree.height == 0)
