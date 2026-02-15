@@ -18,36 +18,32 @@ extension Tree.N.Order.In {
     /// An iterator for in-order traversal.
     ///
     /// Only available for binary trees (n == 2).
-    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
+    public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>
-        var pending: Stack<Int>
-        var current: Int
+        var pending: Stack<Index<Tree.N<Element, n>.Node>>
+        var current: Index<Tree.N<Element, n>.Node>?
 
         init(tree: Tree.N<Element, n>) {
             self.tree = tree
-            self.pending = Stack<Int>()
-            if let rootIndex = tree._rootIndex {
-                self.current = tree._rawIndex(rootIndex)
-            } else {
-                self.current = -1
-            }
+            self.pending = Stack<Index<Tree.N<Element, n>.Node>>()
+            self.current = tree._rootIndex
         }
 
         public mutating func next() -> Element? {
-            while current >= 0 || !pending.isEmpty {
+            while current != nil || !pending.isEmpty {
                 // Go to leftmost node
-                while current >= 0 {
-                    pending.push(current)
-                    current = unsafe tree._arena.pointer(at: tree._slot(current)).pointee.childIndices[0]  // left child
+                while let c = current {
+                    pending.push(c)
+                    current = unsafe tree._arena.pointer(at: c).pointee.childIndices[0]
                 }
 
                 // Process node
-                current = pending.pop()!
-                let nodePtr = unsafe tree._arena.pointer(at: tree._slot(current))
+                let c = pending.pop()!
+                let nodePtr = unsafe tree._arena.pointer(at: c)
                 let element = unsafe nodePtr.pointee.element
 
                 // Move to right subtree
-                current = unsafe nodePtr.pointee.childIndices[1]  // right child
+                current = unsafe nodePtr.pointee.childIndices[1]
 
                 return element
             }

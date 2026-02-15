@@ -12,7 +12,8 @@ let package = Package(
         .visionOS(.v26)
     ],
     products: [
-        .library(name: "Tree Primitives", targets: ["Tree Primitives"])
+        .library(name: "Tree Primitives", targets: ["Tree Primitives"]),
+        .library(name: "Tree Primitives Test Support", targets: ["Tree Primitives Test Support"]),
     ],
     dependencies: [
         .package(path: "../swift-stack-primitives"),
@@ -38,7 +39,21 @@ let package = Package(
                 .product(name: "Buffer Arena Primitives", package: "swift-buffer-primitives"),
             ]
         ),
-        .testTarget(name: "Tree Primitives Tests", dependencies: ["Tree Primitives"])
+        .target(
+            name: "Tree Primitives Test Support",
+            dependencies: [
+                "Tree Primitives",
+                .product(name: "Index Primitives Test Support", package: "swift-index-primitives"),
+            ],
+            path: "Tests/Support"
+        ),
+        .testTarget(
+            name: "Tree Primitives Tests",
+            dependencies: [
+                "Tree Primitives",
+                "Tree Primitives Test Support",
+            ]
+        )
     ],
     swiftLanguageModes: [.v6]
 )

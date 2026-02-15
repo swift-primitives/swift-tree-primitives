@@ -17,40 +17,41 @@ internal import Buffer_Arena_Primitives
 extension Tree.N.Bounded.Order.Post {
 
     /// An iterator for post-order traversal.
-    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
+    public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>.Bounded
-        var pending: Stack<Int>
-        var lastVisited: Int
+        var pending: Stack<Index<Tree.N<Element, n>.Node>>
+        var lastVisited: Index<Tree.N<Element, n>.Node>?
 
         init(tree: Tree.N<Element, n>.Bounded) {
             self.tree = tree
-            self.pending = Stack<Int>()
-            self.lastVisited = -1
+            self.pending = Stack<Index<Tree.N<Element, n>.Node>>()
+            self.lastVisited = nil
             if let rootIndex = tree._rootIndex {
-                pending.push(tree._rawIndex(rootIndex))
+                pending.push(rootIndex)
             }
         }
 
         public mutating func next() -> Element? {
             while !pending.isEmpty {
                 let current = pending.peek()!
-                let nodePtr = unsafe tree._arena.pointer(at: tree._slot(current))
+                let nodePtr = unsafe tree._arena.pointer(at: current)
 
                 var hasUnvisitedChild = false
                 for slot in stride(from: n - 1, through: 0, by: -1) {
-                    let childIndex = unsafe nodePtr.pointee.childIndices[slot]
-                    if childIndex >= 0 && childIndex != lastVisited {
-                        var laterChildVisited = false
-                        for laterSlot in (slot + 1)..<n {
-                            if unsafe nodePtr.pointee.childIndices[laterSlot] == lastVisited {
-                                laterChildVisited = true
+                    if let child = unsafe nodePtr.pointee.childIndices[slot] {
+                        if child != lastVisited {
+                            var laterChildVisited = false
+                            for laterSlot in (slot + 1)..<n {
+                                if unsafe nodePtr.pointee.childIndices[laterSlot] == lastVisited {
+                                    laterChildVisited = true
+                                    break
+                                }
+                            }
+                            if !laterChildVisited {
+                                pending.push(child)
+                                hasUnvisitedChild = true
                                 break
                             }
-                        }
-                        if !laterChildVisited {
-                            pending.push(childIndex)
-                            hasUnvisitedChild = true
-                            break
                         }
                     }
                 }

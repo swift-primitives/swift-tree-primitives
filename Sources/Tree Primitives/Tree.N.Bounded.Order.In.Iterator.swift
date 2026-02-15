@@ -19,30 +19,26 @@ extension Tree.N.Bounded.Order.In {
     /// An iterator for in-order traversal.
     ///
     /// Only available for binary trees (n == 2).
-    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
+    public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>.Bounded
-        var pending: Stack<Int>
-        var current: Int
+        var pending: Stack<Index<Tree.N<Element, n>.Node>>
+        var current: Index<Tree.N<Element, n>.Node>?
 
         init(tree: Tree.N<Element, n>.Bounded) {
             self.tree = tree
-            self.pending = Stack<Int>()
-            if let rootIndex = tree._rootIndex {
-                self.current = tree._rawIndex(rootIndex)
-            } else {
-                self.current = -1
-            }
+            self.pending = Stack<Index<Tree.N<Element, n>.Node>>()
+            self.current = tree._rootIndex
         }
 
         public mutating func next() -> Element? {
-            while current >= 0 || !pending.isEmpty {
-                while current >= 0 {
-                    pending.push(current)
-                    current = unsafe tree._arena.pointer(at: tree._slot(current)).pointee.childIndices[0]
+            while current != nil || !pending.isEmpty {
+                while let c = current {
+                    pending.push(c)
+                    current = unsafe tree._arena.pointer(at: c).pointee.childIndices[0]
                 }
 
-                current = pending.pop()!
-                let nodePtr = unsafe tree._arena.pointer(at: tree._slot(current))
+                let c = pending.pop()!
+                let nodePtr = unsafe tree._arena.pointer(at: c)
                 let element = unsafe nodePtr.pointee.element
                 current = unsafe nodePtr.pointee.childIndices[1]
 

@@ -12,6 +12,7 @@
 import Testing
 import Synchronization
 import Array_Primitives
+import Tree_Primitives_Test_Support
 @testable import Tree_Primitives
 
 // MARK: - Test Helpers
@@ -294,12 +295,8 @@ struct TreeNBoundedTests {
         }
     }
 
-    @Test("Bounded negative capacity")
-    func boundedNegativeCapacity() {
-        #expect(throws: __TreeNBoundedError.invalidCapacity) {
-            _ = try Tree.N<Int, 2>.Bounded(capacity: -1)
-        }
-    }
+    // NOTE: Negative capacity test removed — Count is unsigned (Cardinal-based),
+    // so negative values are prevented by the type system at compile time.
 
     @Test("Bounded traversal")
     func boundedTraversal() throws {

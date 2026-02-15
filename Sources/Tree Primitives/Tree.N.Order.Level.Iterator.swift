@@ -16,16 +16,16 @@ internal import Queue_Primitives
 extension Tree.N.Order.Level {
 
     /// An iterator for level-order traversal.
-    public struct Iterator: Sequence.Iterator.`Protocol`, IteratorProtocol {
+    public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         let tree: Tree.N<Element, n>
-        var pending: Queue<Int>
+        var pending: Queue<Index<Tree.N<Element, n>.Node>>
 
         init(tree: Tree.N<Element, n>) {
             self.tree = tree
-            self.pending = Queue<Int>()
+            self.pending = Queue<Index<Tree.N<Element, n>.Node>>()
 
             if let rootIndex = tree._rootIndex {
-                pending.enqueue(tree._rawIndex(rootIndex))
+                pending.enqueue(rootIndex)
             }
         }
 
@@ -34,14 +34,13 @@ extension Tree.N.Order.Level {
 
             let index = pending.dequeue()!
 
-            let nodePtr = unsafe tree._arena.pointer(at: tree._slot(index))
+            let nodePtr = unsafe tree._arena.pointer(at: index)
             let element = unsafe nodePtr.pointee.element
             let childIndices = unsafe nodePtr.pointee.childIndices
 
             for slot in 0..<n {
-                let childIndex = childIndices[slot]
-                if childIndex >= 0 {
-                    pending.enqueue(childIndex)
+                if let child = childIndices[slot] {
+                    pending.enqueue(child)
                 }
             }
 

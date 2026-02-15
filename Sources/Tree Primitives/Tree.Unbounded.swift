@@ -87,8 +87,7 @@ extension Tree {
         // MARK: - Node
 
         /// A node in the arena-based unbounded tree.
-        @usableFromInline
-        struct Node: ~Copyable {
+        public struct Node: ~Copyable {
             /// The element stored in this node.
             @usableFromInline var element: Element
             /// Child indices (dynamic array, heap-allocated).

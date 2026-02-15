@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 import Testing
+import Tree_Primitives_Test_Support
 @testable import Tree_Primitives
 @testable import Buffer_Primitives
 
@@ -590,7 +591,7 @@ struct TreeBinaryStatsTests {
 
         // Pre-reserved
         let preReservedTime = try clock.measure {
-            var tree = try Tree.Binary<Int>(minimumCapacity: nodeCount)
+            var tree = try Tree.Binary<Int>(minimumCapacity: 10_000)
             var positions: [Tree.Position] = []
             positions.reserveCapacity(nodeCount)
             positions.append(try tree.insert(0, at: .root))
@@ -607,7 +608,7 @@ struct TreeBinaryStatsTests {
 
         // Bounded
         let boundedTime = try clock.measure {
-            var tree = try Tree.Binary<Int>.Bounded(capacity: nodeCount)
+            var tree = try Tree.Binary<Int>.Bounded(capacity: 10_000)
             var positions: [Tree.Position] = []
             positions.reserveCapacity(nodeCount)
             positions.append(try tree.insert(0, at: .root))
@@ -743,7 +744,7 @@ struct TreeBinaryStatsTests {
 
         // Tree.N.Bounded
         let boundedTime = try clock.measure {
-            var tree = try Tree.Binary<Int>.Bounded(capacity: nodeCount)
+            var tree = try Tree.Binary<Int>.Bounded(capacity: 10_000)
             var positions: [Tree.Position] = []
             positions.reserveCapacity(nodeCount)
             positions.append(try tree.insert(0, at: .root))
@@ -839,8 +840,8 @@ struct TreeBinaryStatsTests {
         print("First mutation (deep copy):    \(firstMutationTime)")
         print("Subsequent mutation (no copy): \(subsequentMutationTime)")
 
-        #expect(tree.count == nodeCount)
-        #expect(tree2.count == nodeCount + 2)
+        #expect(tree.count == 10_000)
+        #expect(tree2.count == 10_002)
     }
 
     // MARK: - Small Spill
