@@ -59,12 +59,19 @@ let package = Package(
 )
 
 for target in package.targets where ![.system, .binary, .plugin, .macro].contains(target.type) {
-    target.swiftSettings = (target.swiftSettings ?? []) + [
+    let ecosystem: [SwiftSetting] = [
+        .strictMemorySafety(),
         .enableUpcomingFeature("ExistentialAny"),
         .enableUpcomingFeature("InternalImportsByDefault"),
         .enableUpcomingFeature("MemberImportVisibility"),
         .enableExperimentalFeature("Lifetimes"),
         .enableExperimentalFeature("SuppressedAssociatedTypes"),
-        .strictMemorySafety()
+        .enableExperimentalFeature("SuppressedAssociatedTypesWithDefaults"),
     ]
+
+    let package: [SwiftSetting] = [
+        .enableExperimentalFeature("RawLayout"),
+    ]
+
+    target.swiftSettings = (target.swiftSettings ?? []) + ecosystem + package
 }
