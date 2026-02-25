@@ -9,3 +9,4 @@
 @_exported import Bit_Primitives
 @_exported import Collection_Primitives
 @_exported import Buffer_Arena_Primitives
+@_exported import Buffer_Arena_Inline_Primitives
