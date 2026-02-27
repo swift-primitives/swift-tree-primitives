@@ -98,18 +98,19 @@ extension Tree {
         // MARK: - Node
 
         /// A node in the arena-based n-ary tree.
+        @frozen
         public struct Node: ~Copyable {
             /// The element stored in this node.
-            @usableFromInline var element: Element
+            public var element: Element
             /// Child indices (nil for empty slots). Uses sparse representation per [TREE-003].
-            @usableFromInline var childIndices: InlineArray<n, Index<Node>?>
+            public var childIndices: InlineArray<n, Index<Node>?>
             /// Number of occupied child slots.
-            @usableFromInline var childCount: Count
+            public var childCount: Count
             /// Index of parent (nil for root).
-            @usableFromInline var parentIndex: Index<Node>?
+            public var parentIndex: Index<Node>?
 
-            @usableFromInline
-            init(element: consuming Element, parentIndex: Index<Node>? = nil) {
+            @inlinable
+            public init(element: consuming Element, parentIndex: Index<Node>? = nil) {
                 self.element = element
                 self.childIndices = InlineArray(repeating: nil)
                 self.childCount = .zero

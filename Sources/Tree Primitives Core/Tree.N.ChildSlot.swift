@@ -35,8 +35,7 @@
 public struct __TreeNChildSlot<let n: Int>: Sendable, Equatable, Hashable {
 
     /// The slot index within the range `0..<n`.
-    @usableFromInline
-    let index: Int
+    public let index: Int
 
     /// Creates a child slot from a raw index.
     ///

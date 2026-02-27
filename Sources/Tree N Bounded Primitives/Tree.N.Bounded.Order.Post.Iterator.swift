@@ -10,28 +10,83 @@
 // ===----------------------------------------------------------------------===//
 
 internal import Stack_Primitives
+internal import Buffer_Arena_Primitives
 
 // MARK: - Post-Order Iterator
 
-extension Tree.N.Order.Post {
+extension Tree.N.Bounded.Order.Post {
 
     /// An iterator for post-order traversal.
     public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
-        let tree: Tree.N<Element, n>
+        @usableFromInline
+        let tree: Tree.N<Element, n>.Bounded
+
+        @usableFromInline
         var pending: Stack<Index<Tree.N<Element, n>.Node>>
+
+        @usableFromInline
         var lastVisited: Index<Tree.N<Element, n>.Node>?
 
-        init(tree: Tree.N<Element, n>) {
+        @usableFromInline
+        var _spanBuffer: [Element] = []
+
+        init(tree: Tree.N<Element, n>.Bounded) {
             self.tree = tree
             self.pending = Stack<Index<Tree.N<Element, n>.Node>>()
             self.lastVisited = nil
-
-            // Push root if exists
             if let rootIndex = tree._rootIndex {
                 pending.push(rootIndex)
             }
         }
 
+        @_lifetime(&self)
+        @inlinable
+        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
+            _spanBuffer.removeAll(keepingCapacity: true)
+            var remaining = Int(maximumCount.rawValue)
+            while remaining > 0, !pending.isEmpty {
+                let current = pending.peek()!
+                let nodePtr = unsafe tree._arena.pointer(at: current)
+                let childIndices = unsafe nodePtr.pointee.childIndices
+
+                var rightmostChild: Index<Tree.N<Element, n>.Node>? = nil
+                for slot in stride(from: n - 1, through: 0, by: -1) {
+                    if let child = childIndices[slot] {
+                        rightmostChild = child
+                        break
+                    }
+                }
+
+                var leftmostChild: Index<Tree.N<Element, n>.Node>? = nil
+                for slot in 0..<n {
+                    if let child = childIndices[slot] {
+                        leftmostChild = child
+                        break
+                    }
+                }
+
+                let isLeaf = rightmostChild == nil
+                let cameFromRightmost = rightmostChild != nil && rightmostChild == lastVisited
+                let cameFromLeftmostNoOther = leftmostChild != nil && leftmostChild == lastVisited && leftmostChild == rightmostChild
+
+                if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
+                    _ = pending.pop()
+                    lastVisited = current
+                    _spanBuffer.append(unsafe nodePtr.pointee.element)
+                    remaining -= 1
+                } else {
+                    for slot in stride(from: n - 1, through: 0, by: -1) {
+                        if let child = childIndices[slot] {
+                            pending.push(child)
+                        }
+                    }
+                }
+            }
+            return _spanBuffer.span
+        }
+
+        @_lifetime(self: immortal)
+        @inlinable
         public mutating func next() -> Element? {
             while !pending.isEmpty {
                 let current = pending.peek()!

@@ -1,0 +1,5 @@
+// exports.swift
+// Re-export dependencies for consumers.
+
+@_exported public import Tree_Primitives_Core
+@_exported public import Buffer_Arena_Inline_Primitives

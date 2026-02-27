@@ -37,20 +37,18 @@ extension Tree {
     public struct Position: Sendable, Equatable, Hashable {
 
         /// The typed index of the node in the arena storage.
-        @usableFromInline
-        let index: Index<Tree.Position>
+        public let index: Index<Tree.Position>
 
         /// Token for validity checking (odd = occupied, even = free).
-        @usableFromInline
-        let token: UInt32
+        public let token: UInt32
 
         /// Creates a position with the given typed index and token.
         ///
         /// - Parameters:
         ///   - index: The typed arena index of the node.
         ///   - token: The validation token (must be odd for valid positions).
-        @usableFromInline
-        init(index: Index<Tree.Position>, token: UInt32) {
+        @inlinable
+        public init(index: Index<Tree.Position>, token: UInt32) {
             self.index = index
             self.token = token
         }
@@ -59,16 +57,16 @@ extension Tree {
         ///
         /// Boundary overload per [IMPL-010]: `.retag()` lives here,
         /// not at call sites.
-        @usableFromInline
-        init<T: ~Copyable>(index: Index<T>, token: UInt32) {
+        @inlinable
+        public init<T: ~Copyable>(index: Index<T>, token: UInt32) {
             self.init(index: index.retag(Tree.Position.self), token: token)
         }
 
         /// Creates a position from a bare Int index.
         ///
         /// Boundary overload for Unbounded variant's Phase 5 bare-Int domain.
-        @usableFromInline
-        init(index: Int, token: UInt32) {
+        @inlinable
+        public init(index: Int, token: UInt32) {
             self.init(
                 index: Index<Tree.Position>(Ordinal(UInt(index))),
                 token: token

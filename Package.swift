@@ -9,36 +9,102 @@ let package = Package(
         .iOS(.v26),
         .tvOS(.v26),
         .watchOS(.v26),
-        .visionOS(.v26)
+        .visionOS(.v26),
     ],
     products: [
-        .library(name: "Tree Primitives", targets: ["Tree Primitives"]),
-        .library(name: "Tree Primitives Test Support", targets: ["Tree Primitives Test Support"]),
+        // MARK: - Core
+        .library(
+            name: "Tree Primitives Core",
+            targets: ["Tree Primitives Core"]
+        ),
+        // MARK: - Variants
+        .library(
+            name: "Tree N Bounded Primitives",
+            targets: ["Tree N Bounded Primitives"]
+        ),
+        .library(
+            name: "Tree N Inline Primitives",
+            targets: ["Tree N Inline Primitives"]
+        ),
+        .library(
+            name: "Tree N Small Primitives",
+            targets: ["Tree N Small Primitives"]
+        ),
+        .library(
+            name: "Tree Unbounded Primitives",
+            targets: ["Tree Unbounded Primitives"]
+        ),
+        // MARK: - Umbrella
+        .library(
+            name: "Tree Primitives",
+            targets: ["Tree Primitives"]
+        ),
+        // MARK: - Test Support
+        .library(
+            name: "Tree Primitives Test Support",
+            targets: ["Tree Primitives Test Support"]
+        ),
     ],
     dependencies: [
         .package(path: "../swift-stack-primitives"),
         .package(path: "../swift-queue-primitives"),
         .package(path: "../swift-array-primitives"),
         .package(path: "../swift-index-primitives"),
-        .package(path: "../swift-input-primitives"),
-        .package(path: "../swift-bit-primitives"),
-        .package(path: "../swift-collection-primitives"),
         .package(path: "../swift-buffer-primitives"),
     ],
     targets: [
+        // MARK: - Core
         .target(
-            name: "Tree Primitives",
+            name: "Tree Primitives Core",
             dependencies: [
                 .product(name: "Stack Primitives", package: "swift-stack-primitives"),
                 .product(name: "Queue Primitives", package: "swift-queue-primitives"),
-                .product(name: "Array Primitives", package: "swift-array-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Input Primitives", package: "swift-input-primitives"),
-                .product(name: "Bit Primitives", package: "swift-bit-primitives"),
-                .product(name: "Collection Primitives", package: "swift-collection-primitives"),
                 .product(name: "Buffer Arena Primitives", package: "swift-buffer-primitives"),
             ]
         ),
+
+        // MARK: - Variants
+        .target(
+            name: "Tree N Bounded Primitives",
+            dependencies: [
+                "Tree Primitives Core",
+            ]
+        ),
+        .target(
+            name: "Tree N Inline Primitives",
+            dependencies: [
+                "Tree Primitives Core",
+                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-primitives"),
+            ]
+        ),
+        .target(
+            name: "Tree N Small Primitives",
+            dependencies: [
+                "Tree Primitives Core",
+                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-primitives"),
+            ]
+        ),
+        .target(
+            name: "Tree Unbounded Primitives",
+            dependencies: [
+                "Tree Primitives Core",
+            ]
+        ),
+
+        // MARK: - Umbrella
+        .target(
+            name: "Tree Primitives",
+            dependencies: [
+                "Tree Primitives Core",
+                "Tree N Bounded Primitives",
+                "Tree N Inline Primitives",
+                "Tree N Small Primitives",
+                "Tree Unbounded Primitives",
+            ]
+        ),
+
+        // MARK: - Test Support
         .target(
             name: "Tree Primitives Test Support",
             dependencies: [
@@ -47,13 +113,16 @@ let package = Package(
             ],
             path: "Tests/Support"
         ),
+
+        // MARK: - Tests
         .testTarget(
             name: "Tree Primitives Tests",
             dependencies: [
                 "Tree Primitives",
                 "Tree Primitives Test Support",
+                .product(name: "Array Primitives", package: "swift-array-primitives"),
             ]
-        )
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
