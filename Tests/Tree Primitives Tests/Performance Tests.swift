@@ -16,7 +16,7 @@ import Tree_Primitives_Test_Support
 
 // MARK: - Performance Tests
 
-@Suite("Tree.Binary.Performance")
+@Suite(.serialized)
 struct TreeBinaryPerformanceTests {
 
     // MARK: - Insert Performance
@@ -410,7 +410,7 @@ struct TreeBinaryPerformanceTests {
 
 // MARK: - Performance Stats
 
-@Suite("Tree.Binary.Stats")
+@Suite(.serialized)
 struct TreeBinaryStatsTests {
 
     // MARK: - Memory Layout
@@ -721,9 +721,10 @@ struct TreeBinaryStatsTests {
 
     // MARK: - Variant Comparison
 
-    @Test("Variant comparison - insert 1000 nodes")
+    @Test("Variant comparison - insert 128 nodes")
     func variantComparison() throws {
-        let nodeCount = 1_000
+        // nodeCount bounded by Inline stack budget: 128 × ~72 bytes ≈ 9KB
+        let nodeCount = 128
         let clock = ContinuousClock()
 
         // Tree.N (growable)
@@ -744,7 +745,7 @@ struct TreeBinaryStatsTests {
 
         // Tree.N.Bounded
         let boundedTime = try clock.measure {
-            var tree = try Tree.Binary<Int>.Bounded(capacity: 10_000)
+            var tree = try Tree.Binary<Int>.Bounded(capacity: 128)
             var positions: [Tree.Position] = []
             positions.reserveCapacity(nodeCount)
             positions.append(try tree.insert(0, at: .root))
@@ -758,9 +759,9 @@ struct TreeBinaryStatsTests {
             }
         }
 
-        // Tree.N.Inline
+        // Tree.N.Inline (stack-allocated: 128 × ~72 bytes ≈ 9KB)
         let inlineTime = try clock.measure {
-            var tree = Tree.Binary<Int>.Inline<1024>()
+            var tree = Tree.Binary<Int>.Inline<128>()
             var positions: [Tree.Position] = []
             positions.reserveCapacity(nodeCount)
             positions.append(try tree.insert(0, at: .root))
@@ -774,7 +775,7 @@ struct TreeBinaryStatsTests {
             }
         }
 
-        // Tree.N.Small (starts inline, spills)
+        // Tree.N.Small (starts inline, spills to heap)
         let smallTime = try clock.measure {
             var tree = Tree.Binary<Int>.Small<16>()
             var positions: [Tree.Position] = []
@@ -791,10 +792,10 @@ struct TreeBinaryStatsTests {
         }
 
         print("=== Variant Comparison (\(nodeCount) node complete binary tree) ===")
-        print("Tree.N (growable):  \(growableTime)")
-        print("Tree.N.Bounded:     \(boundedTime)")
-        print("Tree.N.Inline<1024>: \(inlineTime)")
-        print("Tree.N.Small<16>:   \(smallTime)")
+        print("Tree.N (growable):   \(growableTime)")
+        print("Tree.N.Bounded:      \(boundedTime)")
+        print("Tree.N.Inline<128>:  \(inlineTime)")
+        print("Tree.N.Small<16>:    \(smallTime)")
     }
 
     // MARK: - CoW Cost
