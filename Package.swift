@@ -34,6 +34,10 @@ let package = Package(
             name: "Tree Unbounded Primitives",
             targets: ["Tree Unbounded Primitives"]
         ),
+        .library(
+            name: "Tree Keyed Primitives",
+            targets: ["Tree Keyed Primitives"]
+        ),
         // MARK: - Umbrella
         .library(
             name: "Tree Primitives",
@@ -51,6 +55,7 @@ let package = Package(
         .package(path: "../swift-array-primitives"),
         .package(path: "../swift-index-primitives"),
         .package(path: "../swift-buffer-primitives"),
+        .package(path: "../swift-dictionary-primitives"),
     ],
     targets: [
         // MARK: - Core
@@ -91,6 +96,13 @@ let package = Package(
                 "Tree Primitives Core",
             ]
         ),
+        .target(
+            name: "Tree Keyed Primitives",
+            dependencies: [
+                "Tree Primitives Core",
+                .product(name: "Dictionary Primitives", package: "swift-dictionary-primitives"),
+            ]
+        ),
 
         // MARK: - Umbrella
         .target(
@@ -101,6 +113,7 @@ let package = Package(
                 "Tree N Inline Primitives",
                 "Tree N Small Primitives",
                 "Tree Unbounded Primitives",
+                "Tree Keyed Primitives",
             ]
         ),
 
