@@ -680,3 +680,272 @@ extension TreeKeyedTests.Integration {
         #expect(Swift.Array(filtered.preOrder) == [0, 20])
     }
 }
+
+// MARK: - Graph-Parity API Tests
+
+// Shared fixture:
+//   root: 0
+//   ├── "a": 1
+//   │   ├── "x": 10
+//   │   └── "y": 11
+//   └── "b": 2
+//       └── "z": 20
+
+private func makeGraphParityTree() throws -> Tree.Keyed<String, Int> {
+    var tree = Tree.Keyed<String, Int>()
+    let root = try tree.insert(0, at: .root)
+    let a = try tree.insert(1, at: .child(of: root, key: "a"))
+    _ = try tree.insert(10, at: .child(of: a, key: "x"))
+    _ = try tree.insert(11, at: .child(of: a, key: "y"))
+    let b = try tree.insert(2, at: .child(of: root, key: "b"))
+    _ = try tree.insert(20, at: .child(of: b, key: "z"))
+    return tree
+}
+
+// MARK: - Unit Tests (Graph-Parity)
+
+extension TreeKeyedTests.Unit {
+
+    // MARK: forEach
+
+    @Test
+    func `forEach visits all nodes in pre-order with key paths`() throws {
+        let tree = try makeGraphParityTree()
+        var visited: [([String], Int)] = []
+        tree.forEach { path, value in
+            visited.append((path, value))
+        }
+
+        #expect(visited.count == 6)
+        #expect(visited[0].0 == [] && visited[0].1 == 0)
+        #expect(visited[1].0 == ["a"] && visited[1].1 == 1)
+        #expect(visited[2].0 == ["a", "x"] && visited[2].1 == 10)
+        #expect(visited[3].0 == ["a", "y"] && visited[3].1 == 11)
+        #expect(visited[4].0 == ["b"] && visited[4].1 == 2)
+        #expect(visited[5].0 == ["b", "z"] && visited[5].1 == 20)
+    }
+
+    @Test
+    func `forEach with typed throw propagates error`() throws {
+        let tree = try makeGraphParityTree()
+
+        struct StopError: Error {}
+
+        #expect(throws: StopError.self) {
+            try tree.forEach { (path: [String], value: Int) throws(StopError) in
+                if value == 10 { throw StopError() }
+            }
+        }
+    }
+
+    // MARK: mapValues / compactMapValues
+
+    @Test
+    func `mapValues with recursivelyApply broadcasts value to all descendants`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result = tree.mapValues { (path: [String], value: Int) -> (Int, recursivelyApply: Bool) in
+            if path == ["a"] {
+                return (-1, recursivelyApply: true)
+            }
+            return (value, recursivelyApply: false)
+        }
+
+        #expect(result.value(at: [] as [String]) == 0)
+        #expect(result.value(at: ["a"]) == -1)
+        #expect(result.value(at: ["a", "x"]) == -1)
+        #expect(result.value(at: ["a", "y"]) == -1)
+        #expect(result.value(at: ["b"]) == 2)
+        #expect(result.value(at: ["b", "z"]) == 20)
+    }
+
+    @Test
+    func `mapValues with key path and typed throws transforms values`() throws {
+        let tree = try makeGraphParityTree()
+
+        struct MapError: Error {}
+
+        let result = try tree.mapValues { (path: [String], value: Int) throws(MapError) -> String in
+            "\(path.joined(separator: "/")):\(value)"
+        }
+
+        #expect(result.value(at: [] as [String]) == ":0")
+        #expect(result.value(at: ["a"]) == "a:1")
+        #expect(result.value(at: ["a", "x"]) == "a/x:10")
+        #expect(result.value(at: ["b", "z"]) == "b/z:20")
+    }
+
+    @Test
+    func `compactMapValues with key path filters nodes and preserves structure`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result = tree.compactMapValues { (path: [String], value: Int) -> Int? in
+            value >= 10 ? value : nil
+        }
+
+        // Root (0) is filtered → entire tree dropped
+        #expect(result.isEmpty)
+    }
+
+    @Test
+    func `compactMapValues with recursivelyApply broadcasts and filters`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result = tree.compactMapValues { (path: [String], value: Int) -> (Int, recursivelyApply: Bool)? in
+            if path == ["b"] { return nil }  // Drop "b" subtree
+            if path == ["a"] { return (99, recursivelyApply: true) }  // Broadcast to "a" subtree
+            return (value, recursivelyApply: false)
+        }
+
+        #expect(result.value(at: [] as [String]) == 0)
+        #expect(result.value(at: ["a"]) == 99)
+        #expect(result.value(at: ["a", "x"]) == 99)
+        #expect(result.value(at: ["a", "y"]) == 99)
+        #expect(result.value(at: ["b"]) == nil)
+        #expect(result.value(at: ["b", "z"]) == nil)
+    }
+
+    // MARK: map / compactMap / flatMap
+
+    @Test
+    func `map with key path produces array of transformed elements`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result: [String] = tree.map { (path: [String], value: Int) -> String in
+            "\(path.count):\(value)"
+        }
+
+        #expect(result == ["0:0", "1:1", "2:10", "2:11", "1:2", "2:20"])
+    }
+
+    @Test
+    func `compactMap with key path filters nil results`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result: [Int] = tree.compactMap { (_: [String], value: Int) -> Int? in
+            value > 5 ? value : nil
+        }
+
+        #expect(result == [10, 11, 20])
+    }
+
+    @Test
+    func `flatMap concatenates sequence results`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result: [Int] = tree.flatMap { (_: [String], value: Int) -> [Int] in
+            [value, value * 100]
+        }
+
+        #expect(result == [0, 0, 1, 100, 10, 1000, 11, 1100, 2, 200, 20, 2000])
+    }
+
+    // MARK: values(along:)
+
+    @Test
+    func `values along yields values along valid key path`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result = Swift.Array(tree.values(along: ["a", "x"]))
+        #expect(result == [1, 10] as [Int?])
+    }
+}
+
+// MARK: - Edge Case Tests (Graph-Parity)
+
+extension TreeKeyedTests.EdgeCase {
+
+    @Test
+    func `forEach on empty tree does not call body`() {
+        let tree = Tree.Keyed<String, Int>()
+        var count = 0
+        tree.forEach { (_: [String], _: Int) in count += 1 }
+        #expect(count == 0)
+    }
+
+    @Test
+    func `mapValues recursivelyApply on root broadcasts to entire tree`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result = tree.mapValues { (path: [String], _: Int) -> (Int, recursivelyApply: Bool) in
+            if path.isEmpty { return (-1, recursivelyApply: true) }
+            return (0, recursivelyApply: false)  // Never reached
+        }
+
+        #expect(result.value(at: [] as [String]) == -1)
+        #expect(result.value(at: ["a"]) == -1)
+        #expect(result.value(at: ["a", "x"]) == -1)
+        #expect(result.value(at: ["a", "y"]) == -1)
+        #expect(result.value(at: ["b"]) == -1)
+        #expect(result.value(at: ["b", "z"]) == -1)
+    }
+
+    @Test
+    func `compactMapValues with key path returns empty tree when root is filtered out`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result = tree.compactMapValues { (_: [String], _: Int) -> Int? in
+            nil
+        }
+
+        #expect(result.isEmpty)
+    }
+
+    @Test
+    func `values along returns nils after missing key`() throws {
+        let tree = try makeGraphParityTree()
+
+        let result = Swift.Array(tree.values(along: ["a", "missing", "deeper"]))
+        #expect(result.count == 3)
+        #expect(result[0] == 1)
+        #expect(result[1] == nil)
+        #expect(result[2] == nil)
+    }
+
+    @Test
+    func `values along on empty tree returns empty sequence`() {
+        let tree = Tree.Keyed<String, Int>()
+
+        let result = Swift.Array(tree.values(along: ["a", "b"]))
+        #expect(result.isEmpty)
+    }
+}
+
+// MARK: - Integration Tests (Graph-Parity)
+
+extension TreeKeyedTests.Integration {
+
+    @Test
+    func `forEach async visits all nodes with correct key paths`() async throws {
+        let tree = try makeGraphParityTree()
+        var visited: [([String], Int)] = []
+
+        await tree.forEach { (path: [String], value: Int) async in
+            visited.append((path, value))
+        }
+
+        #expect(visited.count == 6)
+        #expect(visited[0].0 == [] && visited[0].1 == 0)
+        #expect(visited[1].0 == ["a"] && visited[1].1 == 1)
+        #expect(visited[4].0 == ["b"] && visited[4].1 == 2)
+    }
+
+    @Test
+    func `mapValues async with recursivelyApply matches sync behavior`() async throws {
+        let tree = try makeGraphParityTree()
+
+        let result = await tree.mapValues { (path: [String], value: Int) async -> (Int, recursivelyApply: Bool) in
+            if path == ["a"] {
+                return (-1, recursivelyApply: true)
+            }
+            return (value, recursivelyApply: false)
+        }
+
+        #expect(result.value(at: [] as [String]) == 0)
+        #expect(result.value(at: ["a"]) == -1)
+        #expect(result.value(at: ["a", "x"]) == -1)
+        #expect(result.value(at: ["a", "y"]) == -1)
+        #expect(result.value(at: ["b"]) == 2)
+        #expect(result.value(at: ["b", "z"]) == 20)
+    }
+}
