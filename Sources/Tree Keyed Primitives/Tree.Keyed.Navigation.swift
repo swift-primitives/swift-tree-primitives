@@ -95,6 +95,31 @@ extension Tree.Keyed where Value: ~Copyable {
         return unsafe _arena.pointer(at: _slot(position.index)).pointee._children.count.retag(Node.self)
     }
 
+    /// Returns the keys and positions of all children of the node at the given position.
+    ///
+    /// Returns a snapshot array that is safe to iterate while mutating the tree.
+    /// Positions remain valid across copy-on-write mutations because
+    /// `Buffer.Arena.copy()` preserves all slot indices and generation tokens
+    /// verbatim (see `Buffer.Arena Copyable.swift:24-37`).
+    ///
+    /// - Parameter position: The position of the parent node.
+    /// - Returns: An array of (key, position) pairs in insertion order, or nil if position is invalid.
+    @inlinable
+    public func children(of position: Tree.Position) -> [(key: Key, position: Tree.Position)]? {
+        do {
+            try _validate(position)
+        } catch {
+            return nil
+        }
+        var result: [(key: Key, position: Tree.Position)] = []
+        let nodePtr = unsafe _arena.pointer(at: _slot(position.index))
+        unsafe nodePtr.pointee._children.forEach { key, childIndex in
+            let token = _arena.token(at: childIndex)
+            result.append((key, Tree.Position(index: childIndex, token: token)))
+        }
+        return result
+    }
+
     /// Calls the given closure for each child of the node at the given position.
     ///
     /// Children are visited in insertion order.

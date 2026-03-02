@@ -949,3 +949,202 @@ extension TreeKeyedTests.Integration {
         #expect(result.value(at: ["b", "z"]) == 20)
     }
 }
+
+// MARK: - Unit Tests (Structural APIs)
+
+extension TreeKeyedTests.Unit {
+
+    // MARK: init(rootValue:)
+
+    @Test
+    func `init with rootValue creates single-node tree`() {
+        let tree = Tree.Keyed<String, Int>(rootValue: 42)
+        #expect(!tree.isEmpty)
+        #expect(tree.count == 1)
+        #expect(tree.root != nil)
+        #expect(tree.rootValue == 42)
+    }
+
+    // MARK: rootValue
+
+    @Test
+    func `rootValue returns root value and nil for empty tree`() throws {
+        let empty = Tree.Keyed<String, Int>()
+        #expect(empty.rootValue == nil)
+
+        let tree = Tree.Keyed<String, Int>(rootValue: 99)
+        #expect(tree.rootValue == 99)
+    }
+
+    @Test
+    func `rootValue setter updates existing root`() {
+        var tree = Tree.Keyed<String, Int>(rootValue: 1)
+        tree.rootValue = 2
+        #expect(tree.rootValue == 2)
+    }
+
+    @Test
+    func `rootValue setter creates root when tree is empty`() {
+        var tree = Tree.Keyed<String, Int>()
+        tree.rootValue = 42
+        #expect(tree.rootValue == 42)
+        #expect(tree.count == 1)
+    }
+
+    // MARK: Subscripts
+
+    @Test
+    func `sparse subscript get returns value at key path`() throws {
+        var tree = Tree.Keyed<String, Int?>()
+        try tree.insert(10, at: ["a", "x"], intermediateValue: { _ in nil })
+        try tree.insert(20, at: ["b"], intermediateValue: { _ in nil })
+
+        #expect(tree[["a", "x"]] == 10)
+        #expect(tree[["b"]] == 20)
+        #expect(tree[["c"]] == nil)
+    }
+
+    @Test
+    func `sparse subscript set creates intermediates with nil`() {
+        var tree = Tree.Keyed<String, Int?>()
+        tree[["a", "b", "c"]] = 42
+
+        #expect(tree[["a", "b", "c"]] == 42)
+        #expect(tree[["a"]] == nil)  // intermediate created with nil
+        #expect(tree[["a", "b"]] == nil)  // intermediate created with nil
+        #expect(tree.count == 4)  // root + a + b + c
+    }
+
+    @Test
+    func `sparse subscript optional chaining mutation works`() {
+        var tree = Tree.Keyed<String, [Int]?>()
+        tree[["data"]] = [1, 2, 3]
+
+        tree[["data"]]?.append(4)
+
+        #expect(tree[["data"]] == [1, 2, 3, 4])
+    }
+
+    // MARK: subtree
+
+    @Test
+    func `subtree extracts standalone copy of subtree`() throws {
+        let tree = try makeGraphParityTree()
+
+        let sub = tree.subtree(at: ["a"])
+        #expect(sub != nil)
+        #expect(sub!.rootValue == 1)
+        #expect(sub!.count == 3)  // a(1), x(10), y(11)
+        #expect(sub!.value(at: ["x"]) == 10)
+        #expect(sub!.value(at: ["y"]) == 11)
+    }
+}
+
+// MARK: - Edge Case Tests (Structural APIs)
+
+extension TreeKeyedTests.EdgeCase {
+
+    @Test
+    func `read-only subscript returns nil for missing path`() {
+        let tree = Tree.Keyed<String, Int>(rootValue: 1)
+        let result: Int? = tree[["nonexistent"]]
+        #expect(result == nil)
+    }
+
+    @Test
+    func `sparse subscript set at empty key path creates root`() {
+        var tree = Tree.Keyed<String, Int?>()
+        #expect(tree.isEmpty)
+
+        tree[[] as [String]] = 42
+        #expect(tree.rootValue == 42)
+        #expect(tree.count == 1)
+    }
+
+    @Test
+    func `sparse insert at empty key path updates existing root`() throws {
+        var tree = Tree.Keyed<String, Int?>(rootValue: 1)
+        let pos = try tree.insert(Optional(99), at: [] as [String])
+        #expect(tree.rootValue == 99)
+        #expect(pos == tree.root)
+    }
+
+    @Test
+    func `subtree returns nil for nonexistent path`() {
+        let tree = Tree.Keyed<String, Int>(rootValue: 1)
+        #expect(tree.subtree(at: ["missing"]) == nil)
+    }
+
+    @Test
+    func `children of root returns snapshot safe for mutation`() throws {
+        var tree = Tree.Keyed<String, Int>(rootValue: 0)
+        let root = tree.root!
+        try tree.insert(1, at: .child(of: root, key: "a"))
+        try tree.insert(2, at: .child(of: root, key: "b"))
+
+        let snapshot = tree.children(of: root)!
+        #expect(snapshot.count == 2)
+
+        // Mutate tree while iterating snapshot
+        for (_, childPos) in snapshot {
+            if let val = tree.peek(at: childPos) {
+                try tree.update(at: childPos, val * 10)
+            }
+        }
+
+        #expect(tree.value(at: ["a"]) == 10)
+        #expect(tree.value(at: ["b"]) == 20)
+    }
+}
+
+// MARK: - Integration Tests (Structural APIs)
+
+extension TreeKeyedTests.Integration {
+
+    @Test
+    func `sparse graph workflow matches Graph usage pattern`() {
+        // Mimics swift-testing pattern: Graph<String, Test?>()
+        var tree = Tree.Keyed<String, String?>()
+
+        // Insert via sparse subscript (like graph[keyPath] = value)
+        tree[["suite", "testA"]] = "test A"
+        tree[["suite", "testB"]] = "test B"
+        tree[["standalone"]] = "standalone"
+
+        // Read back
+        #expect(tree[["suite", "testA"]] == "test A")
+        #expect(tree[["suite", "testB"]] == "test B")
+        #expect(tree[["standalone"]] == "standalone")
+        #expect(tree[["suite"]] == nil)  // intermediate has nil
+
+        // Optional chaining mutation (like graph[keyPath]?.mutate())
+        tree[["suite", "testA"]]?.append(" (modified)")
+        #expect(tree[["suite", "testA"]] == "test A (modified)")
+
+        // compactMap to extract non-nil values (like graph.compactMap(\.value))
+        let values = tree.compactMap { (_: [String], value: String?) -> String? in value }
+        #expect(values.count == 3)
+    }
+
+    @Test
+    func `subtree is independent of source tree mutations`() throws {
+        var tree = try makeGraphParityTree()
+
+        // Extract subtree at "a"
+        let sub = tree.subtree(at: ["a"])!
+        #expect(sub.rootValue == 1)
+        #expect(sub.value(at: ["x"]) == 10)
+
+        // Mutate source tree
+        try tree.update(999, at: ["a"])
+        try tree.update(888, at: ["a", "x"])
+
+        // Subtree is unchanged (independent copy)
+        #expect(sub.rootValue == 1)
+        #expect(sub.value(at: ["x"]) == 10)
+
+        // Source tree has new values
+        #expect(tree.value(at: ["a"]) == 999)
+        #expect(tree.value(at: ["a", "x"]) == 888)
+    }
+}

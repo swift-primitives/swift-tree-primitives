@@ -129,6 +129,16 @@ extension Tree {
             self._rootIndex = nil
         }
 
+        /// Creates a tree with a single root node.
+        ///
+        /// - Parameter rootValue: The value for the root node.
+        @inlinable
+        public init(rootValue: consuming Value) {
+            self._arena = Buffer<Node>.Arena(minimumCapacity: .one)
+            let arenaPos = _arena.insert(Node(value: rootValue))
+            self._rootIndex = arenaPos.slot
+        }
+
         /// Creates an empty keyed tree with reserved capacity.
         ///
         /// - Parameter minimumCapacity: The minimum number of nodes to reserve space for.
@@ -353,6 +363,32 @@ extension Tree.Keyed where Value: Copyable {
     @usableFromInline
     mutating func makeUnique() {
         _arena.ensureUnique()
+    }
+
+    /// The root node's value, or nil if the tree is empty.
+    ///
+    /// Setting to a non-nil value updates the root (or creates it if empty).
+    /// Setting to nil is a no-op — the setter exists for optional chaining
+    /// writeback (e.g. `tree.rootValue?.field = x`). To set a sparse tree's
+    /// root value to `Optional.none`, use the sparse subscript:
+    /// `tree[[] as [Key]] = nil`.
+    @inlinable
+    public var rootValue: Value? {
+        get {
+            guard let rootIndex = _rootIndex else { return nil }
+            return unsafe _arena.pointer(at: rootIndex).pointee.value
+        }
+        set {
+            guard let newValue else { return }
+            makeUnique()
+            if let rootIndex = _rootIndex {
+                let nodePtr = unsafe _arena.pointer(at: rootIndex)
+                unsafe (nodePtr.pointee.value = newValue)
+            } else {
+                let arenaPos = _arena.insert(Node(value: newValue))
+                _rootIndex = arenaPos.slot
+            }
+        }
     }
 
     /// Inserts a value at the specified position (CoW-aware).
