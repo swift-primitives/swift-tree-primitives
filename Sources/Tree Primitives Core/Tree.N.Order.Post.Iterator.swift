@@ -27,7 +27,7 @@ extension Tree.N.Order.Post {
         var lastVisited: Index<Tree.N<Element, n>.Node>?
 
         @usableFromInline
-        var _spanBuffer: [Element] = []
+        var _element: Element? = nil
 
         init(tree: Tree.N<Element, n>) {
             self.tree = tree
@@ -43,47 +43,22 @@ extension Tree.N.Order.Post {
         @_lifetime(&self)
         @inlinable
         public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
-            _spanBuffer.removeAll(keepingCapacity: true)
-            var remaining = Int(maximumCount.rawValue)
-            while remaining > 0, !pending.isEmpty {
-                let current = pending.peek()!
-                let nodePtr = unsafe tree._arena.pointer(at: current)
-                let childIndices = unsafe nodePtr.pointee.childIndices
-
-                var rightmostChild: Index<Tree.N<Element, n>.Node>? = nil
-                for slot in stride(from: n - 1, through: 0, by: -1) {
-                    if let child = childIndices[slot] {
-                        rightmostChild = child
-                        break
-                    }
-                }
-
-                var leftmostChild: Index<Tree.N<Element, n>.Node>? = nil
-                for slot in 0..<n {
-                    if let child = childIndices[slot] {
-                        leftmostChild = child
-                        break
-                    }
-                }
-
-                let isLeaf = rightmostChild == nil
-                let cameFromRightmost = rightmostChild != nil && rightmostChild == lastVisited
-                let cameFromLeftmostNoOther = leftmostChild != nil && leftmostChild == lastVisited && leftmostChild == rightmostChild
-
-                if isLeaf || cameFromRightmost || cameFromLeftmostNoOther {
-                    _ = pending.pop()
-                    lastVisited = current
-                    _spanBuffer.append(unsafe nodePtr.pointee.element)
-                    remaining -= 1
-                } else {
-                    for slot in stride(from: n - 1, through: 0, by: -1) {
-                        if let child = childIndices[slot] {
-                            pending.push(child)
-                        }
-                    }
-                }
+            let ptr = unsafe withUnsafeMutablePointer(to: &_element) { p in
+                unsafe UnsafePointer<Element>(
+                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Element.self)
+                )
             }
-            return _spanBuffer.span
+            guard maximumCount > .zero else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            guard let value = next() else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            _element = value
+            let span = unsafe Span(_unsafeStart: ptr, count: 1)
+            return unsafe _overrideLifetime(span, mutating: &self)
         }
 
         @_lifetime(self: immortal)

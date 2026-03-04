@@ -24,7 +24,7 @@ extension Tree.N.Order.Pre {
         var pending: Stack<Index<Tree.N<Element, n>.Node>>
 
         @usableFromInline
-        var _spanBuffer: [Element] = []
+        var _element: Element? = nil
 
         init(tree: Tree.N<Element, n>) {
             self.tree = tree
@@ -37,24 +37,22 @@ extension Tree.N.Order.Pre {
         @_lifetime(&self)
         @inlinable
         public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
-            _spanBuffer.removeAll(keepingCapacity: true)
-            var remaining = Int(maximumCount.rawValue)
-            while remaining > 0, !pending.isEmpty {
-                let index = pending.pop()!
-                let nodePtr = unsafe tree._arena.pointer(at: index)
-                let element = unsafe nodePtr.pointee.element
-                let childIndices = unsafe nodePtr.pointee.childIndices
-
-                for slot in stride(from: n - 1, through: 0, by: -1) {
-                    if let child = childIndices[slot] {
-                        pending.push(child)
-                    }
-                }
-
-                _spanBuffer.append(element)
-                remaining -= 1
+            let ptr = unsafe withUnsafeMutablePointer(to: &_element) { p in
+                unsafe UnsafePointer<Element>(
+                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Element.self)
+                )
             }
-            return _spanBuffer.span
+            guard maximumCount > .zero else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            guard let value = next() else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            _element = value
+            let span = unsafe Span(_unsafeStart: ptr, count: 1)
+            return unsafe _overrideLifetime(span, mutating: &self)
         }
 
         @_lifetime(self: immortal)

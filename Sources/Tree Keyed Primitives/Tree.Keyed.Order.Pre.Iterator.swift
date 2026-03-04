@@ -22,7 +22,7 @@ extension Tree.Keyed.Order.Pre {
         var pending: Stack<Index<Tree.Keyed<Key, Value>.Node>>
 
         @usableFromInline
-        var _spanBuffer: [Value] = []
+        var _element: Value? = nil
 
         init(tree: Tree.Keyed<Key, Value>) {
             self.tree = tree
@@ -35,26 +35,22 @@ extension Tree.Keyed.Order.Pre {
         @_lifetime(&self)
         @inlinable
         public mutating func nextSpan(maximumCount: Cardinal) -> Span<Value> {
-            _spanBuffer.removeAll(keepingCapacity: true)
-            var remaining = Int(maximumCount.rawValue)
-            while remaining > 0, !pending.isEmpty {
-                let index = pending.pop()!
-                let nodePtr = unsafe tree._arena.pointer(at: index)
-                let value = unsafe nodePtr.pointee.value
-
-                // Collect children, push in reverse for correct order
-                var childIndices: [Index<Tree.Keyed<Key, Value>.Node>] = []
-                unsafe nodePtr.pointee._children.forEach { _, childIndex in
-                    childIndices.append(childIndex)
-                }
-                for i in stride(from: childIndices.count - 1, through: 0, by: -1) {
-                    pending.push(childIndices[i])
-                }
-
-                _spanBuffer.append(value)
-                remaining -= 1
+            let ptr = unsafe withUnsafeMutablePointer(to: &_element) { p in
+                unsafe UnsafePointer<Value>(
+                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Value.self)
+                )
             }
-            return _spanBuffer.span
+            guard maximumCount > .zero else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            guard let value = next() else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            _element = value
+            let span = unsafe Span(_unsafeStart: ptr, count: 1)
+            return unsafe _overrideLifetime(span, mutating: &self)
         }
 
         @_lifetime(self: immortal)

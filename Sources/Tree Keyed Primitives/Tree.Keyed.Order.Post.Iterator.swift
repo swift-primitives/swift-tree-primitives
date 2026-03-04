@@ -25,7 +25,7 @@ extension Tree.Keyed.Order.Post {
         var output: Stack<Index<Tree.Keyed<Key, Value>.Node>>
 
         @usableFromInline
-        var _spanBuffer: [Value] = []
+        var _element: Value? = nil
 
         init(tree: Tree.Keyed<Key, Value>) {
             self.tree = tree
@@ -51,15 +51,22 @@ extension Tree.Keyed.Order.Post {
         @_lifetime(&self)
         @inlinable
         public mutating func nextSpan(maximumCount: Cardinal) -> Span<Value> {
-            _spanBuffer.removeAll(keepingCapacity: true)
-            var remaining = Int(maximumCount.rawValue)
-            while remaining > 0, !output.isEmpty {
-                let index = output.pop()!
-                let nodePtr = unsafe tree._arena.pointer(at: index)
-                _spanBuffer.append(unsafe nodePtr.pointee.value)
-                remaining -= 1
+            let ptr = unsafe withUnsafeMutablePointer(to: &_element) { p in
+                unsafe UnsafePointer<Value>(
+                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Value.self)
+                )
             }
-            return _spanBuffer.span
+            guard maximumCount > .zero else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            guard let value = next() else {
+                let span = unsafe Span(_unsafeStart: ptr, count: 0)
+                return unsafe _overrideLifetime(span, mutating: &self)
+            }
+            _element = value
+            let span = unsafe Span(_unsafeStart: ptr, count: 1)
+            return unsafe _overrideLifetime(span, mutating: &self)
         }
 
         @_lifetime(self: immortal)
