@@ -40,7 +40,7 @@ public enum __TreeNInsertPosition<let n: Int>: Sendable, Equatable {
     /// - Parameters:
     ///   - position: The parent position.
     ///   - slot: The child slot index (0..<n).
-    case child(of: Tree.Position, slot: __TreeNChildSlot<n>)
+    case child(of: __TreePosition, slot: __TreeNChildSlot<n>)
 }
 
 // MARK: - Binary Tree Convenience (n == 2)
@@ -51,7 +51,7 @@ extension __TreeNInsertPosition where n == 2 {
     ///
     /// Convenience for `.child(of: position, slot: .left)`.
     @inlinable
-    public static func left(of position: Tree.Position) -> Self {
+    public static func left(of position: __TreePosition) -> Self {
         .child(of: position, slot: .left)
     }
 
@@ -59,7 +59,7 @@ extension __TreeNInsertPosition where n == 2 {
     ///
     /// Convenience for `.child(of: position, slot: .right)`.
     @inlinable
-    public static func right(of position: Tree.Position) -> Self {
+    public static func right(of position: __TreePosition) -> Self {
         .child(of: position, slot: .right)
     }
 }
@@ -70,19 +70,19 @@ extension __TreeNInsertPosition where n == 3 {
 
     /// Insert as the left child of the given position.
     @inlinable
-    public static func left(of position: Tree.Position) -> Self {
+    public static func left(of position: __TreePosition) -> Self {
         .child(of: position, slot: .left)
     }
 
     /// Insert as the middle child of the given position.
     @inlinable
-    public static func middle(of position: Tree.Position) -> Self {
+    public static func middle(of position: __TreePosition) -> Self {
         .child(of: position, slot: .middle)
     }
 
     /// Insert as the right child of the given position.
     @inlinable
-    public static func right(of position: Tree.Position) -> Self {
+    public static func right(of position: __TreePosition) -> Self {
         .child(of: position, slot: .right)
     }
 }
@@ -93,25 +93,25 @@ extension __TreeNInsertPosition where n == 4 {
 
     /// Insert as the northwest child of the given position.
     @inlinable
-    public static func northwest(of position: Tree.Position) -> Self {
+    public static func northwest(of position: __TreePosition) -> Self {
         .child(of: position, slot: .northwest)
     }
 
     /// Insert as the northeast child of the given position.
     @inlinable
-    public static func northeast(of position: Tree.Position) -> Self {
+    public static func northeast(of position: __TreePosition) -> Self {
         .child(of: position, slot: .northeast)
     }
 
     /// Insert as the southwest child of the given position.
     @inlinable
-    public static func southwest(of position: Tree.Position) -> Self {
+    public static func southwest(of position: __TreePosition) -> Self {
         .child(of: position, slot: .southwest)
     }
 
     /// Insert as the southeast child of the given position.
     @inlinable
-    public static func southeast(of position: Tree.Position) -> Self {
+    public static func southeast(of position: __TreePosition) -> Self {
         .child(of: position, slot: .southeast)
     }
 }

@@ -18,7 +18,7 @@ extension Tree.N.Order.In {
     /// In-order traversal visits left subtree, then root, then right subtree.
     /// Only available for binary trees (n == 2).
     public struct Sequence: Swift.Sequence {
-        let tree: Tree.N<Element, n>
+        let tree: Tree.N<n>
 
         public func makeIterator() -> Iterator {
             Iterator(tree: tree)

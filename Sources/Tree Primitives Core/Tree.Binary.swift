@@ -9,9 +9,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-extension Tree {
+extension Tree where Element: ~Copyable {
     /// A binary tree (2-ary tree).
     ///
-    /// This is a typealias for `Tree.N<Element, 2>`.
-    public typealias Binary<Element: ~Copyable> = Tree.N<Element, 2>
+    /// This is a typealias for `Tree<Element>.N<2>`.
+    public typealias Binary = Tree.N<2>
 }

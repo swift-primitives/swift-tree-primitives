@@ -68,10 +68,10 @@ public import Buffer_Arena_Primitives
 /// Uses `Buffer<Node>.Arena` for storage — all nodes are stored contiguously
 /// with generation-token validation, LIFO free-list recycling, and automatic
 /// growth. Nodes reference each other by index rather than pointer.
-extension Tree {
+extension Tree where Element: ~Copyable {
 
     @safe
-    public struct Unbounded<Element: ~Copyable>: ~Copyable {
+    public struct Unbounded: ~Copyable {
 
         // MARK: - Typealiases
 

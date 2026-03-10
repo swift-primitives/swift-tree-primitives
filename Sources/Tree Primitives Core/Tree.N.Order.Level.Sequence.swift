@@ -15,7 +15,7 @@ extension Tree.N.Order.Level {
 
     /// A sequence that yields elements in level-order (breadth-first) traversal.
     public struct Sequence: Swift.Sequence {
-        let tree: Tree.N<Element, n>
+        let tree: Tree.N<n>
 
         public func makeIterator() -> Iterator {
             Iterator(tree: tree)

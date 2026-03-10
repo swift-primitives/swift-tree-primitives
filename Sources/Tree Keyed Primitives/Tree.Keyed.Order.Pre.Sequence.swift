@@ -15,7 +15,7 @@ extension Tree.Keyed.Order.Pre {
     ///
     /// Pre-order traversal visits the root first, then children in insertion order.
     public struct Sequence: Swift.Sequence {
-        let tree: Tree.Keyed<Key, Value>
+        let tree: Tree<Element>.Keyed<Key>
 
         public func makeIterator() -> Iterator {
             Iterator(tree: tree)

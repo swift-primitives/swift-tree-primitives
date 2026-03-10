@@ -23,10 +23,10 @@
 /// - Returns: A tree whose structure is the intersection, with paired values.
 @inlinable
 public func zip<Key: Hash.`Protocol`, A, B>(
-    _ lhs: Tree.Keyed<Key, A>,
-    _ rhs: Tree.Keyed<Key, B>
-) -> Tree.Keyed<Key, (A, B)> {
-    var result = Tree.Keyed<Key, (A, B)>()
+    _ lhs: Tree<A>.Keyed<Key>,
+    _ rhs: Tree<B>.Keyed<Key>
+) -> Tree<(A, B)>.Keyed<Key> {
+    var result = Tree<(A, B)>.Keyed<Key>()
 
     guard let lhsRoot = lhs._rootIndex, let rhsRoot = rhs._rootIndex else {
         return result
@@ -36,16 +36,16 @@ public func zip<Key: Hash.`Protocol`, A, B>(
     let rhsPtr = unsafe rhs._arena.pointer(at: rhsRoot)
 
     let rootPos = result._arena.insert(
-        Tree.Keyed<Key, (A, B)>.Node(
+        Tree<(A, B)>.Keyed<Key>.Node(
             value: (unsafe lhsPtr.pointee.value, unsafe rhsPtr.pointee.value)
         )
     )
     result._rootIndex = rootPos.slot
 
     var pending = Stack<(
-        lhsIndex: Index<Tree.Keyed<Key, A>.Node>,
-        rhsIndex: Index<Tree.Keyed<Key, B>.Node>,
-        destParent: Index<Tree.Keyed<Key, (A, B)>.Node>
+        lhsIndex: Index<Tree<A>.Keyed<Key>.Node>,
+        rhsIndex: Index<Tree<B>.Keyed<Key>.Node>,
+        destParent: Index<Tree<(A, B)>.Keyed<Key>.Node>
     )>()
     pending.push((lhsRoot, rhsRoot, rootPos.slot))
 
@@ -63,7 +63,7 @@ public func zip<Key: Hash.`Protocol`, A, B>(
             let rhsChildPtr = unsafe rhs._arena.pointer(at: rhsChildIndex)
 
             let childPos = result._arena.insert(
-                Tree.Keyed<Key, (A, B)>.Node(
+                Tree<(A, B)>.Keyed<Key>.Node(
                     value: (unsafe lhsChildPtr.pointee.value, unsafe rhsChildPtr.pointee.value),
                     parentIndex: destParentIndex,
                     parentKey: key

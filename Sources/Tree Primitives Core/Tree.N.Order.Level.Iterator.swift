@@ -18,17 +18,17 @@ extension Tree.N.Order.Level {
     /// An iterator for level-order traversal.
     public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
-        let tree: Tree.N<Element, n>
+        let tree: Tree.N<n>
 
         @usableFromInline
-        var pending: Queue<Index<Tree.N<Element, n>.Node>>
+        var pending: Queue<Index<Tree.N<n>.Node>>
 
         @usableFromInline
         var _element: Element? = nil
 
-        init(tree: Tree.N<Element, n>) {
+        init(tree: Tree.N<n>) {
             self.tree = tree
-            self.pending = Queue<Index<Tree.N<Element, n>.Node>>()
+            self.pending = Queue<Index<Tree.N<n>.Node>>()
 
             if let rootIndex = tree._rootIndex {
                 pending.enqueue(rootIndex)

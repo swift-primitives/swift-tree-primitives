@@ -17,7 +17,7 @@ extension Tree.N.Order.Post {
     ///
     /// Post-order traversal visits children left-to-right, then the root.
     public struct Sequence: Swift.Sequence {
-        let tree: Tree.N<Element, n>
+        let tree: Tree.N<n>
 
         public func makeIterator() -> Iterator {
             Iterator(tree: tree)

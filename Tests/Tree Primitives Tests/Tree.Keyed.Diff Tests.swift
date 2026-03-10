@@ -15,8 +15,8 @@ struct TreeKeyedDiffTests {
 ///   │   └── y(20)
 ///   └── b(2)
 ///       └── z(30)
-private func makeThreeLevelTree() throws -> Tree.Keyed<String, Int> {
-    var tree = Tree.Keyed<String, Int>()
+private func makeThreeLevelTree() throws -> Tree<Int>.Keyed<String> {
+    var tree = Tree<Int>.Keyed<String>()
     let root = try tree.insert(0, at: .root)
     let a = try tree.insert(1, at: .child(of: root, key: "a"))
     _ = try tree.insert(10, at: .child(of: a, key: "x"))
@@ -29,76 +29,76 @@ private func makeThreeLevelTree() throws -> Tree.Keyed<String, Int> {
 extension TreeKeyedDiffTests.Unit {
 
     @Test func `diff of two empty trees is empty`() {
-        let old = Tree.Keyed<String, Int>()
-        let new = Tree.Keyed<String, Int>()
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let old = Tree<Int>.Keyed<String>()
+        let new = Tree<Int>.Keyed<String>()
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         #expect(diff.isEmpty)
         #expect(diff.operations.isEmpty)
     }
 
     @Test func `diff of identical single-node trees is empty`() {
-        let old = Tree.Keyed<String, Int>(rootValue: 42)
-        let new = Tree.Keyed<String, Int>(rootValue: 42)
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let old = Tree<Int>.Keyed<String>(rootValue: 42)
+        let new = Tree<Int>.Keyed<String>(rootValue: 42)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         #expect(diff.isEmpty)
     }
 
     @Test func `diff detects modified root value`() {
-        let old = Tree.Keyed<String, Int>(rootValue: 1)
-        let new = Tree.Keyed<String, Int>(rootValue: 2)
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let old = Tree<Int>.Keyed<String>(rootValue: 1)
+        let new = Tree<Int>.Keyed<String>(rootValue: 2)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
 
         #expect(diff.operations.count == 1)
         #expect(diff.operations[0] == .modified(path: [], old: 1, new: 2))
     }
 
     @Test func `diff detects added child`() throws {
-        var old = Tree.Keyed<String, Int>()
+        var old = Tree<Int>.Keyed<String>()
         _ = try old.insert(0, at: .root)
 
-        var new = Tree.Keyed<String, Int>()
+        var new = Tree<Int>.Keyed<String>()
         let newRoot = try new.insert(0, at: .root)
         _ = try new.insert(1, at: .child(of: newRoot, key: "a"))
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         #expect(diff.operations.count == 1)
         #expect(diff.operations[0] == .added(path: ["a"], value: 1))
     }
 
     @Test func `diff detects removed child`() throws {
-        var old = Tree.Keyed<String, Int>()
+        var old = Tree<Int>.Keyed<String>()
         let oldRoot = try old.insert(0, at: .root)
         _ = try old.insert(1, at: .child(of: oldRoot, key: "a"))
 
-        var new = Tree.Keyed<String, Int>()
+        var new = Tree<Int>.Keyed<String>()
         _ = try new.insert(0, at: .root)
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         #expect(diff.operations.count == 1)
         #expect(diff.operations[0] == .removed(path: ["a"], value: 1))
     }
 
     @Test func `diff detects modified child value`() throws {
-        var old = Tree.Keyed<String, Int>()
+        var old = Tree<Int>.Keyed<String>()
         let oldRoot = try old.insert(0, at: .root)
         _ = try old.insert(1, at: .child(of: oldRoot, key: "a"))
 
-        var new = Tree.Keyed<String, Int>()
+        var new = Tree<Int>.Keyed<String>()
         let newRoot = try new.insert(0, at: .root)
         _ = try new.insert(99, at: .child(of: newRoot, key: "a"))
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         #expect(diff.operations.count == 1)
         #expect(diff.operations[0] == .modified(path: ["a"], old: 1, new: 99))
     }
 
     @Test func `diff of nil vs populated produces all added`() throws {
-        let old = Tree.Keyed<String, Int>()
-        var new = Tree.Keyed<String, Int>()
+        let old = Tree<Int>.Keyed<String>()
+        var new = Tree<Int>.Keyed<String>()
         let root = try new.insert(0, at: .root)
         _ = try new.insert(1, at: .child(of: root, key: "a"))
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         let addedValues = diff.operations.compactMap { op -> Int? in
             if case .added(_, let v) = op { return v }
             return nil
@@ -109,12 +109,12 @@ extension TreeKeyedDiffTests.Unit {
     }
 
     @Test func `diff of populated vs nil produces all removed`() throws {
-        var old = Tree.Keyed<String, Int>()
+        var old = Tree<Int>.Keyed<String>()
         let root = try old.insert(0, at: .root)
         _ = try old.insert(1, at: .child(of: root, key: "a"))
-        let new = Tree.Keyed<String, Int>()
+        let new = Tree<Int>.Keyed<String>()
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         let removedValues = diff.operations.compactMap { op -> Int? in
             if case .removed(_, let v) = op { return v }
             return nil
@@ -132,7 +132,7 @@ extension TreeKeyedDiffTests.Integration {
         var new = try makeThreeLevelTree()
         try new.update(99, at: ["a", "x"])
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         #expect(diff.operations.count == 1)
         #expect(diff.operations[0] == .modified(path: ["a", "x"], old: 10, new: 99))
     }
@@ -143,7 +143,7 @@ extension TreeKeyedDiffTests.Integration {
         let bPos = new.position(at: ["b"])!
         _ = try new.insert(40, at: .child(of: bPos, key: "w"))
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         #expect(diff.operations.count == 1)
         #expect(diff.operations[0] == .added(path: ["b", "w"], value: 40))
     }
@@ -156,7 +156,7 @@ extension TreeKeyedDiffTests.Integration {
 
         let new = try makeThreeLevelTree()
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
         let removedPaths = diff.operations.compactMap { op -> [String]? in
             if case .removed(let path, _) = op { return path }
             return nil
@@ -178,7 +178,7 @@ extension TreeKeyedDiffTests.Integration {
 
         _ = try new.insert(50, at: .child(of: bPos, key: "q"))
 
-        let diff = Tree.Keyed<String, Int>.diff(from: old, to: new)
+        let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
 
         let modified = diff.operations.filter {
             if case .modified = $0 { return true }; return false

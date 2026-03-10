@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Namespace for traversal order sequences.
     ///

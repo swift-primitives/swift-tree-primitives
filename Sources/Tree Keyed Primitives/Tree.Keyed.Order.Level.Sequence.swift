@@ -13,7 +13,7 @@ extension Tree.Keyed.Order.Level {
 
     /// A sequence that yields values in level-order (breadth-first) traversal.
     public struct Sequence: Swift.Sequence {
-        let tree: Tree.Keyed<Key, Value>
+        let tree: Tree<Element>.Keyed<Key>
 
         public func makeIterator() -> Iterator {
             Iterator(tree: tree)

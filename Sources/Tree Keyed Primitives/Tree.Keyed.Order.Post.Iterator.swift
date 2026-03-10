@@ -19,20 +19,20 @@ extension Tree.Keyed.Order.Post {
     /// then yields values in the correct order.
     public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
-        let tree: Tree.Keyed<Key, Value>
+        let tree: Tree<Element>.Keyed<Key>
 
         @usableFromInline
-        var output: Stack<Index<Tree.Keyed<Key, Value>.Node>>
+        var output: Stack<Index<Tree<Element>.Keyed<Key>.Node>>
 
         @usableFromInline
-        var _element: Value? = nil
+        var _element: Element? = nil
 
-        init(tree: Tree.Keyed<Key, Value>) {
+        init(tree: Tree<Element>.Keyed<Key>) {
             self.tree = tree
-            self.output = Stack<Index<Tree.Keyed<Key, Value>.Node>>()
+            self.output = Stack<Index<Tree<Element>.Keyed<Key>.Node>>()
 
             // Build reverse post-order via pre-order traversal
-            var pending = Stack<Index<Tree.Keyed<Key, Value>.Node>>()
+            var pending = Stack<Index<Tree<Element>.Keyed<Key>.Node>>()
             if let rootIndex = tree._rootIndex {
                 pending.push(rootIndex)
             }
@@ -50,10 +50,10 @@ extension Tree.Keyed.Order.Post {
 
         @_lifetime(&self)
         @inlinable
-        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Value> {
+        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
             let ptr = unsafe withUnsafeMutablePointer(to: &_element) { p in
-                unsafe UnsafePointer<Value>(
-                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Value.self)
+                unsafe UnsafePointer<Element>(
+                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Element.self)
                 )
             }
             guard maximumCount > .zero else {
@@ -71,7 +71,7 @@ extension Tree.Keyed.Order.Post {
 
         @_lifetime(self: immortal)
         @inlinable
-        public mutating func next() -> Value? {
+        public mutating func next() -> Element? {
             guard !output.isEmpty else { return nil }
             let index = output.pop()!
             let nodePtr = unsafe tree._arena.pointer(at: index)

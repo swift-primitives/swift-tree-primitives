@@ -11,7 +11,7 @@
 
 // MARK: - Values Along Key Path
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Returns values at each step along the key path.
     ///

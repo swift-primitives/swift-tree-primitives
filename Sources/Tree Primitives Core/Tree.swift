@@ -26,4 +26,4 @@
 /// let left = try tree.insert(2, at: .left(of: root))
 /// let right = try tree.insert(3, at: .right(of: root))
 /// ```
-public enum Tree {}
+public enum Tree<Element: ~Copyable> {}

@@ -11,7 +11,7 @@
 
 // MARK: - Flat Map
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Flat-maps each node's key path and value through the transform,
     /// concatenating the resulting sequences.

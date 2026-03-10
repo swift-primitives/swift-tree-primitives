@@ -39,7 +39,7 @@ extension Tree.N where Element: ~Copyable {
         public typealias Error = __TreeNBoundedError
 
         /// Node type from parent Tree.N.
-        public typealias Node = Tree.N<Element, n>.Node
+        public typealias Node = Tree.N<n>.Node
 
         /// Typed node count.
         public typealias Count = Index<Node>.Count
@@ -114,7 +114,7 @@ extension Tree.N.Bounded where Element: ~Copyable {
 
     /// Returns the position of the child at the given slot.
     @inlinable
-    public func child(of position: Tree.Position, slot: Tree.N<Element, n>.ChildSlot) -> Tree.Position? {
+    public func child(of position: Tree.Position, slot: Tree.N<n>.ChildSlot) -> Tree.Position? {
         do {
             try _validate(position)
         } catch {
@@ -190,7 +190,7 @@ extension Tree.N.Bounded where Element: ~Copyable {
     @discardableResult
     public mutating func insert(
         _ element: consuming Element,
-        at position: Tree.N<Element, n>.InsertPosition
+        at position: Tree.N<n>.InsertPosition
     ) throws(__TreeNBoundedError) -> Tree.Position {
         switch position {
         case .root:
@@ -504,7 +504,7 @@ extension Tree.N.Bounded where Element: Copyable {
     @discardableResult
     public mutating func insert(
         _ element: Element,
-        at position: Tree.N<Element, n>.InsertPosition
+        at position: Tree.N<n>.InsertPosition
     ) throws(__TreeNBoundedError) -> Tree.Position {
         makeUnique()
 

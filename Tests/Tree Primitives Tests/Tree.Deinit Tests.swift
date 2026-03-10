@@ -42,7 +42,7 @@ struct TreeDeinitTests {
     func `Inline deinit destroys all elements`() throws {
         let tracker = Tracker()
         do {
-            var tree = Tree.N<TrackedElement, 2>.Inline<8>()
+            var tree = Tree<TrackedElement>.N<2>.Inline<8>()
             let root = try tree.insert(TrackedElement(1, tracker: tracker), at: .root)
             _ = try tree.insert(TrackedElement(2, tracker: tracker), at: .left(of: root))
             _ = try tree.insert(TrackedElement(3, tracker: tracker), at: .right(of: root))
@@ -53,7 +53,7 @@ struct TreeDeinitTests {
     @Test
     func `Inline empty deinit does not crash`() {
         do {
-            let _ = Tree.N<TrackedElement, 2>.Inline<8>()
+            let _ = Tree<TrackedElement>.N<2>.Inline<8>()
         }
     }
 
@@ -63,7 +63,7 @@ struct TreeDeinitTests {
     func `Small deinit destroys all elements`() throws {
         let tracker = Tracker()
         do {
-            var tree = Tree.N<TrackedBox, 2>.Small<8>()
+            var tree = Tree<TrackedBox>.N<2>.Small<8>()
             let root = try tree.insert(TrackedBox(1, tracker: tracker), at: .root)
             _ = try tree.insert(TrackedBox(2, tracker: tracker), at: .left(of: root))
             _ = try tree.insert(TrackedBox(3, tracker: tracker), at: .right(of: root))
@@ -74,7 +74,7 @@ struct TreeDeinitTests {
     @Test
     func `Small empty deinit does not crash`() {
         do {
-            let _ = Tree.N<TrackedBox, 2>.Small<8>()
+            let _ = Tree<TrackedBox>.N<2>.Small<8>()
         }
     }
 }

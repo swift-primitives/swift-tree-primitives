@@ -42,7 +42,7 @@ extension Tree.N where Element: ~Copyable {
         public typealias Error = __TreeNInlineError
 
         /// Node type from parent Tree.N.
-        public typealias Node = Tree.N<Element, n>.Node
+        public typealias Node = Tree.N<n>.Node
 
         /// Typed node count.
         public typealias Count = Index<Node>.Count
@@ -126,7 +126,7 @@ extension Tree.N.Inline where Element: ~Copyable {
 
     /// Returns the position of the child at the given slot.
     @inlinable
-    public mutating func child(of position: Tree.Position, slot: Tree.N<Element, n>.ChildSlot) -> Tree.Position? {
+    public mutating func child(of position: Tree.Position, slot: Tree.N<n>.ChildSlot) -> Tree.Position? {
         do {
             try _validate(position)
         } catch {
@@ -198,7 +198,7 @@ extension Tree.N.Inline where Element: ~Copyable {
     @discardableResult
     public mutating func insert(
         _ element: consuming Element,
-        at position: Tree.N<Element, n>.InsertPosition
+        at position: Tree.N<n>.InsertPosition
     ) throws(__TreeNInlineError) -> Tree.Position {
         switch position {
         case .root:

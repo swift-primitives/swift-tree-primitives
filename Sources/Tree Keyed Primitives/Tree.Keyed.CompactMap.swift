@@ -11,7 +11,7 @@
 
 // MARK: - Compact Map / Map to Array
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Returns an array of transformed values from a pre-order traversal.
     ///

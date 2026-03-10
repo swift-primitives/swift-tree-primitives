@@ -75,10 +75,10 @@ public import Buffer_Arena_Primitives
 ///
 /// - Note: Declared in an extension. Swift 6.2.4 resolved the value-generic
 ///   nested type extension restriction ([COPY-FIX-002]).
-extension Tree {
+extension Tree where Element: ~Copyable {
 
     @safe
-    public struct N<Element: ~Copyable, let n: Int>: ~Copyable {
+    public struct N<let n: Int>: ~Copyable {
 
         // MARK: - Typealiases
 

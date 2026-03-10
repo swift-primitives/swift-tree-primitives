@@ -11,7 +11,7 @@
 
 // MARK: - Key Path Operations
 
-extension Tree.Keyed where Value: ~Copyable {
+extension Tree.Keyed where Element: ~Copyable {
 
     /// Reconstructs the key path from the root to the given position.
     ///
@@ -70,7 +70,7 @@ extension Tree.Keyed where Value: ~Copyable {
 
 // MARK: - Key Path Operations (Copyable)
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Returns the value at the given key path.
     ///

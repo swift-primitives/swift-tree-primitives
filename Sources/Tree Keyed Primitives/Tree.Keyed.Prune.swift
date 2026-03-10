@@ -11,7 +11,7 @@
 
 // MARK: - Prune
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Removes all subtrees rooted at nodes where the predicate returns true.
     ///

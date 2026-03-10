@@ -11,7 +11,7 @@
 
 // MARK: - Subtree Extraction
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Returns a deep copy of the subtree rooted at the given key path.
     ///
@@ -28,10 +28,10 @@ extension Tree.Keyed where Value: Copyable {
     ///   doesn't resolve.
     /// - Complexity: O(d + n) where d is key path length, n is subtree node count.
     @inlinable
-    public func subtree(at keyPath: some Swift.Sequence<Key>) -> Tree.Keyed<Key, Value>? {
+    public func subtree(at keyPath: some Swift.Sequence<Key>) -> Tree<Element>.Keyed<Key>? {
         guard let pos = position(at: keyPath) else { return nil }
 
-        var result = Tree.Keyed<Key, Value>()
+        var result = Tree<Element>.Keyed<Key>()
         let sourceIndex = _slot(pos.index)
         let sourcePtr = unsafe _arena.pointer(at: sourceIndex)
 

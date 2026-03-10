@@ -17,7 +17,7 @@ extension Tree.N.Bounded.Order.In {
     ///
     /// Only available for binary trees (n == 2).
     public struct Sequence: Swift.Sequence {
-        let tree: Tree.N<Element, n>.Bounded
+        let tree: Tree.N<n>.Bounded
 
         public func makeIterator() -> Iterator {
             Iterator(tree: tree)

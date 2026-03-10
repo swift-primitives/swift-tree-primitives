@@ -11,10 +11,10 @@
 
 public import Index_Primitives
 
-extension Tree {
+extension Tree where Element: ~Copyable {
     /// Type-safe index for tree node positions.
     ///
-    /// Uses `Index<Element>` to provide compile-time safety preventing
+    /// Uses `Index<Tag>` to provide compile-time safety preventing
     /// cross-tree index confusion.
     ///
     /// ## Position Semantics
@@ -31,7 +31,7 @@ extension Tree {
     /// ## Example
     ///
     /// ```swift
-    /// let nodeIdx: Tree.Index<Int> = 0  // Root node index
+    /// let nodeIdx: Tree<Int>.Index<Int> = 0  // Root node index
     /// ```
-    public typealias Index<Element: ~Copyable> = Index_Primitives.Index<Element>
+    public typealias Index<Tag: ~Copyable> = Index_Primitives.Index<Tag>
 }

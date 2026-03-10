@@ -19,17 +19,17 @@ extension Tree.N.Bounded.Order.Level {
     /// An iterator for level-order traversal.
     public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
-        let tree: Tree.N<Element, n>.Bounded
+        let tree: Tree.N<n>.Bounded
 
         @usableFromInline
-        var pending: Queue<Index<Tree.N<Element, n>.Node>>
+        var pending: Queue<Index<Tree.N<n>.Node>>
 
         @usableFromInline
         var _element: Element? = nil
 
-        init(tree: Tree.N<Element, n>.Bounded) {
+        init(tree: Tree.N<n>.Bounded) {
             self.tree = tree
-            self.pending = Queue<Index<Tree.N<Element, n>.Node>>()
+            self.pending = Queue<Index<Tree.N<n>.Node>>()
             if let rootIndex = tree._rootIndex {
                 pending.enqueue(rootIndex)
             }

@@ -58,10 +58,13 @@ public import Dictionary_Primitives
 ///
 /// When `Value` is `Copyable`, `Tree.Keyed` uses copy-on-write semantics:
 /// copies share storage until mutation, providing efficient value semantics.
-extension Tree {
+extension Tree where Element: ~Copyable {
 
     @safe
-    public struct Keyed<Key: Hash.`Protocol`, Value: ~Copyable>: ~Copyable {
+    public struct Keyed<Key: Hash.`Protocol`>: ~Copyable {
+
+        /// The value stored at each node. Equivalent to the tree's `Element` type.
+        public typealias Value = Element
 
         // MARK: - Typealiases
 
@@ -186,7 +189,7 @@ extension Tree {
 
 // MARK: - Insert Operations (~Copyable)
 
-extension Tree.Keyed where Value: ~Copyable {
+extension Tree.Keyed where Element: ~Copyable {
 
     /// Inserts a value at the specified position.
     ///
@@ -357,7 +360,7 @@ extension Tree.Keyed where Value: ~Copyable {
 
 // MARK: - Copyable Value Extensions
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Ensures unique storage, copying if necessary for copy-on-write.
     @usableFromInline
@@ -455,9 +458,9 @@ extension Tree.Keyed where Value: Copyable {
 
 // MARK: - Conditional Copyable
 
-extension Tree.Keyed.Node: Copyable where Value: Copyable {}
-extension Tree.Keyed: Copyable where Value: Copyable {}
+extension Tree.Keyed.Node: Copyable where Element: Copyable {}
+extension Tree.Keyed: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Tree.Keyed: @unchecked Sendable where Key: Sendable, Value: Sendable {}
+extension Tree.Keyed: @unchecked Sendable where Key: Sendable, Element: Sendable {}

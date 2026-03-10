@@ -11,7 +11,7 @@
 
 // MARK: - Navigation
 
-extension Tree.Keyed where Value: ~Copyable {
+extension Tree.Keyed where Element: ~Copyable {
 
     /// Returns the position of the child with the given key.
     ///

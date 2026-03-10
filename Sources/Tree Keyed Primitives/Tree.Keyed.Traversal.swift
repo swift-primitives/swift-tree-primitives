@@ -11,7 +11,7 @@
 
 // MARK: - Traversal (~Copyable)
 
-extension Tree.Keyed where Value: ~Copyable {
+extension Tree.Keyed where Element: ~Copyable {
 
     /// Iterates over all values in pre-order using a borrowing closure.
     ///
@@ -103,7 +103,7 @@ extension Tree.Keyed where Value: ~Copyable {
 
 // MARK: - Traversal Sequences (Copyable values only)
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// A sequence that yields values in pre-order (root, then children in insertion order).
     public var preOrder: Order.Pre.Sequence {

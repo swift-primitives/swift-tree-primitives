@@ -16,17 +16,17 @@ extension Tree.Keyed.Order.Level {
     /// An iterator for level-order traversal.
     public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
-        let tree: Tree.Keyed<Key, Value>
+        let tree: Tree<Element>.Keyed<Key>
 
         @usableFromInline
-        var pending: Queue<Index<Tree.Keyed<Key, Value>.Node>>
+        var pending: Queue<Index<Tree<Element>.Keyed<Key>.Node>>
 
         @usableFromInline
-        var _element: Value? = nil
+        var _element: Element? = nil
 
-        init(tree: Tree.Keyed<Key, Value>) {
+        init(tree: Tree<Element>.Keyed<Key>) {
             self.tree = tree
-            self.pending = Queue<Index<Tree.Keyed<Key, Value>.Node>>()
+            self.pending = Queue<Index<Tree<Element>.Keyed<Key>.Node>>()
 
             if let rootIndex = tree._rootIndex {
                 pending.enqueue(rootIndex)
@@ -35,10 +35,10 @@ extension Tree.Keyed.Order.Level {
 
         @_lifetime(&self)
         @inlinable
-        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Value> {
+        public mutating func nextSpan(maximumCount: Cardinal) -> Span<Element> {
             let ptr = unsafe withUnsafeMutablePointer(to: &_element) { p in
-                unsafe UnsafePointer<Value>(
-                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Value.self)
+                unsafe UnsafePointer<Element>(
+                    unsafe UnsafeRawPointer(p).assumingMemoryBound(to: Element.self)
                 )
             }
             guard maximumCount > .zero else {
@@ -56,7 +56,7 @@ extension Tree.Keyed.Order.Level {
 
         @_lifetime(self: immortal)
         @inlinable
-        public mutating func next() -> Value? {
+        public mutating func next() -> Element? {
             guard !pending.isEmpty else { return nil }
 
             let index = pending.dequeue()!

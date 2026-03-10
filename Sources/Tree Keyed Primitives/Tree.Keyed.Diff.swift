@@ -51,7 +51,7 @@ extension __TreeKeyedDiff: Equatable where Key: Equatable {}
 
 // MARK: - Typealias
 
-extension Tree.Keyed where Value: Equatable, Key: Copyable {
+extension Tree.Keyed where Element: Equatable, Key: Copyable {
     /// The result of comparing two keyed trees.
     public typealias Diff = __TreeKeyedDiff<Key, Value>
 }

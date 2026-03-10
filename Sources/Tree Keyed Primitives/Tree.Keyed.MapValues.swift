@@ -11,19 +11,19 @@
 
 // MARK: - Map Values
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Returns a new tree with the same structure but values transformed by the closure.
     ///
     /// - Parameter transform: A closure that maps each value to a new value.
     /// - Returns: A tree with the same keys and structure, but transformed values.
     @inlinable
-    public func mapValues<U>(_ transform: (Value) -> U) -> Tree.Keyed<Key, U> {
-        var result = Tree.Keyed<Key, U>()
+    public func mapValues<U>(_ transform: (Value) -> U) -> Tree<U>.Keyed<Key> {
+        var result = Tree<U>.Keyed<Key>()
         guard let rootIndex = _rootIndex else { return result }
 
         // Pre-order traversal to preserve structure
-        var pending = Stack<(source: Index<Node>, parentIndex: Index<Tree.Keyed<Key, U>.Node>?, parentKey: Key?)>()
+        var pending = Stack<(source: Index<Node>, parentIndex: Index<Tree<U>.Keyed<Key>.Node>?, parentKey: Key?)>()
         pending.push((rootIndex, nil, nil))
 
         while !pending.isEmpty {
@@ -32,7 +32,7 @@ extension Tree.Keyed where Value: Copyable {
             let newValue = transform(unsafe sourcePtr.pointee.value)
 
             let arenaPos = result._arena.insert(
-                Tree.Keyed<Key, U>.Node(value: newValue, parentIndex: destParentIndex, parentKey: key)
+                Tree<U>.Keyed<Key>.Node(value: newValue, parentIndex: destParentIndex, parentKey: key)
             )
 
             if let destParentIndex {
@@ -66,7 +66,7 @@ extension Tree.Keyed where Value: Copyable {
     @inlinable
     public func mapValues<U, E>(
         _ transform: ([Key], Value) throws(E) -> U
-    ) throws(E) -> Tree.Keyed<Key, U> {
+    ) throws(E) -> Tree<U>.Keyed<Key> {
         try compactMapValues { (path, value) throws(E) -> U? in
             try transform(path, value)
         }
@@ -88,7 +88,7 @@ extension Tree.Keyed where Value: Copyable {
     @inlinable
     public func mapValues<U, E>(
         _ transform: ([Key], Value) throws(E) -> (U, recursivelyApply: Bool)
-    ) throws(E) -> Tree.Keyed<Key, U> {
+    ) throws(E) -> Tree<U>.Keyed<Key> {
         try compactMapValues { (path, value) throws(E) in
             try transform(path, value) as (U, recursivelyApply: Bool)?
         }
@@ -109,7 +109,7 @@ extension Tree.Keyed where Value: Copyable {
     @inlinable
     public func compactMapValues<U, E>(
         _ transform: ([Key], Value) throws(E) -> U?
-    ) throws(E) -> Tree.Keyed<Key, U> {
+    ) throws(E) -> Tree<U>.Keyed<Key> {
         try compactMapValues { (path, value) throws(E) in
             try transform(path, value).map { ($0, recursivelyApply: false) }
         }
@@ -132,13 +132,13 @@ extension Tree.Keyed where Value: Copyable {
     @inlinable
     public func compactMapValues<U, E>(
         _ transform: ([Key], Value) throws(E) -> (U, recursivelyApply: Bool)?
-    ) throws(E) -> Tree.Keyed<Key, U> {
-        var result = Tree.Keyed<Key, U>()
+    ) throws(E) -> Tree<U>.Keyed<Key> {
+        var result = Tree<U>.Keyed<Key>()
         guard let rootIndex = _rootIndex else { return result }
 
         var pending = Stack<(
             source: Index<Node>,
-            destParent: Index<Tree.Keyed<Key, U>.Node>?,
+            destParent: Index<Tree<U>.Keyed<Key>.Node>?,
             parentKey: Key?,
             path: [Key],
             broadcast: U?
@@ -164,7 +164,7 @@ extension Tree.Keyed where Value: Copyable {
             }
 
             let arenaPos = result._arena.insert(
-                Tree.Keyed<Key, U>.Node(value: newValue, parentIndex: destParentIndex, parentKey: key)
+                Tree<U>.Keyed<Key>.Node(value: newValue, parentIndex: destParentIndex, parentKey: key)
             )
 
             if let destParentIndex {
@@ -203,17 +203,17 @@ extension Tree.Keyed where Value: Copyable {
     /// - Parameter transform: A closure that optionally transforms each value.
     /// - Returns: A tree with transformed values, minus pruned subtrees.
     @inlinable
-    public func compactMapValues<U>(_ transform: (Value) -> U?) -> Tree.Keyed<Key, U> {
-        var result = Tree.Keyed<Key, U>()
+    public func compactMapValues<U>(_ transform: (Value) -> U?) -> Tree<U>.Keyed<Key> {
+        var result = Tree<U>.Keyed<Key>()
         guard let rootIndex = _rootIndex else { return result }
 
         let sourcePtr = unsafe _arena.pointer(at: rootIndex)
         guard let rootValue = transform(unsafe sourcePtr.pointee.value) else { return result }
 
-        let rootPos = result._arena.insert(Tree.Keyed<Key, U>.Node(value: rootValue))
+        let rootPos = result._arena.insert(Tree<U>.Keyed<Key>.Node(value: rootValue))
         result._rootIndex = rootPos.slot
 
-        var pending = Stack<(source: Index<Node>, destParent: Index<Tree.Keyed<Key, U>.Node>)>()
+        var pending = Stack<(source: Index<Node>, destParent: Index<Tree<U>.Keyed<Key>.Node>)>()
         pending.push((rootIndex, rootPos.slot))
 
         while !pending.isEmpty {
@@ -230,7 +230,7 @@ extension Tree.Keyed where Value: Copyable {
                 guard let childValue = transform(unsafe childPtr.pointee.value) else { continue }
 
                 let childPos = result._arena.insert(
-                    Tree.Keyed<Key, U>.Node(value: childValue, parentIndex: destParentIndex, parentKey: childKey)
+                    Tree<U>.Keyed<Key>.Node(value: childValue, parentIndex: destParentIndex, parentKey: childKey)
                 )
                 let parentPtr = unsafe result._arena.pointer(at: destParentIndex)
                 unsafe (parentPtr.pointee._children.set(childKey, childPos.slot))
@@ -245,13 +245,13 @@ extension Tree.Keyed where Value: Copyable {
 
 // MARK: - Map Values (Async)
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Async variant of ``mapValues(_:)-2g7k``.
     @inlinable
     public func mapValues<U, E>(
         _ transform: ([Key], Value) async throws(E) -> U
-    ) async throws(E) -> Tree.Keyed<Key, U> {
+    ) async throws(E) -> Tree<U>.Keyed<Key> {
         try await compactMapValues { (path, value) async throws(E) -> U? in
             try await transform(path, value)
         }
@@ -261,7 +261,7 @@ extension Tree.Keyed where Value: Copyable {
     @inlinable
     public func mapValues<U, E>(
         _ transform: ([Key], Value) async throws(E) -> (U, recursivelyApply: Bool)
-    ) async throws(E) -> Tree.Keyed<Key, U> {
+    ) async throws(E) -> Tree<U>.Keyed<Key> {
         try await compactMapValues { (path, value) async throws(E) in
             try await transform(path, value) as (U, recursivelyApply: Bool)?
         }
@@ -271,7 +271,7 @@ extension Tree.Keyed where Value: Copyable {
     @inlinable
     public func compactMapValues<U, E>(
         _ transform: ([Key], Value) async throws(E) -> U?
-    ) async throws(E) -> Tree.Keyed<Key, U> {
+    ) async throws(E) -> Tree<U>.Keyed<Key> {
         try await compactMapValues { (path, value) async throws(E) in
             try await transform(path, value).map { ($0, recursivelyApply: false) }
         }
@@ -281,13 +281,13 @@ extension Tree.Keyed where Value: Copyable {
     @inlinable
     public func compactMapValues<U, E>(
         _ transform: ([Key], Value) async throws(E) -> (U, recursivelyApply: Bool)?
-    ) async throws(E) -> Tree.Keyed<Key, U> {
-        var result = Tree.Keyed<Key, U>()
+    ) async throws(E) -> Tree<U>.Keyed<Key> {
+        var result = Tree<U>.Keyed<Key>()
         guard let rootIndex = _rootIndex else { return result }
 
         var pending = Stack<(
             source: Index<Node>,
-            destParent: Index<Tree.Keyed<Key, U>.Node>?,
+            destParent: Index<Tree<U>.Keyed<Key>.Node>?,
             parentKey: Key?,
             path: [Key],
             broadcast: U?
@@ -313,7 +313,7 @@ extension Tree.Keyed where Value: Copyable {
             }
 
             let arenaPos = result._arena.insert(
-                Tree.Keyed<Key, U>.Node(value: newValue, parentIndex: destParentIndex, parentKey: key)
+                Tree<U>.Keyed<Key>.Node(value: newValue, parentIndex: destParentIndex, parentKey: key)
             )
 
             if let destParentIndex {

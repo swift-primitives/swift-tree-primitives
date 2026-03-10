@@ -19,20 +19,20 @@ extension Tree.N.Bounded.Order.Post {
     /// An iterator for post-order traversal.
     public struct Iterator: Sequence_Primitives.Sequence.Iterator.`Protocol`, IteratorProtocol {
         @usableFromInline
-        let tree: Tree.N<Element, n>.Bounded
+        let tree: Tree.N<n>.Bounded
 
         @usableFromInline
-        var pending: Stack<Index<Tree.N<Element, n>.Node>>
+        var pending: Stack<Index<Tree.N<n>.Node>>
 
         @usableFromInline
-        var lastVisited: Index<Tree.N<Element, n>.Node>?
+        var lastVisited: Index<Tree.N<n>.Node>?
 
         @usableFromInline
         var _element: Element? = nil
 
-        init(tree: Tree.N<Element, n>.Bounded) {
+        init(tree: Tree.N<n>.Bounded) {
             self.tree = tree
-            self.pending = Stack<Index<Tree.N<Element, n>.Node>>()
+            self.pending = Stack<Index<Tree.N<n>.Node>>()
             self.lastVisited = nil
             if let rootIndex = tree._rootIndex {
                 pending.push(rootIndex)
@@ -68,7 +68,7 @@ extension Tree.N.Bounded.Order.Post {
                 let nodePtr = unsafe tree._arena.pointer(at: current)
                 let childIndices = unsafe nodePtr.pointee.childIndices
 
-                var rightmostChild: Index<Tree.N<Element, n>.Node>? = nil
+                var rightmostChild: Index<Tree.N<n>.Node>? = nil
                 for slot in stride(from: n - 1, through: 0, by: -1) {
                     if let child = childIndices[slot] {
                         rightmostChild = child
@@ -76,7 +76,7 @@ extension Tree.N.Bounded.Order.Post {
                     }
                 }
 
-                var leftmostChild: Index<Tree.N<Element, n>.Node>? = nil
+                var leftmostChild: Index<Tree.N<n>.Node>? = nil
                 for slot in 0..<n {
                     if let child = childIndices[slot] {
                         leftmostChild = child

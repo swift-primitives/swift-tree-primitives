@@ -40,10 +40,10 @@ public enum __TreeUnboundedInsertPosition: Sendable, Equatable {
     /// - Parameters:
     ///   - position: The parent position.
     ///   - index: The child index (0..<childCount inserts, childCount appends).
-    case child(of: Tree.Position, at: Int)
+    case child(of: __TreePosition, at: Int)
 
     /// Append as the last child of the given position.
     ///
     /// Equivalent to `.child(of: position, at: childCount)`.
-    case appendChild(of: Tree.Position)
+    case appendChild(of: __TreePosition)
 }

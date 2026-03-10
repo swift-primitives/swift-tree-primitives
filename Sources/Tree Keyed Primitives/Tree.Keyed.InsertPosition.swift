@@ -40,7 +40,7 @@ public enum __TreeKeyedInsertPosition<Key: Hash.`Protocol`> {
     /// - Parameters:
     ///   - position: The parent position.
     ///   - key: The child key (must be unique among the parent's children).
-    case child(of: Tree.Position, key: Key)
+    case child(of: __TreePosition, key: Key)
 }
 
 // MARK: - Conditional Sendable

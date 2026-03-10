@@ -47,7 +47,7 @@ struct TreeNBinaryTests {
 
     @Test("Empty tree")
     func emptyTree() {
-        let tree = Tree.N<Int, 2>()
+        let tree = Tree<Int>.N<2>()
         #expect(tree.isEmpty)
         #expect(tree.count == 0)
         #expect(tree.root == nil)
@@ -56,7 +56,7 @@ struct TreeNBinaryTests {
 
     @Test("Insert root")
     func insertRoot() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(42, at: .root)
 
         #expect(!tree.isEmpty)
@@ -69,7 +69,7 @@ struct TreeNBinaryTests {
 
     @Test("Insert children")
     func insertChildren() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         let right = try tree.insert(3, at: .right(of: root))
@@ -87,7 +87,7 @@ struct TreeNBinaryTests {
 
     @Test("Insert throws on occupied root")
     func insertThrowsOnOccupiedRoot() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         _ = try tree.insert(1, at: .root)
 
         #expect(throws: __TreeNError.slotOccupied) {
@@ -97,7 +97,7 @@ struct TreeNBinaryTests {
 
     @Test("Insert throws on occupied child")
     func insertThrowsOnOccupiedChild() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         _ = try tree.insert(2, at: .left(of: root))
 
@@ -108,7 +108,7 @@ struct TreeNBinaryTests {
 
     @Test("Remove leaf")
     func removeLeaf() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -120,7 +120,7 @@ struct TreeNBinaryTests {
 
     @Test("Remove throws on non-leaf")
     func removeThrowsOnNonLeaf() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         _ = try tree.insert(2, at: .left(of: root))
 
@@ -131,7 +131,7 @@ struct TreeNBinaryTests {
 
     @Test("Remove subtree")
     func removeSubtree() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(4, at: .left(of: left))
@@ -147,7 +147,7 @@ struct TreeNBinaryTests {
 
     @Test("Clear tree")
     func clearTree() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         _ = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -160,7 +160,7 @@ struct TreeNBinaryTests {
 
     @Test("Pre-order traversal")
     func preOrderTraversal() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -174,7 +174,7 @@ struct TreeNBinaryTests {
 
     @Test("In-order traversal")
     func inOrderTraversal() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -188,7 +188,7 @@ struct TreeNBinaryTests {
 
     @Test("Post-order traversal")
     func postOrderTraversal() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -202,7 +202,7 @@ struct TreeNBinaryTests {
 
     @Test("Level-order traversal")
     func levelOrderTraversal() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -216,7 +216,7 @@ struct TreeNBinaryTests {
 
     @Test("Traversal sequences")
     func traversalSequences() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -231,7 +231,7 @@ struct TreeNBinaryTests {
 
     @Test("Height calculation")
     func heightCalculation() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         #expect(tree.height == nil)
 
         let root = try tree.insert(1, at: .root)
@@ -246,10 +246,10 @@ struct TreeNBinaryTests {
 
     @Test("Capacity growth")
     func capacityGrowth() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
 
         // Build a complete binary tree with 15 nodes
-        var positions: [Tree.Position] = []
+        var positions: [Tree<Int>.Position] = []
         positions.append(try tree.insert(1, at: .root))
 
         for i in 0..<7 {
@@ -272,7 +272,7 @@ struct TreeNBoundedTests {
 
     @Test("Bounded initialization")
     func boundedInit() throws {
-        let tree = try Tree.N<Int, 2>.Bounded(capacity: 10)
+        let tree = try Tree<Int>.N<2>.Bounded(capacity: 10)
         #expect(tree.isEmpty)
         #expect(tree.count == 0)
         #expect(tree.capacity == 10)
@@ -281,7 +281,7 @@ struct TreeNBoundedTests {
 
     @Test("Bounded insert and overflow")
     func boundedOverflow() throws {
-        var tree = try Tree.N<Int, 2>.Bounded(capacity: 3)
+        var tree = try Tree<Int>.N<2>.Bounded(capacity: 3)
 
         let root = try tree.insert(1, at: .root)
         _ = try tree.insert(2, at: .left(of: root))
@@ -300,7 +300,7 @@ struct TreeNBoundedTests {
 
     @Test("Bounded traversal")
     func boundedTraversal() throws {
-        var tree = try Tree.N<Int, 2>.Bounded(capacity: 5)
+        var tree = try Tree<Int>.N<2>.Bounded(capacity: 5)
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -319,7 +319,7 @@ struct TreeNInlineTests {
 
     @Test("Inline initialization")
     func inlineInit() throws {
-        var tree = try Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree<Int>.N<2>.Inline<8>()
         // Cannot use #expect on ~Copyable types, use assertions
         assert(tree.isEmpty)
         assert(tree.count == 0)
@@ -328,7 +328,7 @@ struct TreeNInlineTests {
 
     @Test("Inline insert")
     func inlineInsert() throws {
-        var tree = try Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree<Int>.N<2>.Inline<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -345,7 +345,7 @@ struct TreeNInlineTests {
 
     @Test("Inline overflow")
     func inlineOverflow() throws {
-        var tree = try Tree.N<Int, 2>.Inline<3>()
+        var tree = try Tree<Int>.N<2>.Inline<3>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -360,7 +360,7 @@ struct TreeNInlineTests {
 
     @Test("Inline traversal")
     func inlineTraversal() throws {
-        var tree = try Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree<Int>.N<2>.Inline<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -373,7 +373,7 @@ struct TreeNInlineTests {
 
     @Test("Inline remove and reuse")
     func inlineRemoveAndReuse() throws {
-        var tree = try Tree.N<Int, 2>.Inline<4>()
+        var tree = try Tree<Int>.N<2>.Inline<4>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -399,7 +399,7 @@ struct TreeNSmallTests {
 
     @Test("Small initialization")
     func smallInit() throws {
-        var tree = try Tree.N<Int, 2>.Small<4>()
+        var tree = try Tree<Int>.N<2>.Small<4>()
         // Cannot use #expect on ~Copyable types, use assertions
         assert(tree.isEmpty)
         assert(tree.count == 0)
@@ -408,7 +408,7 @@ struct TreeNSmallTests {
 
     @Test("Small inline storage")
     func smallInline() throws {
-        var tree = try Tree.N<Int, 2>.Small<4>()
+        var tree = try Tree<Int>.N<2>.Small<4>()
         let root = try tree.insert(1, at: .root)
         _ = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -422,7 +422,7 @@ struct TreeNSmallTests {
 
     @Test("Small spill to heap")
     func smallSpill() throws {
-        var tree = try Tree.N<Int, 2>.Small<3>()
+        var tree = try Tree<Int>.N<2>.Small<3>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -441,7 +441,7 @@ struct TreeNSmallTests {
 
     @Test("Small traversal after spill")
     func smallTraversalAfterSpill() throws {
-        var tree = try Tree.N<Int, 2>.Small<2>()
+        var tree = try Tree<Int>.N<2>.Small<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -494,7 +494,7 @@ struct TreeNNonCopyableTests {
     @Test("NonCopyable insert and peek")
     func nonCopyableInsertAndPeek() throws {
         let tracker = DeinitTracker()
-        var tree = Tree.N<Token, 2>()
+        var tree = Tree<Token>.N<2>()
 
         let root = try tree.insert(Token(1, tracker: tracker), at: .root)
         _ = try tree.insert(Token(2, tracker: tracker), at: .left(of: root))
@@ -511,7 +511,7 @@ struct TreeNNonCopyableTests {
         let tracker = DeinitTracker()
 
         do {
-            var tree = Tree.N<Token, 2>()
+            var tree = Tree<Token>.N<2>()
             let root = try tree.insert(Token(1, tracker: tracker), at: .root)
             let left = try tree.insert(Token(2, tracker: tracker), at: .left(of: root))
             _ = try tree.insert(Token(3, tracker: tracker), at: .right(of: root))
@@ -527,7 +527,7 @@ struct TreeNNonCopyableTests {
     @Test("NonCopyable forEach")
     func nonCopyableForEach() throws {
         let tracker = DeinitTracker()
-        var tree = Tree.N<Token, 2>()
+        var tree = Tree<Token>.N<2>()
 
         let root = try tree.insert(Token(1, tracker: tracker), at: .root)
         _ = try tree.insert(Token(2, tracker: tracker), at: .left(of: root))
@@ -548,7 +548,7 @@ struct TreeNConditionalCopyableTests {
 
     @Test("Copyable when element is Copyable")
     func copyableWhenElementCopyable() throws {
-        var tree1 = Tree.N<Int, 2>()
+        var tree1 = Tree<Int>.N<2>()
         let root = try tree1.insert(1, at: .root)
         _ = try tree1.insert(2, at: .left(of: root))
 
@@ -560,7 +560,7 @@ struct TreeNConditionalCopyableTests {
 
     @Test("Copy-on-write behavior")
     func copyOnWrite() throws {
-        var tree1 = Tree.N<Int, 2>()
+        var tree1 = Tree<Int>.N<2>()
         let root = try tree1.insert(1, at: .root)
         _ = try tree1.insert(2, at: .left(of: root))
 
@@ -584,7 +584,7 @@ struct TreeNSendableTests {
 
     @Test("Sendable when element is Sendable")
     func sendableWhenElementSendable() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(42, at: .root)
         _ = try tree.insert(1, at: .left(of: root))
 
@@ -593,7 +593,7 @@ struct TreeNSendableTests {
 
     @Test("Sendable bounded")
     func sendableBounded() throws {
-        var tree = try Tree.N<Int, 2>.Bounded(capacity: 10)
+        var tree = try Tree<Int>.N<2>.Bounded(capacity: 10)
         _ = try tree.insert(42, at: .root)
 
         requireSendable(tree)
@@ -601,7 +601,7 @@ struct TreeNSendableTests {
 
     @Test("Sendable inline")
     func sendableInline() throws {
-        var tree = try Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree<Int>.N<2>.Inline<8>()
         _ = try tree.insert(42, at: .root)
 
         // Inline is ~Copyable but Sendable
@@ -610,7 +610,7 @@ struct TreeNSendableTests {
 
     @Test("Sendable small")
     func sendableSmall() throws {
-        var tree = try Tree.N<Int, 2>.Small<4>()
+        var tree = try Tree<Int>.N<2>.Small<4>()
         _ = try tree.insert(42, at: .root)
 
         // Small is ~Copyable but Sendable
@@ -625,7 +625,7 @@ struct TreeNStalePositionTests {
 
     @Test("Stale position after remove returns nil for navigation")
     func stalePositionAfterRemove() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -643,7 +643,7 @@ struct TreeNStalePositionTests {
 
     @Test("Stale position after remove throws on insert")
     func stalePositionThrowsOnInsert() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         _ = try tree.insert(3, at: .right(of: root))
@@ -662,7 +662,7 @@ struct TreeNStalePositionTests {
 
     @Test("Position remains valid after unrelated inserts")
     func positionValidAfterUnrelatedInserts() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -683,7 +683,7 @@ struct TreeNStalePositionTests {
 
     @Test("Position remains valid after unrelated removes")
     func positionValidAfterUnrelatedRemoves() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
         let right = try tree.insert(3, at: .right(of: root))
@@ -701,7 +701,7 @@ struct TreeNStalePositionTests {
 
     @Test("Position survives CoW copy")
     func positionSurvivesCoW() throws {
-        var tree1 = Tree.N<Int, 2>()
+        var tree1 = Tree<Int>.N<2>()
         let root = try tree1.insert(1, at: .root)
         let left = try tree1.insert(2, at: .left(of: root))
 
@@ -721,11 +721,11 @@ struct TreeNStalePositionTests {
 
     @Test("Position survives growth reallocation")
     func positionSurvivesGrowth() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
 
         // Build tree and capture positions
         let root = try tree.insert(1, at: .root)
-        var positions: [Tree.Position] = [root]
+        var positions: [Tree<Int>.Position] = [root]
 
         // Force multiple growths
         for i in 0..<20 {
@@ -744,7 +744,7 @@ struct TreeNStalePositionTests {
 
     @Test("Bounded stale position detection")
     func boundedStalePosition() throws {
-        var tree = try Tree.N<Int, 2>.Bounded(capacity: 10)
+        var tree = try Tree<Int>.N<2>.Bounded(capacity: 10)
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -763,7 +763,7 @@ struct TreeNStalePositionTests {
 
     @Test("Inline stale position detection")
     func inlineStalePosition() throws {
-        var tree = try Tree.N<Int, 2>.Inline<8>()
+        var tree = try Tree<Int>.N<2>.Inline<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -782,7 +782,7 @@ struct TreeNStalePositionTests {
 
     @Test("Small stale position detection - inline")
     func smallStalePositionInline() throws {
-        var tree = try Tree.N<Int, 2>.Small<8>()
+        var tree = try Tree<Int>.N<2>.Small<8>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -803,7 +803,7 @@ struct TreeNStalePositionTests {
 
     @Test("Small stale position detection - after spill")
     func smallStalePositionAfterSpill() throws {
-        var tree = try Tree.N<Int, 2>.Small<2>()
+        var tree = try Tree<Int>.N<2>.Small<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 
@@ -827,7 +827,7 @@ struct TreeNStalePositionTests {
 
     @Test("Removed and reallocated slot invalidates old position")
     func removedSlotReallocationInvalidatesOldPosition() throws {
-        var tree = Tree.N<Int, 2>()
+        var tree = Tree<Int>.N<2>()
         let root = try tree.insert(1, at: .root)
         let left = try tree.insert(2, at: .left(of: root))
 

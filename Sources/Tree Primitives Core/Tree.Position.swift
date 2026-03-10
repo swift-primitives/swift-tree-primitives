@@ -11,66 +11,62 @@
 
 public import Index_Primitives
 
-extension Tree {
+// MARK: - Hoisted Position Type (Module Level)
+//
+// Position is hoisted to module level so it can be referenced by other hoisted
+// types (__TreeNInsertPosition, __TreeKeyedInsertPosition,
+// __TreeUnboundedInsertPosition) that cannot access Tree<Element>.Position.
+//
+// This is a documented exception per [API-EXC-001].
+//
+// Use the typealias form in your code: Tree<Element>.Position
 
+/// Hoisted implementation of ``Tree/Position``.
+///
+/// A position (cursor) to a node in a tree. Shared across all tree variants.
+///
+/// - Note: Use ``Tree/Position`` in your code, not this type directly.
+public struct __TreePosition: Sendable, Equatable, Hashable {
+
+    /// The typed index of the node in the arena storage.
+    public let index: Index<Self>
+
+    /// Token for validity checking (odd = occupied, even = free).
+    public let token: UInt32
+
+    /// Creates a position with the given typed index and token.
+    @inlinable
+    public init(index: Index<Self>, token: UInt32) {
+        self.index = index
+        self.token = token
+    }
+
+    /// Creates a position from any typed index, re-tagging to Position.
+    ///
+    /// Boundary overload per [IMPL-010]: `.retag()` lives here,
+    /// not at call sites.
+    @inlinable
+    public init<T: ~Copyable>(index: Index<T>, token: UInt32) {
+        self.init(index: index.retag(Self.self), token: token)
+    }
+
+    /// Creates a position from a bare Int index.
+    ///
+    /// Boundary overload for Unbounded variant's Phase 5 bare-Int domain.
+    @inlinable
+    public init(index: Int, token: UInt32) {
+        self.init(
+            index: Index<Self>(Ordinal(UInt(index))),
+            token: token
+        )
+    }
+}
+
+// MARK: - Typealias in Tree
+
+extension Tree where Element: ~Copyable {
     /// A position (cursor) to a node in a tree.
     ///
-    /// `Position` is a lightweight, type-safe handle for navigating and
-    /// operating on tree nodes. Positions are invalidated when the referenced
-    /// node is removed.
-    ///
-    /// ## Token-Based Validation
-    ///
-    /// Each position carries a token that is validated against the tree's internal
-    /// token buffer before any node access. This provides O(1) safety checking:
-    /// - Stale positions (after removal) are detected and rejected
-    /// - No node memory is accessed without validation
-    /// - Tokens use odd/even scheme: odd = occupied, even = free
-    ///
-    /// ## Usage
-    ///
-    /// `Position` is shared across all tree variants:
-    /// - `Tree<Element>.N<n>` (bounded arity)
-    /// - `Tree<Element>` (unbounded arity, future)
-    ///
-    /// This allows positions to be used uniformly regardless of tree arity.
-    public struct Position: Sendable, Equatable, Hashable {
-
-        /// The typed index of the node in the arena storage.
-        public let index: Index<Tree.Position>
-
-        /// Token for validity checking (odd = occupied, even = free).
-        public let token: UInt32
-
-        /// Creates a position with the given typed index and token.
-        ///
-        /// - Parameters:
-        ///   - index: The typed arena index of the node.
-        ///   - token: The validation token (must be odd for valid positions).
-        @inlinable
-        public init(index: Index<Tree.Position>, token: UInt32) {
-            self.index = index
-            self.token = token
-        }
-
-        /// Creates a position from any typed index, re-tagging to Tree.Position.
-        ///
-        /// Boundary overload per [IMPL-010]: `.retag()` lives here,
-        /// not at call sites.
-        @inlinable
-        public init<T: ~Copyable>(index: Index<T>, token: UInt32) {
-            self.init(index: index.retag(Tree.Position.self), token: token)
-        }
-
-        /// Creates a position from a bare Int index.
-        ///
-        /// Boundary overload for Unbounded variant's Phase 5 bare-Int domain.
-        @inlinable
-        public init(index: Int, token: UInt32) {
-            self.init(
-                index: Index<Tree.Position>(Ordinal(UInt(index))),
-                token: token
-            )
-        }
-    }
+    /// - SeeAlso: ``__TreePosition`` for the full documentation.
+    public typealias Position = __TreePosition
 }

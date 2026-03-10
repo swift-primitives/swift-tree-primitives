@@ -11,7 +11,7 @@
 
 // MARK: - Subscript (Read-Only)
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Returns the value at the given key path, or nil if the path doesn't resolve.
     ///
@@ -38,7 +38,7 @@ extension Tree.Keyed where Value: Copyable {
 
 // MARK: - Subscript (Sparse)
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Gets or sets the value at the given key path in a sparse tree.
     ///
@@ -81,7 +81,7 @@ extension Tree.Keyed where Value: Copyable {
 
 // MARK: - Sparse Insert Convenience
 
-extension Tree.Keyed where Value: Copyable {
+extension Tree.Keyed where Element: Copyable {
 
     /// Inserts a value at the given key path, creating intermediate nodes with nil values.
     ///
