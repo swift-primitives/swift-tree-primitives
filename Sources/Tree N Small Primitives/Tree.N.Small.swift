@@ -66,6 +66,12 @@ extension Tree.N where Element: ~Copyable {
         @usableFromInline
         var _rootIndex: Index<Node>?
 
+        // WORKAROUND: Forces compiler to execute deinit body.
+        // TRACKING: swiftlang/swift #86652 variant (nested ~Copyable deinit chain)
+        // WHEN TO REMOVE: When the compiler correctly destroys ~Copyable structs
+        //      with cross-package value-generic stored properties.
+        private var _deinitWorkaround: AnyObject? = nil
+
         // MARK: - Helpers
 
         /// Converts a Position's typed index to a typed arena slot index.
@@ -79,6 +85,14 @@ extension Tree.N where Element: ~Copyable {
         public init() {
             self._arena = Buffer<Node>.Arena.Small<inlineCapacity>()
             self._rootIndex = nil
+        }
+
+        deinit {
+            // WORKAROUND: Manually clean up elements via the mutating path.
+            // TRACKING: swiftlang/swift #86652 variant
+            unsafe withUnsafePointer(to: _arena) { ptr in
+                unsafe UnsafeMutablePointer(mutating: ptr).pointee.removeAll()
+            }
         }
 
         /// Whether the tree is currently using heap storage.
