@@ -73,9 +73,8 @@ public import Buffer_Arena_Primitives
 /// with generation-token validation, LIFO free-list recycling, and automatic
 /// growth. Nodes reference each other by index rather than pointer.
 ///
-/// - Note: This type is declared inside `Tree<Element>`'s primary struct
-///   declaration (not in an extension) per [TREE-008] to ensure proper
-///   `~Copyable` constraint propagation.
+/// - Note: Declared in an extension. Swift 6.2.4 resolved the value-generic
+///   nested type extension restriction ([COPY-FIX-002]).
 extension Tree {
 
     @safe
