@@ -59,13 +59,6 @@ extension Tree.N where Element: ~Copyable {
 
         // MARK: - Storage
 
-        @usableFromInline
-        var _arena: Buffer<Node>.Arena.Small<inlineCapacity>
-
-        /// Index of root node (nil if empty).
-        @usableFromInline
-        var _rootIndex: Index<Node>?
-
         // WORKAROUND: swiftlang/swift#86652 — @_rawLayout triviality misclassification.
         // Forces compiler to recognize type as non-trivially destructible so deinit executes.
         // COST: 8 bytes overhead per instance.
@@ -73,7 +66,19 @@ extension Tree.N where Element: ~Copyable {
         //   Build with `public` access under -O. If it passes, remove this field
         //   and the manual cleanup in deinit.
         // TRACKING: swift-buffer-primitives/Research/rawlayout-release-crash-investigation.md
+        //
+        // NOTE: Must be declared BEFORE _arena. The arena transitively
+        // contains @_rawLayout storage which must be last in memory layout.
+        // See Storage.Inline for the Swift 6.2.4 IRGen crash details.
         private var _deinitWorkaround: AnyObject? = nil
+
+        /// Index of root node (nil if empty).
+        // NOTE: Must be declared BEFORE _arena — see _deinitWorkaround comment.
+        @usableFromInline
+        var _rootIndex: Index<Node>?
+
+        @usableFromInline
+        var _arena: Buffer<Node>.Arena.Small<inlineCapacity>
 
         // MARK: - Helpers
 
@@ -86,8 +91,8 @@ extension Tree.N where Element: ~Copyable {
         /// Creates an empty small n-ary tree.
         @inlinable
         public init() {
-            self._arena = Buffer<Node>.Arena.Small<inlineCapacity>()
             self._rootIndex = nil
+            self._arena = Buffer<Node>.Arena.Small<inlineCapacity>()
         }
 
         deinit {
