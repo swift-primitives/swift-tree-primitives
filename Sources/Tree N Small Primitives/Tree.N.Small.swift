@@ -11,7 +11,7 @@
 
 public import Queue_Primitives
 public import Stack_Primitives
-public import Buffer_Arena_Primitives
+internal import Buffer_Arena_Primitives
 
 /// A small-buffer optimized n-ary tree with inline storage and spill to heap.
 ///

@@ -1,1 +1,1 @@
-public import Tree_Primitives
+internal import Tree_Primitives
