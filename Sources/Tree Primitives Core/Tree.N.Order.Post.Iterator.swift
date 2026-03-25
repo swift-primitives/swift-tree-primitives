@@ -61,7 +61,6 @@ extension Tree.N.Order.Post {
             return unsafe _overrideLifetime(span, mutating: &self)
         }
 
-        @_lifetime(self: immortal)
         @inlinable
         public mutating func next() -> Element? {
             while !pending.isEmpty {

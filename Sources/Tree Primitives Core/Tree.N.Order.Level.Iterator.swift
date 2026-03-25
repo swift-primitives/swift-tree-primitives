@@ -56,7 +56,6 @@ extension Tree.N.Order.Level {
             return unsafe _overrideLifetime(span, mutating: &self)
         }
 
-        @_lifetime(self: immortal)
         @inlinable
         public mutating func next() -> Element? {
             guard !pending.isEmpty else { return nil }

@@ -69,7 +69,6 @@ extension Tree.Keyed.Order.Post {
             return unsafe _overrideLifetime(span, mutating: &self)
         }
 
-        @_lifetime(self: immortal)
         @inlinable
         public mutating func next() -> Element? {
             guard !output.isEmpty else { return nil }
