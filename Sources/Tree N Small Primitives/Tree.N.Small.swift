@@ -59,21 +59,7 @@ extension Tree.N where Element: ~Copyable {
 
         // MARK: - Storage
 
-        // WORKAROUND: swiftlang/swift#86652 — @_rawLayout triviality misclassification.
-        // Forces compiler to recognize type as non-trivially destructible so deinit executes.
-        // COST: 8 bytes overhead per instance.
-        // REMOVAL TEST: swift-buffer-primitives/Experiments/rawlayout-access-level-trigger/
-        //   Build with `public` access under -O. If it passes, remove this field
-        //   and the manual cleanup in deinit.
-        // TRACKING: swift-buffer-primitives/Research/rawlayout-release-crash-investigation.md
-        //
-        // NOTE: Must be declared BEFORE _arena. The arena transitively
-        // contains @_rawLayout storage which must be last in memory layout.
-        // See Storage.Inline for the Swift 6.2.4 IRGen crash details.
-        private var _deinitWorkaround: AnyObject? = nil
-
         /// Index of root node (nil if empty).
-        // NOTE: Must be declared BEFORE _arena — see _deinitWorkaround comment.
         @usableFromInline
         var _rootIndex: Index<Node>?
 
@@ -95,13 +81,9 @@ extension Tree.N where Element: ~Copyable {
             self._arena = Buffer<Node>.Arena.Small<inlineCapacity>()
         }
 
-        deinit {
-            // WORKAROUND: Manually clean up elements via the mutating path.
-            // TRACKING: swiftlang/swift #86652 variant
-            unsafe withUnsafePointer(to: _arena) { ptr in
-                unsafe UnsafeMutablePointer(mutating: ptr).pointee.removeAll()
-            }
-        }
+        // Element cleanup is handled by Buffer.Arena.Inline's deinit (inline case)
+        // or Storage.Arena's class deinit (heap case). No workarounds needed at
+        // this layer — Buffer.Arena.Inline owns _deinitWorkaround.
 
         /// Whether the tree is currently using heap storage.
         @inlinable
