@@ -64,6 +64,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Stack Primitives", package: "swift-stack-primitives"),
                 .product(name: "Queue Primitives Core", package: "swift-queue-primitives"),
+                .product(name: "Queue Dynamic Primitives", package: "swift-queue-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
                 .product(name: "Buffer Arena Primitives", package: "swift-buffer-primitives"),
             ]
