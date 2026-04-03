@@ -63,7 +63,7 @@ let package = Package(
             name: "Tree Primitives Core",
             dependencies: [
                 .product(name: "Stack Primitives", package: "swift-stack-primitives"),
-                .product(name: "Queue Primitives", package: "swift-queue-primitives"),
+                .product(name: "Queue Primitives Core", package: "swift-queue-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
                 .product(name: "Buffer Arena Primitives", package: "swift-buffer-primitives"),
             ]
@@ -133,7 +133,7 @@ let package = Package(
             dependencies: [
                 "Tree Primitives",
                 "Tree Primitives Test Support",
-                .product(name: "Array Primitives", package: "swift-array-primitives"),
+                .product(name: "Array Primitives Core", package: "swift-array-primitives"),
             ]
         ),
     ],
