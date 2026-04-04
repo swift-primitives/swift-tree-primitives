@@ -94,12 +94,12 @@ extension Tree where Element: ~Copyable {
             /// Child indices (dynamic array, heap-allocated).
             ///
             // WORKAROUND: Swift.Array used for per-node dynamic child storage.
-            // WHY: Array_Primitives.Array<Int> uses typed Index<Int>/Count, and
+            // WHY: Array<Int> (ecosystem) uses typed Index<Int>/Count, and
             //   lacks Swift.Array APIs used here (firstIndex(of:), insert(_:at:),
             //   remove(at:) with bare Int). Replacement requires API parity or
             //   call-site rewrite to typed indices.
-            // WHEN TO REMOVE: When Array_Primitives exposes stdlib-compatible
-            //   mutation APIs, or when childIndices migrates to typed Index<Node>.
+            // WHEN TO REMOVE: When Array exposes stdlib-compatible mutation APIs,
+            //   or when childIndices migrates to typed Index<Node>.
             // TRACKING: Phase 5 / F-04 in tree-primitives remediation plan.
             @usableFromInline var childIndices: Swift.Array<Int>
             /// Index of parent (nil for root).
