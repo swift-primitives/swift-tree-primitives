@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 internal import Queue_Primitives_Core
+public import Queue_Dynamic_Primitives
 internal import Buffer_Arena_Primitives
 
 // MARK: - Level-Order Iterator

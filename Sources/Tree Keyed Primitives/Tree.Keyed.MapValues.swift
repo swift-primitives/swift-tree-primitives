@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+
+public import Queue_Dynamic_Primitives
 // MARK: - Map Values
 
 extension Tree.Keyed where Element: Copyable {

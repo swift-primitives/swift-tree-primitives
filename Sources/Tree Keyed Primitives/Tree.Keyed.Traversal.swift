@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+
+public import Queue_Dynamic_Primitives
 // MARK: - Traversal (~Copyable)
 
 extension Tree.Keyed where Element: ~Copyable {

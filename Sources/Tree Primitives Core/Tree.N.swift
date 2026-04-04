@@ -10,7 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Queue_Primitives_Core
-internal import Queue_Dynamic_Primitives
+public import Queue_Dynamic_Primitives
 public import Stack_Primitives
 public import Buffer_Arena_Primitives
 

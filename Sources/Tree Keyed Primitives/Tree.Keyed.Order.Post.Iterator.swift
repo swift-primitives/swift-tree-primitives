@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+
+public import Queue_Dynamic_Primitives
 internal import Stack_Primitives
 
 extension Tree.Keyed.Order.Post {

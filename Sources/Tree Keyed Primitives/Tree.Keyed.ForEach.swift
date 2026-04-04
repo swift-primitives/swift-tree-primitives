@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+
+public import Queue_Dynamic_Primitives
 // MARK: - ForEach with Key Path
 
 extension Tree.Keyed where Element: Copyable {

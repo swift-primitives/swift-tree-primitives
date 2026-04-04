@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+
+public import Queue_Dynamic_Primitives
 internal import Stack_Primitives
 
 // MARK: - In-Order Iterator

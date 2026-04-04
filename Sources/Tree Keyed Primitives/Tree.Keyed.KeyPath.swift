@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+
+public import Queue_Dynamic_Primitives
 // MARK: - Key Path Operations
 
 extension Tree.Keyed where Element: ~Copyable {

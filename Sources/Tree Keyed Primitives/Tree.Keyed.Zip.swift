@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+
+public import Queue_Dynamic_Primitives
 // MARK: - Zip (Structural Intersection)
 
 /// Returns a new tree containing only nodes present in both trees (structural intersection).
