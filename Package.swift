@@ -134,7 +134,7 @@ let package = Package(
             dependencies: [
                 "Tree Primitives",
                 "Tree Primitives Test Support",
-                .product(name: "Array Primitives Core", package: "swift-array-primitives"),
+                .product(name: "Array Primitives", package: "swift-array-primitives"),
             ]
         ),
     ],
