@@ -771,4 +771,4 @@ extension Tree.N: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Tree.N: @unchecked Sendable where Element: Sendable {}
+extension Tree.N: @unsafe @unchecked Sendable where Element: Sendable {}

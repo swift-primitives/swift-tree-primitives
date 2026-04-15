@@ -677,4 +677,4 @@ extension Tree.Unbounded: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Tree.Unbounded: @unchecked Sendable where Element: Sendable {}
+extension Tree.Unbounded: @unsafe @unchecked Sendable where Element: Sendable {}

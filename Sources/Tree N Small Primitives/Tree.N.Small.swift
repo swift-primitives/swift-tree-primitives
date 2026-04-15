@@ -519,4 +519,4 @@ extension Tree.N.Small where Element: Copyable {
 
 // MARK: - Sendable
 
-extension Tree.N.Small: @unchecked Sendable where Element: Sendable {}
+extension Tree.N.Small: @unsafe @unchecked Sendable where Element: Sendable {}

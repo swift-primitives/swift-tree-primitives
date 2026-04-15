@@ -464,4 +464,4 @@ extension Tree.Keyed: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Tree.Keyed: @unchecked Sendable where Key: Sendable, Element: Sendable {}
+extension Tree.Keyed: @unsafe @unchecked Sendable where Key: Sendable, Element: Sendable {}

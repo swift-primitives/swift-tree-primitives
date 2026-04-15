@@ -600,4 +600,4 @@ extension Tree.N.Bounded: Copyable where Element: Copyable {}
 
 // MARK: - Sendable
 
-extension Tree.N.Bounded: @unchecked Sendable where Element: Sendable {}
+extension Tree.N.Bounded: @unsafe @unchecked Sendable where Element: Sendable {}
