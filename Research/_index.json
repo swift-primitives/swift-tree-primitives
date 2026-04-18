@@ -1,0 +1,43 @@
+{
+  "$schema": "https://swift-institute.org/schemas/research-index-v1.json",
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-04-18",
+  "title": "Research Index — swift-tree-primitives",
+  "blurb": "",
+  "scope": "swift-tree-primitives (swift-primitives)",
+  "documents": [
+    {
+      "file": "tree-discipline-boundary-analysis.md",
+      "displayName": "tree-discipline-boundary-analysis.md",
+      "topic": "Discipline boundary audit: naming, layering, ~Copyable",
+      "date": "2026-02-14",
+      "status": "DECISION",
+      "statusDetail": null,
+      "statusRaw": "DECISION",
+      "tier": null,
+      "scope": null
+    },
+    {
+      "file": "tree-typed-remediation.md",
+      "displayName": "tree-typed-remediation.md",
+      "topic": "Bare Int → typed primitives infrastructure remediation",
+      "date": "2026-02-15",
+      "status": "RECOMMENDATION",
+      "statusDetail": null,
+      "statusRaw": "RECOMMENDATION",
+      "tier": null,
+      "scope": null
+    },
+    {
+      "file": "tree-operations-audit.md",
+      "displayName": "tree-operations-audit.md",
+      "topic": "Canonical Tree ADT operations completeness audit",
+      "date": "2026-02-16",
+      "status": "RECOMMENDATION",
+      "statusDetail": null,
+      "statusRaw": "RECOMMENDATION",
+      "tier": null,
+      "scope": null
+    }
+  ]
+}
