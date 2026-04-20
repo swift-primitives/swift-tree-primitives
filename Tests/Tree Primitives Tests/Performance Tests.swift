@@ -21,8 +21,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Insert Performance
 
-    @Test("Insert 10,000 nodes")
-    func insertTenThousand() throws {
+    @Test
+    func `Insert 10,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -44,8 +44,8 @@ struct TreeBinaryPerformanceTests {
         #expect(tree.count == 10_000)
     }
 
-    @Test("Insert 50,000 nodes")
-    func insertFiftyThousand() throws {
+    @Test
+    func `Insert 50,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(50_000)
@@ -67,8 +67,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Navigation Performance
 
-    @Test("Navigate 100,000 positions")
-    func navigateHundredThousand() throws {
+    @Test
+    func `Navigate 100,000 positions`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(1_000)
@@ -100,8 +100,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Traversal Performance
 
-    @Test("Pre-order traversal 10,000 nodes")
-    func preOrderTenThousand() throws {
+    @Test
+    func `Pre-order traversal 10,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -122,8 +122,8 @@ struct TreeBinaryPerformanceTests {
         #expect(count == 10_000)
     }
 
-    @Test("In-order traversal 10,000 nodes")
-    func inOrderTenThousand() throws {
+    @Test
+    func `In-order traversal 10,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -144,8 +144,8 @@ struct TreeBinaryPerformanceTests {
         #expect(count == 10_000)
     }
 
-    @Test("Post-order traversal 10,000 nodes")
-    func postOrderTenThousand() throws {
+    @Test
+    func `Post-order traversal 10,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -166,8 +166,8 @@ struct TreeBinaryPerformanceTests {
         #expect(count == 10_000)
     }
 
-    @Test("Level-order traversal 10,000 nodes")
-    func levelOrderTenThousand() throws {
+    @Test
+    func `Level-order traversal 10,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -190,8 +190,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Remove/Clear Performance
 
-    @Test("Remove subtree 5,000 nodes")
-    func removeSubtreeFiveThousand() throws {
+    @Test
+    func `Remove subtree 5,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -214,8 +214,8 @@ struct TreeBinaryPerformanceTests {
         #expect(tree.count < 10_000)
     }
 
-    @Test("Clear 10,000 nodes")
-    func clearTenThousand() throws {
+    @Test
+    func `Clear 10,000 nodes`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -237,8 +237,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - CoW Performance
 
-    @Test("Copy-on-write with 10,000 nodes")
-    func cowTenThousand() throws {
+    @Test
+    func `Copy-on-write with 10,000 nodes`() throws {
         var tree1 = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -269,8 +269,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Bounded Performance
 
-    @Test("Bounded insert 10,000 nodes")
-    func boundedInsertTenThousand() throws {
+    @Test
+    func `Bounded insert 10,000 nodes`() throws {
         var tree = try Tree<Int>.Binary.Bounded(capacity: 10_000)
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(10_000)
@@ -292,8 +292,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Small Spill Performance
 
-    @Test("Small spill and grow to 1,000 nodes")
-    func smallSpillToThousand() throws {
+    @Test
+    func `Small spill and grow to 1,000 nodes`() throws {
         var tree = try Tree<Int>.Binary.Small<8>()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(1_000)
@@ -317,8 +317,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Memory Layout Verification
 
-    @Test("Memory layout sizes")
-    func memoryLayoutSizes() {
+    @Test
+    func `Memory layout sizes`() {
         // Verify struct sizes are reasonable
         let positionSize = MemoryLayout<Tree<Int>.Position>.size
         let nodeSize = MemoryLayout<Tree<Int>.N<2>.Node>.size
@@ -338,8 +338,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Token Validation Performance
 
-    @Test("Token validation 100,000 operations")
-    func tokenValidationPerformance() throws {
+    @Test
+    func `Token validation 100,000 operations`() throws {
         var tree = Tree<Int>.Binary()
         var positions: [Tree<Int>.Position] = []
         positions.reserveCapacity(100)
@@ -370,8 +370,8 @@ struct TreeBinaryPerformanceTests {
 
     // MARK: - Deep Tree Performance
 
-    @Test("Deep tree (1,000 levels left-only)")
-    func deepTreeLeftOnly() throws {
+    @Test
+    func `Deep tree (1,000 levels left-only)`() throws {
         var tree = Tree<Int>.Binary()
 
         var current = try tree.insert(0, at: .root)
@@ -389,8 +389,8 @@ struct TreeBinaryPerformanceTests {
         #expect(tree.isEmpty)
     }
 
-    @Test("Deep tree (5,000 levels) - height and clear")
-    func deepTreeHeightAndClear() throws {
+    @Test
+    func `Deep tree (5,000 levels) - height and clear`() throws {
         var tree = Tree<Int>.Binary()
 
         var current = try tree.insert(0, at: .root)
@@ -415,8 +415,8 @@ struct TreeBinaryStatsTests {
 
     // MARK: - Memory Layout
 
-    @Test("Memory layout report")
-    func memoryLayoutReport() {
+    @Test
+    func `Memory layout report`() {
         print("=== Memory Layout ===")
 
         print("Tree<Int>.Position: size=\(MemoryLayout<Tree<Int>.Position>.size) stride=\(MemoryLayout<Tree<Int>.Position>.stride) align=\(MemoryLayout<Tree<Int>.Position>.alignment)")
@@ -567,8 +567,8 @@ struct TreeBinaryStatsTests {
 
     // MARK: - Timed Operations
 
-    @Test("Timed insert - growable vs bounded vs pre-reserved")
-    func timedInsert() throws {
+    @Test
+    func `Timed insert - growable vs bounded vs pre-reserved`() throws {
         let nodeCount = 10_000
         let clock = ContinuousClock()
 
@@ -629,8 +629,8 @@ struct TreeBinaryStatsTests {
         print("Bounded:               \(boundedTime)")
     }
 
-    @Test("Timed traversal comparison")
-    func timedTraversal() throws {
+    @Test
+    func `Timed traversal comparison`() throws {
         let nodeCount = 10_000
         let clock = ContinuousClock()
 
@@ -678,8 +678,8 @@ struct TreeBinaryStatsTests {
         _ = count
     }
 
-    @Test("Timed traversal - degenerate left-chain")
-    func timedTraversalDegenerate() throws {
+    @Test
+    func `Timed traversal - degenerate left-chain`() throws {
         let nodeCount = 5_000
         let clock = ContinuousClock()
 
@@ -721,8 +721,8 @@ struct TreeBinaryStatsTests {
 
     // MARK: - Variant Comparison
 
-    @Test("Variant comparison - insert 128 nodes")
-    func variantComparison() throws {
+    @Test
+    func `Variant comparison - insert 128 nodes`() throws {
         // nodeCount bounded by Inline stack budget: 128 × ~72 bytes ≈ 9KB
         let nodeCount = 128
         let clock = ContinuousClock()
@@ -800,8 +800,8 @@ struct TreeBinaryStatsTests {
 
     // MARK: - CoW Cost
 
-    @Test("CoW copy and mutation cost")
-    func cowCost() throws {
+    @Test
+    func `CoW copy and mutation cost`() throws {
         let nodeCount = 10_000
         let clock = ContinuousClock()
 
@@ -961,8 +961,8 @@ struct TreeBinaryStatsTests {
 
     // MARK: - Navigation Cost
 
-    @Test("Navigation cost - pointer chase analysis")
-    func navigationCost() throws {
+    @Test
+    func `Navigation cost - pointer chase analysis`() throws {
         let nodeCount = 10_000
         let iterations = 100
         let clock = ContinuousClock()
