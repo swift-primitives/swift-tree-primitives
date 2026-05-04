@@ -27,11 +27,6 @@ jobs:
   docs:
     uses: swift-institute/.github/.github/workflows/swift-docs.yml@main
     with:
-      umbrella-module: Tree_Primitives
-      umbrella-display-name: "Tree Primitives"
-      umbrella-bundle-id: "swift-tree-primitives.Tree-Primitives"
-      umbrella-docc-path: "Sources/Tree Primitives/Tree Primitives.docc"
-      exclude-modules: "Tree_Primitives_Test_Support"
       enable-private-repos: true
     secrets:
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
