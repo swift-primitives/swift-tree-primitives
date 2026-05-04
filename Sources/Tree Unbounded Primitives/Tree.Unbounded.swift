@@ -9,10 +9,10 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Queue_Primitives_Core
-public import Queue_Dynamic_Primitives
-public import Stack_Primitives
 public import Buffer_Arena_Primitives
+public import Queue_Dynamic_Primitives
+public import Queue_Primitives_Core
+public import Stack_Primitives
 
 /// A dynamically-growing tree with unbounded arity (dynamic children per node).
 ///
@@ -190,7 +190,8 @@ extension Tree where Element: ~Copyable {
         @usableFromInline
         func _validate(_ position: Tree.Position) throws(__TreeUnboundedError) {
             let arenaPos = Buffer<Node>.Arena.Position(
-                index: UInt32(Int(bitPattern: position.index)), token: position.token
+                index: UInt32(Int(bitPattern: position.index)),
+                token: position.token
             )
             guard _arena.isValid(arenaPos) else { throw .invalidPosition }
         }

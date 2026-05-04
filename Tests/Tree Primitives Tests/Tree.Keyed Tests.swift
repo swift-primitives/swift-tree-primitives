@@ -11,6 +11,7 @@
 
 import Testing
 import Tree_Primitives_Test_Support
+
 @testable import Tree_Primitives
 
 // MARK: - Tree.Keyed Tests (Parallel Namespace per [TEST-004])
@@ -459,7 +460,8 @@ extension TreeKeyedTests.EdgeCase {
             try tree.insert(2, at: .root)
         } throws: { error in
             guard let e = error as? __TreeKeyedError<String>,
-                  case .rootOccupied = e else { return false }
+                case .rootOccupied = e
+            else { return false }
             return true
         }
     }
@@ -493,7 +495,8 @@ extension TreeKeyedTests.EdgeCase {
             try tree.remove(at: root)
         } throws: { error in
             guard let e = error as? __TreeKeyedError<String>,
-                  case .cannotRemoveNonLeaf = e else { return false }
+                case .cannotRemoveNonLeaf = e
+            else { return false }
             return true
         }
     }
@@ -531,7 +534,8 @@ extension TreeKeyedTests.EdgeCase {
             try tree.insert(2, at: .child(of: child, key: "b"))
         } throws: { error in
             guard let e = error as? __TreeKeyedError<String>,
-                  case .invalidPosition = e else { return false }
+                case .invalidPosition = e
+            else { return false }
             return true
         }
     }

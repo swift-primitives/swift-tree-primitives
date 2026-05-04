@@ -9,17 +9,18 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import Testing
-import Synchronization
 import Array_Primitives
+import Synchronization
+import Testing
 import Tree_Primitives_Test_Support
+
 @testable import Tree_Primitives
 
 // MARK: - Test Helpers
 
 /// Collects a sequence of integers into a primitives Array.
-private func collect<S: Swift.Sequence<Int>>(_ sequence: S) -> Array<Int> {
-    var result = Array<Int>()
+private func collect<S: Swift.Sequence<Int>>(_ sequence: S) -> [Int] {
+    var result = [Int]()
     for element in sequence {
         result.append(element)
     }
@@ -27,7 +28,7 @@ private func collect<S: Swift.Sequence<Int>>(_ sequence: S) -> Array<Int> {
 }
 
 /// Asserts that a primitives Array contains the expected elements in order.
-private func expectEqual(_ array: borrowing Array<Int>, _ expected: Int...) {
+private func expectEqual(_ array: borrowing [Int], _ expected: Int...) {
     var index = 0
     array.forEach { element in
         guard index < expected.count else {
@@ -167,7 +168,7 @@ struct TreeNBinaryTests {
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
-        var result = Array<Int>()
+        var result = [Int]()
         tree.forEachPreOrder { result.append($0) }
         expectEqual(result, 1, 2, 4, 5, 3)
     }
@@ -181,7 +182,7 @@ struct TreeNBinaryTests {
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
-        var result = Array<Int>()
+        var result = [Int]()
         tree.forEachInOrder { result.append($0) }
         expectEqual(result, 4, 2, 5, 1, 3)
     }
@@ -195,7 +196,7 @@ struct TreeNBinaryTests {
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
-        var result = Array<Int>()
+        var result = [Int]()
         tree.forEachPostOrder { result.append($0) }
         expectEqual(result, 4, 5, 2, 3, 1)
     }
@@ -209,7 +210,7 @@ struct TreeNBinaryTests {
         _ = try tree.insert(4, at: .left(of: left))
         _ = try tree.insert(5, at: .right(of: left))
 
-        var result = Array<Int>()
+        var result = [Int]()
         tree.forEachLevelOrder { result.append($0) }
         expectEqual(result, 1, 2, 3, 4, 5)
     }
@@ -366,7 +367,7 @@ struct TreeNInlineTests {
         _ = try tree.insert(3, at: .right(of: root))
         _ = try tree.insert(4, at: .left(of: left))
 
-        var result = Array<Int>()
+        var result = [Int]()
         tree.forEachInOrder { result.append($0) }
         expectEqual(result, 4, 2, 1, 3)
     }
@@ -452,7 +453,7 @@ struct TreeNSmallTests {
         let isSpilled = tree.isSpilled
         #expect(isSpilled)
 
-        var result = Array<Int>()
+        var result = [Int]()
         tree.forEachInOrder { result.append($0) }
         expectEqual(result, 4, 2, 1, 3)
     }
@@ -533,7 +534,7 @@ struct TreeNNonCopyableTests {
         _ = try tree.insert(Token(2, tracker: tracker), at: .left(of: root))
         _ = try tree.insert(Token(3, tracker: tracker), at: .right(of: root))
 
-        var values = Array<Int>()
+        var values = [Int]()
         tree.forEachPreOrder { token in
             values.append(token.value)
         }

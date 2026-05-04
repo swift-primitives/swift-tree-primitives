@@ -11,8 +11,9 @@
 
 import Testing
 import Tree_Primitives_Test_Support
-@testable import Tree_Primitives
+
 @testable import Buffer_Primitives
+@testable import Tree_Primitives
 
 // MARK: - Performance Tests
 
@@ -434,136 +435,136 @@ struct TreeBinaryStatsTests {
 
         // Bytes per node overhead (meta slot = 8 bytes per [TREE-META])
         let nodeStride = MemoryLayout<Tree<Int>.N<2>.Node>.stride
-        let metaSize = 8 // generation token (4) + free-list link (4)
+        let metaSize = 8  // generation token (4) + free-list link (4)
         print("Bytes per slot (node stride + meta): \(nodeStride + metaSize)")
         print("  node payload: \(nodeStride) bytes")
         print("  meta overhead: \(metaSize) bytes")
-//        print("  overhead ratio: \(String(format: "%.1f", Double(metaSize) / Double(nodeStride) * 100))%")
+        //        print("  overhead ratio: \(String(format: "%.1f", Double(metaSize) / Double(nodeStride) * 100))%")
     }
 
     // MARK: - Arena Growth
 
-//    @Test("Arena growth pattern - doubling")
-//    func arenaGrowthPattern() throws {
-//        var tree = Tree<Int>.Binary()
-//        var positions: [Tree<Int>.Position] = []
-//        positions.reserveCapacity(10_000)
-//
-//        print("=== Arena Growth Pattern (Tree.N growable) ===")
-//        print("nodes | occupied | highWater | capacity | free-list | utilization")
-//        print("------+----------+-----------+----------+-----------+------------")
-//
-//        func logArenaState(_ tree: Tree<Int>.N<2>, label: Int) {
-//            let h = tree._arena.header
-//            let occ = Int(bitPattern: h.occupied)
-//            let hw = Int(bitPattern: h.highWater)
-//            let cap = Int(bitPattern: h.capacity)
-//            let freeCount = hw - occ
-//            let util = cap > 0 ? String(format: "%.1f%%", Double(occ) / Double(cap) * 100) : "n/a"
-//            print(String(format: "%5d | %8d | %9d | %8d | %9d | %@", label, occ, hw, cap, freeCount, util))
-//        }
-//
-//        logArenaState(tree, label: 0)
-//        positions.append(try tree.insert(0, at: .root))
-//        logArenaState(tree, label: 1)
-//
-//        for i in 1..<10_000 {
-//            let parentIndex = (i - 1) / 2
-//            let parent = positions[parentIndex]
-//            if i % 2 == 1 {
-//                positions.append(try tree.insert(i, at: .left(of: parent)))
-//            } else {
-//                positions.append(try tree.insert(i, at: .right(of: parent)))
-//            }
-//
-//            if i == 10 || i == 100 || i == 500 || i == 1_000
-//                || i == 2_000 || i == 5_000 || i == 9_999 {
-//                logArenaState(tree, label: i + 1)
-//            }
-//        }
-//    }
-//
-//    @Test("Arena growth with pre-reserved capacity")
-//    func arenaPreReserved() throws {
-//        var tree = try Tree<Int>.Binary(minimumCapacity: 10_000)
-//        var positions: [Tree<Int>.Position] = []
-//        positions.reserveCapacity(10_000)
-//
-//        print("=== Arena with Pre-Reserved Capacity (10,000) ===")
-//
-//        let h0 = tree._arena.header
-//        print("Before inserts: occupied=\(Int(bitPattern: h0.occupied)) capacity=\(Int(bitPattern: h0.capacity))")
-//
-//        positions.append(try tree.insert(0, at: .root))
-//        for i in 1..<10_000 {
-//            let parentIndex = (i - 1) / 2
-//            let parent = positions[parentIndex]
-//            if i % 2 == 1 {
-//                positions.append(try tree.insert(i, at: .left(of: parent)))
-//            } else {
-//                positions.append(try tree.insert(i, at: .right(of: parent)))
-//            }
-//        }
-//
-//        let h1 = tree._arena.header
-//        print("After 10,000 inserts: occupied=\(Int(bitPattern: h1.occupied)) capacity=\(Int(bitPattern: h1.capacity))")
-//        print("Grew? \(Int(bitPattern: h1.capacity) != Int(bitPattern: h0.capacity))")
-//    }
+    //    @Test("Arena growth pattern - doubling")
+    //    func arenaGrowthPattern() throws {
+    //        var tree = Tree<Int>.Binary()
+    //        var positions: [Tree<Int>.Position] = []
+    //        positions.reserveCapacity(10_000)
+    //
+    //        print("=== Arena Growth Pattern (Tree.N growable) ===")
+    //        print("nodes | occupied | highWater | capacity | free-list | utilization")
+    //        print("------+----------+-----------+----------+-----------+------------")
+    //
+    //        func logArenaState(_ tree: Tree<Int>.N<2>, label: Int) {
+    //            let h = tree._arena.header
+    //            let occ = Int(bitPattern: h.occupied)
+    //            let hw = Int(bitPattern: h.highWater)
+    //            let cap = Int(bitPattern: h.capacity)
+    //            let freeCount = hw - occ
+    //            let util = cap > 0 ? String(format: "%.1f%%", Double(occ) / Double(cap) * 100) : "n/a"
+    //            print(String(format: "%5d | %8d | %9d | %8d | %9d | %@", label, occ, hw, cap, freeCount, util))
+    //        }
+    //
+    //        logArenaState(tree, label: 0)
+    //        positions.append(try tree.insert(0, at: .root))
+    //        logArenaState(tree, label: 1)
+    //
+    //        for i in 1..<10_000 {
+    //            let parentIndex = (i - 1) / 2
+    //            let parent = positions[parentIndex]
+    //            if i % 2 == 1 {
+    //                positions.append(try tree.insert(i, at: .left(of: parent)))
+    //            } else {
+    //                positions.append(try tree.insert(i, at: .right(of: parent)))
+    //            }
+    //
+    //            if i == 10 || i == 100 || i == 500 || i == 1_000
+    //                || i == 2_000 || i == 5_000 || i == 9_999 {
+    //                logArenaState(tree, label: i + 1)
+    //            }
+    //        }
+    //    }
+    //
+    //    @Test("Arena growth with pre-reserved capacity")
+    //    func arenaPreReserved() throws {
+    //        var tree = try Tree<Int>.Binary(minimumCapacity: 10_000)
+    //        var positions: [Tree<Int>.Position] = []
+    //        positions.reserveCapacity(10_000)
+    //
+    //        print("=== Arena with Pre-Reserved Capacity (10,000) ===")
+    //
+    //        let h0 = tree._arena.header
+    //        print("Before inserts: occupied=\(Int(bitPattern: h0.occupied)) capacity=\(Int(bitPattern: h0.capacity))")
+    //
+    //        positions.append(try tree.insert(0, at: .root))
+    //        for i in 1..<10_000 {
+    //            let parentIndex = (i - 1) / 2
+    //            let parent = positions[parentIndex]
+    //            if i % 2 == 1 {
+    //                positions.append(try tree.insert(i, at: .left(of: parent)))
+    //            } else {
+    //                positions.append(try tree.insert(i, at: .right(of: parent)))
+    //            }
+    //        }
+    //
+    //        let h1 = tree._arena.header
+    //        print("After 10,000 inserts: occupied=\(Int(bitPattern: h1.occupied)) capacity=\(Int(bitPattern: h1.capacity))")
+    //        print("Grew? \(Int(bitPattern: h1.capacity) != Int(bitPattern: h0.capacity))")
+    //    }
 
     // MARK: - Free-List Behavior
 
-//    @Test("Free-list after insert/remove cycles")
-//    func freeListBehavior() throws {
-//        var tree = Tree<Int>.Binary()
-//        var positions: [Tree<Int>.Position] = []
-//        positions.reserveCapacity(100)
-//
-//        print("=== Free-List Behavior ===")
-//
-//        // Build a tree with 100 nodes
-//        positions.append(try tree.insert(0, at: .root))
-//        for i in 1..<100 {
-//            let parentIndex = (i - 1) / 2
-//            let parent = positions[parentIndex]
-//            if i % 2 == 1 {
-//                positions.append(try tree.insert(i, at: .left(of: parent)))
-//            } else {
-//                positions.append(try tree.insert(i, at: .right(of: parent)))
-//            }
-//        }
-//
-//        let hBefore = tree._arena.header
-//        print("After 100 inserts: occupied=\(Int(bitPattern: hBefore.occupied)) highWater=\(Int(bitPattern: hBefore.highWater)) freeHead=\(hBefore.freeHead) hasFree=\(hBefore.hasFree)")
-//
-//        // Remove leaf nodes (every node at index 50..99 that has no children)
-//        var removedCount = 0
-//        for i in stride(from: 99, through: 50, by: -1) {
-//            if tree.isLeaf(positions[i]) {
-//                _ = try tree.remove(at: positions[i])
-//                removedCount += 1
-//            }
-//        }
-//
-//        let hAfter = tree._arena.header
-//        print("After removing \(removedCount) leaves: occupied=\(Int(bitPattern: hAfter.occupied)) highWater=\(Int(bitPattern: hAfter.highWater)) freeHead=\(hAfter.freeHead) hasFree=\(hAfter.hasFree)")
-//        print("Free slots on list: \(Int(bitPattern: hAfter.highWater) - Int(bitPattern: hAfter.occupied))")
-//
-//        // Re-insert into freed slots
-//        let root = tree.root!
-//        let leftChild = tree.left(of: root)!
-//        var reinserted = 0
-//        for i in 0..<removedCount {
-//            if tree.isLeaf(leftChild) {
-//                _ = try tree.insert(1000 + i, at: .left(of: leftChild))
-//                reinserted += 1
-//                break
-//            }
-//        }
-//
-//        let hReinsert = tree._arena.header
-//        print("After \(reinserted) re-insert: occupied=\(Int(bitPattern: hReinsert.occupied)) highWater=\(Int(bitPattern: hReinsert.highWater)) (should not grow)")
-//        print("Slot reuse: highWater unchanged = \(Int(bitPattern: hReinsert.highWater) == Int(bitPattern: hAfter.highWater))")
-//    }
+    //    @Test("Free-list after insert/remove cycles")
+    //    func freeListBehavior() throws {
+    //        var tree = Tree<Int>.Binary()
+    //        var positions: [Tree<Int>.Position] = []
+    //        positions.reserveCapacity(100)
+    //
+    //        print("=== Free-List Behavior ===")
+    //
+    //        // Build a tree with 100 nodes
+    //        positions.append(try tree.insert(0, at: .root))
+    //        for i in 1..<100 {
+    //            let parentIndex = (i - 1) / 2
+    //            let parent = positions[parentIndex]
+    //            if i % 2 == 1 {
+    //                positions.append(try tree.insert(i, at: .left(of: parent)))
+    //            } else {
+    //                positions.append(try tree.insert(i, at: .right(of: parent)))
+    //            }
+    //        }
+    //
+    //        let hBefore = tree._arena.header
+    //        print("After 100 inserts: occupied=\(Int(bitPattern: hBefore.occupied)) highWater=\(Int(bitPattern: hBefore.highWater)) freeHead=\(hBefore.freeHead) hasFree=\(hBefore.hasFree)")
+    //
+    //        // Remove leaf nodes (every node at index 50..99 that has no children)
+    //        var removedCount = 0
+    //        for i in stride(from: 99, through: 50, by: -1) {
+    //            if tree.isLeaf(positions[i]) {
+    //                _ = try tree.remove(at: positions[i])
+    //                removedCount += 1
+    //            }
+    //        }
+    //
+    //        let hAfter = tree._arena.header
+    //        print("After removing \(removedCount) leaves: occupied=\(Int(bitPattern: hAfter.occupied)) highWater=\(Int(bitPattern: hAfter.highWater)) freeHead=\(hAfter.freeHead) hasFree=\(hAfter.hasFree)")
+    //        print("Free slots on list: \(Int(bitPattern: hAfter.highWater) - Int(bitPattern: hAfter.occupied))")
+    //
+    //        // Re-insert into freed slots
+    //        let root = tree.root!
+    //        let leftChild = tree.left(of: root)!
+    //        var reinserted = 0
+    //        for i in 0..<removedCount {
+    //            if tree.isLeaf(leftChild) {
+    //                _ = try tree.insert(1000 + i, at: .left(of: leftChild))
+    //                reinserted += 1
+    //                break
+    //            }
+    //        }
+    //
+    //        let hReinsert = tree._arena.header
+    //        print("After \(reinserted) re-insert: occupied=\(Int(bitPattern: hReinsert.occupied)) highWater=\(Int(bitPattern: hReinsert.highWater)) (should not grow)")
+    //        print("Slot reuse: highWater unchanged = \(Int(bitPattern: hReinsert.highWater) == Int(bitPattern: hAfter.highWater))")
+    //    }
 
     // MARK: - Timed Operations
 
@@ -847,117 +848,117 @@ struct TreeBinaryStatsTests {
 
     // MARK: - Small Spill
 
-//    @Test("Small tree spill point analysis")
-//    func smallSpillAnalysis() throws {
-//        let inlineCapacities = [4, 8, 16, 32, 64]
-//        let clock = ContinuousClock()
-//
-//        print("=== Small Tree Spill Analysis ===")
-//        print("inline cap | spill after | time to spill | time after spill (next 100)")
-//        print("-----------+-------------+---------------+----------------------------")
-//
-//        // Inline<4>
-//        do {
-//            var tree = Tree<Int>.Binary.Small<4>()
-//            var positions: [Tree<Int>.Position] = []
-//            var spilledAt = -1
-//            let spillTime = try clock.measure {
-//                positions.append(try tree.insert(0, at: .root))
-//                for i in 1..<200 {
-//                    let p = (i - 1) / 2
-//                    if i % 2 == 1 {
-//                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
-//                    } else {
-//                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
-//                    }
-//                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
-//                }
-//            }
-//            print(String(format: "%10d | %11d | %@ | (included)", 4, spilledAt, "\(spillTime)"))
-//        }
-//
-//        // Inline<8>
-//        do {
-//            var tree = Tree<Int>.Binary.Small<8>()
-//            var positions: [Tree<Int>.Position] = []
-//            var spilledAt = -1
-//            let spillTime = try clock.measure {
-//                positions.append(try tree.insert(0, at: .root))
-//                for i in 1..<200 {
-//                    let p = (i - 1) / 2
-//                    if i % 2 == 1 {
-//                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
-//                    } else {
-//                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
-//                    }
-//                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
-//                }
-//            }
-//            print(String(format: "%10d | %11d | %@ | (included)", 8, spilledAt, "\(spillTime)"))
-//        }
-//
-//        // Inline<16>
-//        do {
-//            var tree = Tree<Int>.Binary.Small<16>()
-//            var positions: [Tree<Int>.Position] = []
-//            var spilledAt = -1
-//            let spillTime = try clock.measure {
-//                positions.append(try tree.insert(0, at: .root))
-//                for i in 1..<200 {
-//                    let p = (i - 1) / 2
-//                    if i % 2 == 1 {
-//                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
-//                    } else {
-//                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
-//                    }
-//                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
-//                }
-//            }
-//            print(String(format: "%10d | %11d | %@ | (included)", 16, spilledAt, "\(spillTime)"))
-//        }
-//
-//        // Inline<32>
-//        do {
-//            var tree = Tree<Int>.Binary.Small<32>()
-//            var positions: [Tree<Int>.Position] = []
-//            var spilledAt = -1
-//            let spillTime = try clock.measure {
-//                positions.append(try tree.insert(0, at: .root))
-//                for i in 1..<200 {
-//                    let p = (i - 1) / 2
-//                    if i % 2 == 1 {
-//                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
-//                    } else {
-//                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
-//                    }
-//                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
-//                }
-//            }
-//            print(String(format: "%10d | %11d | %@ | (included)", 32, spilledAt, "\(spillTime)"))
-//        }
-//
-//        // Inline<64>
-//        do {
-//            var tree = Tree<Int>.Binary.Small<64>()
-//            var positions: [Tree<Int>.Position] = []
-//            var spilledAt = -1
-//            let spillTime = try clock.measure {
-//                positions.append(try tree.insert(0, at: .root))
-//                for i in 1..<200 {
-//                    let p = (i - 1) / 2
-//                    if i % 2 == 1 {
-//                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
-//                    } else {
-//                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
-//                    }
-//                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
-//                }
-//            }
-//            print(String(format: "%10d | %11d | %@ | (included)", 64, spilledAt, "\(spillTime)"))
-//        }
-//
-//        _ = inlineCapacities
-//    }
+    //    @Test("Small tree spill point analysis")
+    //    func smallSpillAnalysis() throws {
+    //        let inlineCapacities = [4, 8, 16, 32, 64]
+    //        let clock = ContinuousClock()
+    //
+    //        print("=== Small Tree Spill Analysis ===")
+    //        print("inline cap | spill after | time to spill | time after spill (next 100)")
+    //        print("-----------+-------------+---------------+----------------------------")
+    //
+    //        // Inline<4>
+    //        do {
+    //            var tree = Tree<Int>.Binary.Small<4>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            var spilledAt = -1
+    //            let spillTime = try clock.measure {
+    //                positions.append(try tree.insert(0, at: .root))
+    //                for i in 1..<200 {
+    //                    let p = (i - 1) / 2
+    //                    if i % 2 == 1 {
+    //                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
+    //                    } else {
+    //                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
+    //                    }
+    //                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
+    //                }
+    //            }
+    //            print(String(format: "%10d | %11d | %@ | (included)", 4, spilledAt, "\(spillTime)"))
+    //        }
+    //
+    //        // Inline<8>
+    //        do {
+    //            var tree = Tree<Int>.Binary.Small<8>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            var spilledAt = -1
+    //            let spillTime = try clock.measure {
+    //                positions.append(try tree.insert(0, at: .root))
+    //                for i in 1..<200 {
+    //                    let p = (i - 1) / 2
+    //                    if i % 2 == 1 {
+    //                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
+    //                    } else {
+    //                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
+    //                    }
+    //                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
+    //                }
+    //            }
+    //            print(String(format: "%10d | %11d | %@ | (included)", 8, spilledAt, "\(spillTime)"))
+    //        }
+    //
+    //        // Inline<16>
+    //        do {
+    //            var tree = Tree<Int>.Binary.Small<16>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            var spilledAt = -1
+    //            let spillTime = try clock.measure {
+    //                positions.append(try tree.insert(0, at: .root))
+    //                for i in 1..<200 {
+    //                    let p = (i - 1) / 2
+    //                    if i % 2 == 1 {
+    //                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
+    //                    } else {
+    //                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
+    //                    }
+    //                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
+    //                }
+    //            }
+    //            print(String(format: "%10d | %11d | %@ | (included)", 16, spilledAt, "\(spillTime)"))
+    //        }
+    //
+    //        // Inline<32>
+    //        do {
+    //            var tree = Tree<Int>.Binary.Small<32>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            var spilledAt = -1
+    //            let spillTime = try clock.measure {
+    //                positions.append(try tree.insert(0, at: .root))
+    //                for i in 1..<200 {
+    //                    let p = (i - 1) / 2
+    //                    if i % 2 == 1 {
+    //                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
+    //                    } else {
+    //                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
+    //                    }
+    //                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
+    //                }
+    //            }
+    //            print(String(format: "%10d | %11d | %@ | (included)", 32, spilledAt, "\(spillTime)"))
+    //        }
+    //
+    //        // Inline<64>
+    //        do {
+    //            var tree = Tree<Int>.Binary.Small<64>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            var spilledAt = -1
+    //            let spillTime = try clock.measure {
+    //                positions.append(try tree.insert(0, at: .root))
+    //                for i in 1..<200 {
+    //                    let p = (i - 1) / 2
+    //                    if i % 2 == 1 {
+    //                        positions.append(try tree.insert(i, at: .left(of: positions[p])))
+    //                    } else {
+    //                        positions.append(try tree.insert(i, at: .right(of: positions[p])))
+    //                    }
+    //                    if spilledAt < 0 && tree.isSpilled { spilledAt = i + 1 }
+    //                }
+    //            }
+    //            print(String(format: "%10d | %11d | %@ | (included)", 64, spilledAt, "\(spillTime)"))
+    //        }
+    //
+    //        _ = inlineCapacities
+    //    }
 
     // MARK: - Navigation Cost
 
@@ -1015,126 +1016,126 @@ struct TreeBinaryStatsTests {
         let nsPerWalkOp = walkNs / Double(walkCount)
 
         print("=== Navigation Cost (\(nodeCount) nodes) ===")
-//        print("Sequential peek (\(totalSeqOps) ops): \(sequentialTime)  (\(String(format: "%.1f", nsPerSeqOp)) ns/op)")
-//        print("Root-to-leaf walk (\(walkCount) ops): \(walkTime)  (\(String(format: "%.1f", nsPerWalkOp)) ns/op)")
+        //        print("Sequential peek (\(totalSeqOps) ops): \(sequentialTime)  (\(String(format: "%.1f", nsPerSeqOp)) ns/op)")
+        //        print("Root-to-leaf walk (\(walkCount) ops): \(walkTime)  (\(String(format: "%.1f", nsPerWalkOp)) ns/op)")
         _ = sum
     }
 
     // MARK: - Arity Comparison
 
-//    @Test("N-ary tree arity comparison")
-//    func arityComparison() throws {
-//        let nodeCount = 5_000
-//        let clock = ContinuousClock()
-//
-//        // Binary (n=2)
-//        let binaryTime = try clock.measure {
-//            var tree = Tree<Int>.N<2>()
-//            var positions: [Tree<Int>.Position] = []
-//            positions.reserveCapacity(nodeCount)
-//            positions.append(try tree.insert(0, at: .root))
-//            for i in 1..<nodeCount {
-//                let p = (i - 1) / 2
-//                let slot = Tree<Int>.N<2>.ChildSlot(i % 2 == 1 ? 0 : 1)
-//                positions.append(try tree.insert(i, at: .child(of: positions[p], slot: slot)))
-//            }
-//        }
-//
-//        // Quad (n=4)
-//        let quadTime = try clock.measure {
-//            var tree = Tree<Int>.N<4>()
-//            var positions: [Tree<Int>.Position] = []
-//            positions.reserveCapacity(nodeCount)
-//            positions.append(try tree.insert(0, at: .root))
-//            for i in 1..<nodeCount {
-//                let p = (i - 1) / 4
-//                let slot = Tree<Int>.N<4>.ChildSlot((i - 1) % 4)
-//                positions.append(try tree.insert(i, at: .child(of: positions[p], slot: slot)))
-//            }
-//        }
-//
-//        // Octal (n=8)
-//        let octalTime = try clock.measure {
-//            var tree = Tree<Int>.N<8>()
-//            var positions: [Tree<Int>.Position] = []
-//            positions.reserveCapacity(nodeCount)
-//            positions.append(try tree.insert(0, at: .root))
-//            for i in 1..<nodeCount {
-//                let p = (i - 1) / 8
-//                let slot = Tree<Int>.N<8>.ChildSlot((i - 1) % 8)
-//                positions.append(try tree.insert(i, at: .child(of: positions[p], slot: slot)))
-//            }
-//        }
-//
-//        print("=== Arity Comparison (\(nodeCount) nodes) ===")
-//        print("Binary (n=2): \(binaryTime)  node=\(MemoryLayout<Tree<Int>.N<2>.Node>.stride)B")
-//        print("Quad   (n=4): \(quadTime)  node=\(MemoryLayout<Tree<Int>.N<4>.Node>.stride)B")
-//        print("Octal  (n=8): \(octalTime)  node=\(MemoryLayout<Tree<Int>.N<8>.Node>.stride)B")
-//    }
+    //    @Test("N-ary tree arity comparison")
+    //    func arityComparison() throws {
+    //        let nodeCount = 5_000
+    //        let clock = ContinuousClock()
+    //
+    //        // Binary (n=2)
+    //        let binaryTime = try clock.measure {
+    //            var tree = Tree<Int>.N<2>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            positions.reserveCapacity(nodeCount)
+    //            positions.append(try tree.insert(0, at: .root))
+    //            for i in 1..<nodeCount {
+    //                let p = (i - 1) / 2
+    //                let slot = Tree<Int>.N<2>.ChildSlot(i % 2 == 1 ? 0 : 1)
+    //                positions.append(try tree.insert(i, at: .child(of: positions[p], slot: slot)))
+    //            }
+    //        }
+    //
+    //        // Quad (n=4)
+    //        let quadTime = try clock.measure {
+    //            var tree = Tree<Int>.N<4>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            positions.reserveCapacity(nodeCount)
+    //            positions.append(try tree.insert(0, at: .root))
+    //            for i in 1..<nodeCount {
+    //                let p = (i - 1) / 4
+    //                let slot = Tree<Int>.N<4>.ChildSlot((i - 1) % 4)
+    //                positions.append(try tree.insert(i, at: .child(of: positions[p], slot: slot)))
+    //            }
+    //        }
+    //
+    //        // Octal (n=8)
+    //        let octalTime = try clock.measure {
+    //            var tree = Tree<Int>.N<8>()
+    //            var positions: [Tree<Int>.Position] = []
+    //            positions.reserveCapacity(nodeCount)
+    //            positions.append(try tree.insert(0, at: .root))
+    //            for i in 1..<nodeCount {
+    //                let p = (i - 1) / 8
+    //                let slot = Tree<Int>.N<8>.ChildSlot((i - 1) % 8)
+    //                positions.append(try tree.insert(i, at: .child(of: positions[p], slot: slot)))
+    //            }
+    //        }
+    //
+    //        print("=== Arity Comparison (\(nodeCount) nodes) ===")
+    //        print("Binary (n=2): \(binaryTime)  node=\(MemoryLayout<Tree<Int>.N<2>.Node>.stride)B")
+    //        print("Quad   (n=4): \(quadTime)  node=\(MemoryLayout<Tree<Int>.N<4>.Node>.stride)B")
+    //        print("Octal  (n=8): \(octalTime)  node=\(MemoryLayout<Tree<Int>.N<8>.Node>.stride)B")
+    //    }
 
     // MARK: - Remove + Re-insert Throughput
 
-//    @Test("Churn: interleaved remove and re-insert")
-//    func churnTest() throws {
-//        let nodeCount = 5_000
-//        let churnRounds = 10
-//        let clock = ContinuousClock()
-//
-//        var tree = Tree<Int>.Binary()
-//        var positions: [Tree<Int>.Position] = []
-//        positions.reserveCapacity(nodeCount)
-//        positions.append(try tree.insert(0, at: .root))
-//        for i in 1..<nodeCount {
-//            let p = (i - 1) / 2
-//            if i % 2 == 1 {
-//                positions.append(try tree.insert(i, at: .left(of: positions[p])))
-//            } else {
-//                positions.append(try tree.insert(i, at: .right(of: positions[p])))
-//            }
-//        }
-//
-//        let hBeforeChurn = tree._arena.header
-//        print("=== Churn Test (\(nodeCount) nodes, \(churnRounds) rounds) ===")
-//        print("Before churn: occupied=\(Int(bitPattern: hBeforeChurn.occupied)) highWater=\(Int(bitPattern: hBeforeChurn.highWater)) capacity=\(Int(bitPattern: hBeforeChurn.capacity))")
-//
-//        var totalRemoved = 0
-//        var totalInserted = 0
-//
-//        let churnTime = try clock.measure {
-//            for round in 0..<churnRounds {
-//                // Remove all leaves at depth >= log2(nodeCount) - 2
-//                var removed: [(parent: Tree<Int>.Position, slot: Int)] = []
-//                for i in stride(from: positions.count - 1, through: nodeCount / 2, by: -1) {
-//                    if tree.isLeaf(positions[i]) {
-//                        let parentPos = tree.parent(of: positions[i])!
-//                        let wasLeft = tree.left(of: parentPos) != nil
-//                            && tree.left(of: parentPos)!.index == positions[i].index
-//                        _ = try tree.remove(at: positions[i])
-//                        removed.append((parent: parentPos, slot: wasLeft ? 0 : 1))
-//                        totalRemoved += 1
-//                        if removed.count >= 500 { break }
-//                    }
-//                }
-//
-//                // Re-insert at freed parents
-//                for (parent, slot) in removed {
-//                    let childSlot = Tree<Int>.N<2>.ChildSlot(slot)
-//                    let newPos = try tree.insert(10_000 + round * 1000 + totalInserted, at: .child(of: parent, slot: childSlot))
-//                    totalInserted += 1
-//                    // Update position for future rounds
-//                    if let idx = positions.firstIndex(where: { $0.index == parent.index }) {
-//                        if idx * 2 + (slot == 0 ? 1 : 2) < positions.count {
-//                            positions[idx * 2 + (slot == 0 ? 1 : 2)] = newPos
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//
-//        let hAfterChurn = tree._arena.header
-//        print("After churn: occupied=\(Int(bitPattern: hAfterChurn.occupied)) highWater=\(Int(bitPattern: hAfterChurn.highWater)) capacity=\(Int(bitPattern: hAfterChurn.capacity))")
-//        print("Removed: \(totalRemoved) Inserted: \(totalInserted)")
-//        print("HighWater grew by: \(Int(bitPattern: hAfterChurn.highWater) - Int(bitPattern: hBeforeChurn.highWater)) (0 = perfect slot reuse)")
-//        print("Total churn time: \(churnTime)")
-//    }
+    //    @Test("Churn: interleaved remove and re-insert")
+    //    func churnTest() throws {
+    //        let nodeCount = 5_000
+    //        let churnRounds = 10
+    //        let clock = ContinuousClock()
+    //
+    //        var tree = Tree<Int>.Binary()
+    //        var positions: [Tree<Int>.Position] = []
+    //        positions.reserveCapacity(nodeCount)
+    //        positions.append(try tree.insert(0, at: .root))
+    //        for i in 1..<nodeCount {
+    //            let p = (i - 1) / 2
+    //            if i % 2 == 1 {
+    //                positions.append(try tree.insert(i, at: .left(of: positions[p])))
+    //            } else {
+    //                positions.append(try tree.insert(i, at: .right(of: positions[p])))
+    //            }
+    //        }
+    //
+    //        let hBeforeChurn = tree._arena.header
+    //        print("=== Churn Test (\(nodeCount) nodes, \(churnRounds) rounds) ===")
+    //        print("Before churn: occupied=\(Int(bitPattern: hBeforeChurn.occupied)) highWater=\(Int(bitPattern: hBeforeChurn.highWater)) capacity=\(Int(bitPattern: hBeforeChurn.capacity))")
+    //
+    //        var totalRemoved = 0
+    //        var totalInserted = 0
+    //
+    //        let churnTime = try clock.measure {
+    //            for round in 0..<churnRounds {
+    //                // Remove all leaves at depth >= log2(nodeCount) - 2
+    //                var removed: [(parent: Tree<Int>.Position, slot: Int)] = []
+    //                for i in stride(from: positions.count - 1, through: nodeCount / 2, by: -1) {
+    //                    if tree.isLeaf(positions[i]) {
+    //                        let parentPos = tree.parent(of: positions[i])!
+    //                        let wasLeft = tree.left(of: parentPos) != nil
+    //                            && tree.left(of: parentPos)!.index == positions[i].index
+    //                        _ = try tree.remove(at: positions[i])
+    //                        removed.append((parent: parentPos, slot: wasLeft ? 0 : 1))
+    //                        totalRemoved += 1
+    //                        if removed.count >= 500 { break }
+    //                    }
+    //                }
+    //
+    //                // Re-insert at freed parents
+    //                for (parent, slot) in removed {
+    //                    let childSlot = Tree<Int>.N<2>.ChildSlot(slot)
+    //                    let newPos = try tree.insert(10_000 + round * 1000 + totalInserted, at: .child(of: parent, slot: childSlot))
+    //                    totalInserted += 1
+    //                    // Update position for future rounds
+    //                    if let idx = positions.firstIndex(where: { $0.index == parent.index }) {
+    //                        if idx * 2 + (slot == 0 ? 1 : 2) < positions.count {
+    //                            positions[idx * 2 + (slot == 0 ? 1 : 2)] = newPos
+    //                        }
+    //                    }
+    //                }
+    //            }
+    //        }
+    //
+    //        let hAfterChurn = tree._arena.header
+    //        print("After churn: occupied=\(Int(bitPattern: hAfterChurn.occupied)) highWater=\(Int(bitPattern: hAfterChurn.highWater)) capacity=\(Int(bitPattern: hAfterChurn.capacity))")
+    //        print("Removed: \(totalRemoved) Inserted: \(totalInserted)")
+    //        print("HighWater grew by: \(Int(bitPattern: hAfterChurn.highWater) - Int(bitPattern: hBeforeChurn.highWater)) (0 = perfect slot reuse)")
+    //        print("Total churn time: \(churnTime)")
+    //    }
 }

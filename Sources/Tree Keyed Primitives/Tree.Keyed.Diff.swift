@@ -9,8 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
 public import Queue_Dynamic_Primitives
+
 // MARK: - Hoisted Diff Type (Module Level)
 //
 // Swift does not allow nested types inside generic types to be easily accessed.

@@ -9,11 +9,11 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Queue_Primitives_Core
-public import Queue_Dynamic_Primitives
-public import Stack_Primitives
 public import Buffer_Arena_Primitives
 public import Dictionary_Primitives
+public import Queue_Dynamic_Primitives
+public import Queue_Primitives_Core
+public import Stack_Primitives
 
 /// A dynamically-growing keyed tree with dictionary-indexed children.
 ///
@@ -181,7 +181,8 @@ extension Tree where Element: ~Copyable {
         @usableFromInline
         func _validate(_ position: Tree.Position) throws(__TreeKeyedError<Key>) {
             let arenaPos = Buffer<Node>.Arena.Position(
-                index: UInt32(Int(bitPattern: position.index)), token: position.token
+                index: UInt32(Int(bitPattern: position.index)),
+                token: position.token
             )
             guard _arena.isValid(arenaPos) else { throw .invalidPosition }
         }
@@ -216,7 +217,7 @@ extension Tree.Keyed where Element: ~Copyable {
             _rootIndex = arenaPos.slot
             return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
-        case .child(of: let parent, key: let key):
+        case .child(of: let parent, let key):
             try _validate(parent)
             // Check child key is not already occupied
             let occupied = unsafe _arena.pointer(at: _slot(parent.index)).pointee._children.contains(key)
@@ -252,7 +253,8 @@ extension Tree.Keyed where Element: ~Copyable {
 
         // Update parent's child dictionary
         if let parentIndex = unsafe nodePtr.pointee.parentIndex,
-           let parentKey = unsafe nodePtr.pointee.parentKey {
+            let parentKey = unsafe nodePtr.pointee.parentKey
+        {
             let parentPtr = unsafe _arena.pointer(at: parentIndex)
             unsafe (parentPtr.pointee._children.remove(parentKey))
         } else {
@@ -277,7 +279,8 @@ extension Tree.Keyed where Element: ~Copyable {
         // Update parent's child dictionary
         let nodePtr = unsafe _arena.pointer(at: _slot(position.index))
         if let parentIndex = unsafe nodePtr.pointee.parentIndex,
-           let parentKey = unsafe nodePtr.pointee.parentKey {
+            let parentKey = unsafe nodePtr.pointee.parentKey
+        {
             let parentPtr = unsafe _arena.pointer(at: parentIndex)
             unsafe (parentPtr.pointee._children.remove(parentKey))
         } else {
@@ -413,7 +416,7 @@ extension Tree.Keyed where Element: Copyable {
             _rootIndex = arenaPos.slot
             return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
-        case .child(of: let parent, key: let key):
+        case .child(of: let parent, let key):
             try _validate(parent)
             let occupied = unsafe _arena.pointer(at: _slot(parent.index)).pointee._children.contains(key)
             guard !occupied else {

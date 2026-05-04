@@ -9,10 +9,9 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
+internal import Buffer_Arena_Primitives
 public import Queue_Dynamic_Primitives
 internal import Stack_Primitives
-internal import Buffer_Arena_Primitives
 
 // MARK: - In-Order Iterator
 

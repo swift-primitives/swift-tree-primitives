@@ -1,5 +1,6 @@
 import Testing
 import Tree_Primitives_Test_Support
+
 @testable import Tree_Primitives
 
 @Suite("Tree.Keyed.Diff")
@@ -181,13 +182,16 @@ extension TreeKeyedDiffTests.Integration {
         let diff = Tree<Int>.Keyed<String>.diff(from: old, to: new)
 
         let modified = diff.operations.filter {
-            if case .modified = $0 { return true }; return false
+            if case .modified = $0 { return true }
+            return false
         }
         let added = diff.operations.filter {
-            if case .added = $0 { return true }; return false
+            if case .added = $0 { return true }
+            return false
         }
         let removed = diff.operations.filter {
-            if case .removed = $0 { return true }; return false
+            if case .removed = $0 { return true }
+            return false
         }
 
         #expect(modified.count == 1)

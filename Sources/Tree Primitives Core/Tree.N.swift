@@ -9,10 +9,10 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Queue_Primitives_Core
-public import Queue_Dynamic_Primitives
-public import Stack_Primitives
 public import Buffer_Arena_Primitives
+public import Queue_Dynamic_Primitives
+public import Queue_Primitives_Core
+public import Stack_Primitives
 
 /// A dynamically-growing n-ary tree with compile-time bounded arity.
 ///
@@ -187,7 +187,8 @@ extension Tree where Element: ~Copyable {
         @usableFromInline
         func _validate(_ position: Tree.Position) throws(__TreeNError) {
             let arenaPos = Buffer<Node>.Arena.Position(
-                index: UInt32(Int(bitPattern: position.index)), token: position.token
+                index: UInt32(Int(bitPattern: position.index)),
+                token: position.token
             )
             guard _arena.isValid(arenaPos) else { throw .invalidPosition }
         }
@@ -361,7 +362,7 @@ extension Tree.N where Element: ~Copyable {
             _rootIndex = arenaPos.slot
             return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
-        case .child(of: let parent, slot: let slot):
+        case .child(of: let parent, let slot):
             // Validate parent position (token check)
             try _validate(parent)
             // Check child slot is empty (pointer valid before insert)
@@ -727,7 +728,7 @@ extension Tree.N where Element: Copyable {
             _rootIndex = arenaPos.slot
             return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
-        case .child(of: let parent, slot: let slot):
+        case .child(of: let parent, let slot):
             // Validate parent position (token check)
             try _validate(parent)
             // Check child slot is empty (pointer valid before insert)

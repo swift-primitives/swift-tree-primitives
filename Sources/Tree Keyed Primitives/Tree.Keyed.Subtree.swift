@@ -9,8 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
 public import Queue_Dynamic_Primitives
+
 // MARK: - Subtree Extraction
 
 extension Tree.Keyed where Element: Copyable {

@@ -9,8 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
 public import Queue_Dynamic_Primitives
+
 // MARK: - Map Values
 
 extension Tree.Keyed where Element: Copyable {
@@ -138,13 +138,15 @@ extension Tree.Keyed where Element: Copyable {
         var result = Tree<U>.Keyed<Key>()
         guard let rootIndex = _rootIndex else { return result }
 
-        var pending = Stack<(
-            source: Index<Node>,
-            destParent: Index<Tree<U>.Keyed<Key>.Node>?,
-            parentKey: Key?,
-            path: [Key],
-            broadcast: U?
-        )>()
+        var pending = Stack<
+            (
+                source: Index<Node>,
+                destParent: Index<Tree<U>.Keyed<Key>.Node>?,
+                parentKey: Key?,
+                path: [Key],
+                broadcast: U?
+            )
+        >()
         pending.push((rootIndex, nil, nil, [], nil))
 
         while !pending.isEmpty {
@@ -183,13 +185,15 @@ extension Tree.Keyed where Element: Copyable {
             for i in stride(from: children.count - 1, through: 0, by: -1) {
                 var childPath = path
                 childPath.append(children[i].key)
-                pending.push((
-                    children[i].index,
-                    arenaPos.slot,
-                    children[i].key,
-                    childPath,
-                    shouldBroadcast ? newValue : nil
-                ))
+                pending.push(
+                    (
+                        children[i].index,
+                        arenaPos.slot,
+                        children[i].key,
+                        childPath,
+                        shouldBroadcast ? newValue : nil
+                    )
+                )
             }
         }
 
@@ -287,13 +291,15 @@ extension Tree.Keyed where Element: Copyable {
         var result = Tree<U>.Keyed<Key>()
         guard let rootIndex = _rootIndex else { return result }
 
-        var pending = Stack<(
-            source: Index<Node>,
-            destParent: Index<Tree<U>.Keyed<Key>.Node>?,
-            parentKey: Key?,
-            path: [Key],
-            broadcast: U?
-        )>()
+        var pending = Stack<
+            (
+                source: Index<Node>,
+                destParent: Index<Tree<U>.Keyed<Key>.Node>?,
+                parentKey: Key?,
+                path: [Key],
+                broadcast: U?
+            )
+        >()
         pending.push((rootIndex, nil, nil, [], nil))
 
         while !pending.isEmpty {
@@ -332,13 +338,15 @@ extension Tree.Keyed where Element: Copyable {
             for i in stride(from: children.count - 1, through: 0, by: -1) {
                 var childPath = path
                 childPath.append(children[i].key)
-                pending.push((
-                    children[i].index,
-                    arenaPos.slot,
-                    children[i].key,
-                    childPath,
-                    shouldBroadcast ? newValue : nil
-                ))
+                pending.push(
+                    (
+                        children[i].index,
+                        arenaPos.slot,
+                        children[i].key,
+                        childPath,
+                        shouldBroadcast ? newValue : nil
+                    )
+                )
             }
         }
 

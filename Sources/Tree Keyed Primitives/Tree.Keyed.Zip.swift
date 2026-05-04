@@ -9,8 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
 public import Queue_Dynamic_Primitives
+
 // MARK: - Zip (Structural Intersection)
 
 /// Returns a new tree containing only nodes present in both trees (structural intersection).
@@ -44,11 +44,13 @@ public func zip<Key: Hash.`Protocol`, A, B>(
     )
     result._rootIndex = rootPos.slot
 
-    var pending = Stack<(
-        lhsIndex: Index<Tree<A>.Keyed<Key>.Node>,
-        rhsIndex: Index<Tree<B>.Keyed<Key>.Node>,
-        destParent: Index<Tree<(A, B)>.Keyed<Key>.Node>
-    )>()
+    var pending = Stack<
+        (
+            lhsIndex: Index<Tree<A>.Keyed<Key>.Node>,
+            rhsIndex: Index<Tree<B>.Keyed<Key>.Node>,
+            destParent: Index<Tree<(A, B)>.Keyed<Key>.Node>
+        )
+    >()
     pending.push((lhsRoot, rhsRoot, rootPos.slot))
 
     while !pending.isEmpty {

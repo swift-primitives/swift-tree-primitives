@@ -48,18 +48,19 @@ extension Tree.Keyed where Element: Equatable, Key: Copyable {
         case (let oldRoot?, let newRoot?):
             // Compare root values
             if let oldValue = old.peek(at: oldRoot),
-               let newValue = new.peek(at: newRoot),
-               oldValue != newValue
+                let newValue = new.peek(at: newRoot),
+                oldValue != newValue
             {
                 operations.append(.modified(path: [], old: oldValue, new: newValue))
             }
 
             // Iterative parallel walk
-            var pending: [(
-                oldPos: Tree.Position,
-                newPos: Tree.Position,
-                path: [Key]
-            )] = [(oldRoot, newRoot, [])]
+            var pending:
+                [(
+                    oldPos: Tree.Position,
+                    newPos: Tree.Position,
+                    path: [Key]
+                )] = [(oldRoot, newRoot, [])]
 
             while let (oldPos, newPos, path) = pending.popLast() {
                 let oldChildren = old.children(of: oldPos) ?? []
@@ -72,8 +73,8 @@ extension Tree.Keyed where Element: Equatable, Key: Copyable {
                     if let newChildPos = new.child(of: newPos, key: key) {
                         // Key in both trees — compare values, recurse
                         if let oldValue = old.peek(at: oldChildPos),
-                           let newValue = new.peek(at: newChildPos),
-                           oldValue != newValue
+                            let newValue = new.peek(at: newChildPos),
+                            oldValue != newValue
                         {
                             operations.append(
                                 .modified(path: childPath, old: oldValue, new: newValue)

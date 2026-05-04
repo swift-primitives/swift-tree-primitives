@@ -9,8 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
-
 public import Queue_Dynamic_Primitives
+
 // MARK: - Navigation
 
 extension Tree.Keyed where Element: ~Copyable {

@@ -9,10 +9,10 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Queue_Primitives_Core
-public import Queue_Dynamic_Primitives
-public import Stack_Primitives
 internal import Buffer_Arena_Primitives
+public import Queue_Dynamic_Primitives
+public import Queue_Primitives_Core
+public import Stack_Primitives
 
 /// A small-buffer optimized n-ary tree with inline storage and spill to heap.
 ///
@@ -124,7 +124,8 @@ extension Tree.N.Small {
     func _validate(_ position: Tree.Position) throws(__TreeNSmallError) {
         let token = _arena.token(at: _slot(position.index))
         guard token == position.token,
-              position.token & 1 == 1 else {
+            position.token & 1 == 1
+        else {
             throw .invalidPosition
         }
     }
@@ -218,7 +219,7 @@ extension Tree.N.Small {
             _rootIndex = arenaPos.slot
             return Tree.Position(index: arenaPos.slot, token: arenaPos.token)
 
-        case .child(of: let parent, slot: let slot):
+        case .child(of: let parent, let slot):
             try _validate(parent)
             do {
                 let parentPtr = unsafe _arena.pointer(at: _slot(parent.index))
