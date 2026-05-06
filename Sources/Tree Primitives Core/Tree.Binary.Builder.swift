@@ -64,6 +64,14 @@ extension Tree.N where n == 2, Element: Copyable {
             expression
         }
 
+        /// Bulk-add a sequence (Range, Set, lazy chain, etc.) without
+        /// per-iteration allocation. Elements are placed in BFS level-order.
+        @inlinable
+        public static func buildExpression<S: Swift.Sequence>(_ expression: S) -> [Element]
+        where S.Element == Element {
+            Array(expression)
+        }
+
         @inlinable
         public static func buildExpression(_ expression: Element?) -> [Element] {
             expression.map { [$0] } ?? []
@@ -86,10 +94,11 @@ extension Tree.N where n == 2, Element: Copyable {
 
         @inlinable
         public static func buildPartialBlock(
-            accumulated: [Element],
+            accumulated: consuming [Element],
             next: [Element]
         ) -> [Element] {
-            accumulated + next
+            accumulated.append(contentsOf: next)
+            return accumulated
         }
 
         // MARK: - Block Building
