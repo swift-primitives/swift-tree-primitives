@@ -293,7 +293,7 @@ extension Tree.Unbounded where Element: ~Copyable {
         }
         let childIndices = unsafe _arena.pointer(at: _slot(position.index)).pointee.childIndices
         guard !childIndices.isEmpty else { return nil }
-        let childIndex = childIndices[childIndices.count - 1]
+        let childIndex = childIndices.last!
         let token = _arena.token(at: _slot(childIndex))
         return Tree.Position(index: childIndex, token: token)
     }
@@ -424,7 +424,7 @@ extension Tree.Unbounded where Element: ~Copyable {
 
             // Find rightmost unvisited child
             var hasUnvisitedChild = false
-            for slot in stride(from: childIndices.count - 1, through: 0, by: -1) {
+            for slot in (0..<childIndices.count).reversed() {
                 let childIndex = childIndices[slot]
                 if childIndex != lastVisited {
                     // Check if we've already processed any later children
@@ -523,7 +523,7 @@ extension Tree.Unbounded where Element: ~Copyable {
 
             // Push children in reverse order so first child is processed first
             let childIndices = unsafe nodePtr.pointee.childIndices
-            for i in stride(from: childIndices.count - 1, through: 0, by: -1) {
+            for i in (0..<childIndices.count).reversed() {
                 pending.push(childIndices[i])
             }
         }
@@ -547,7 +547,7 @@ extension Tree.Unbounded where Element: ~Copyable {
 
             // Find rightmost unvisited child
             var hasUnvisitedChild = false
-            for slot in stride(from: childIndices.count - 1, through: 0, by: -1) {
+            for slot in (0..<childIndices.count).reversed() {
                 let childIndex = childIndices[slot]
                 if childIndex != lastVisited {
                     // Check if we've already processed any later children

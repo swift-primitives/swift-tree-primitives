@@ -259,7 +259,7 @@ struct TreeBinaryPerformanceTests {
         var tree2 = tree1
 
         // Find a leaf node (last position in our array is a leaf)
-        let leafPosition = positions[positions.count - 1]
+        let leafPosition = positions.last!
 
         // Mutate tree2 (triggers actual copy)
         _ = try tree2.insert(99999, at: .left(of: leafPosition))
@@ -826,7 +826,7 @@ struct TreeBinaryStatsTests {
         }
 
         // First mutation triggers deep copy
-        let leafPos = positions[positions.count - 1]
+        let leafPos = positions.last!
         let firstMutationTime = try clock.measure {
             _ = try tree2.insert(99999, at: .left(of: leafPos))
         }
@@ -1105,7 +1105,7 @@ struct TreeBinaryStatsTests {
     //            for round in 0..<churnRounds {
     //                // Remove all leaves at depth >= log2(nodeCount) - 2
     //                var removed: [(parent: Tree<Int>.Position, slot: Int)] = []
-    //                for i in stride(from: positions.count - 1, through: nodeCount / 2, by: -1) {
+    //                for i in ((nodeCount / 2)..<positions.count).reversed() {
     //                    if tree.isLeaf(positions[i]) {
     //                        let parentPos = tree.parent(of: positions[i])!
     //                        let wasLeft = tree.left(of: parentPos) != nil

@@ -40,7 +40,7 @@ extension Tree.Keyed where Element: Copyable {
             unsafe nodePtr.pointee._children.forEach { key, childIndex in
                 children.append((key, childIndex))
             }
-            for i in stride(from: children.count - 1, through: 0, by: -1) {
+            for i in (0..<children.count).reversed() {
                 var childPath = path
                 childPath.append(children[i].key)
                 pending.push((children[i].index, childPath))
@@ -67,7 +67,7 @@ extension Tree.Keyed where Element: Copyable {
             unsafe nodePtr.pointee._children.forEach { key, childIndex in
                 children.append((key, childIndex))
             }
-            for i in stride(from: children.count - 1, through: 0, by: -1) {
+            for i in (0..<children.count).reversed() {
                 var childPath = path
                 childPath.append(children[i].key)
                 pending.push((children[i].index, childPath))

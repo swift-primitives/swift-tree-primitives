@@ -67,7 +67,7 @@ extension Tree.Keyed.Order.Pre {
             unsafe nodePtr.pointee._children.forEach { _, childIndex in
                 childIndices.append(childIndex)
             }
-            for i in stride(from: childIndices.count - 1, through: 0, by: -1) {
+            for i in (0..<childIndices.count).reversed() {
                 pending.push(childIndices[i])
             }
 

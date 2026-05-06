@@ -131,7 +131,7 @@ extension Tree.Keyed where Element: Copyable {
         var currentIndex = _rootIndex!
 
         // Walk down to the parent of the terminal node, creating intermediates
-        for i in 0..<(keyPath.count - 1) {
+        for i in keyPath.indices.dropLast() {
             let key = keyPath[i]
             let nodePtr = unsafe _arena.pointer(at: currentIndex)
             if let childIndex = unsafe nodePtr.pointee._children[key] {
@@ -147,7 +147,7 @@ extension Tree.Keyed where Element: Copyable {
         }
 
         // Insert or update terminal node
-        let terminalKey = keyPath[keyPath.count - 1]
+        let terminalKey = keyPath.last!
         let parentPtr = unsafe _arena.pointer(at: currentIndex)
         if let existingChild = unsafe parentPtr.pointee._children[terminalKey] {
             let childPtr = unsafe _arena.pointer(at: existingChild)
