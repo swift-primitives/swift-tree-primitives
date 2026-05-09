@@ -733,7 +733,7 @@ extension TreeKeyedTests.Unit {
     func `forEach with typed throw propagates error`() throws {
         let tree = try makeGraphParityTree()
 
-        struct StopError: Error {}
+        struct StopError: Swift.Error {}
 
         #expect(throws: StopError.self) {
             try tree.forEach { (path: [String], value: Int) throws(StopError) in
@@ -767,7 +767,7 @@ extension TreeKeyedTests.Unit {
     func `mapValues with key path and typed throws transforms values`() throws {
         let tree = try makeGraphParityTree()
 
-        struct MapError: Error {}
+        struct MapError: Swift.Error {}
 
         let result = try tree.mapValues { (path: [String], value: Int) throws(MapError) -> String in
             "\(path.joined(separator: "/")):\(value)"

@@ -18,7 +18,7 @@ extension Tree.N.Bounded where n == 2, Element: Copyable {
     public init(
         capacity: Count,
         @Tree<Element>.N<2>.Builder _ builder: () -> [Element]
-    ) throws(Error) {
+    ) throws(Self.Error) {
         var bounded = Tree<Element>.N<2>.Bounded(capacity: capacity)
         let elements = builder()
         guard !elements.isEmpty else {
