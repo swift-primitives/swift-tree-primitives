@@ -17,7 +17,7 @@ extension Tree.N.Small where n == 2, Element: Copyable {
     @_disfavoredOverload
     public init(
         @Tree<Element>.N<2>.Builder _ builder: () -> [Element]
-    ) throws(Tree.N.Small.Error) {
+    ) throws(Self.Error) {
         self.init()
         let elements = builder()
         guard !elements.isEmpty else { return }
