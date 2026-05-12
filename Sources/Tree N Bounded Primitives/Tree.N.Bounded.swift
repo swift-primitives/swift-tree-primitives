@@ -31,6 +31,9 @@ extension Tree.N where Element: ~Copyable {
     /// let root = try tree.insert(1, at: .root)
     /// let left = try tree.insert(2, at: .left(of: root))
     /// ```
+    // WHY: Category D — structural Sendable workaround; the type is
+    // WHY: structurally value-safe but the compiler cannot synthesize
+    // WHY: Sendable due to a stored pointer / generic parameter shape.
     @safe
     public struct Bounded: ~Copyable {
 

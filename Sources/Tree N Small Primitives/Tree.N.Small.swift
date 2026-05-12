@@ -44,6 +44,9 @@ public import Stack_Primitives
 /// `@_rawLayout` inline storage that requires a deinitializer.
 extension Tree.N where Element: ~Copyable {
 
+    // WHY: Category D — structural Sendable workaround; the type is
+    // WHY: structurally value-safe but the compiler cannot synthesize
+    // WHY: Sendable due to a stored pointer / generic parameter shape.
     @safe
     public struct Small<let inlineCapacity: Int>: ~Copyable {
 

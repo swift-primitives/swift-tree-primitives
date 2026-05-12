@@ -71,6 +71,9 @@ public import Stack_Primitives
 /// growth. Nodes reference each other by index rather than pointer.
 extension Tree where Element: ~Copyable {
 
+    // WHY: Category D — structural Sendable workaround; the type is
+    // WHY: structurally value-safe but the compiler cannot synthesize
+    // WHY: Sendable due to a stored pointer / generic parameter shape.
     @safe
     public struct Unbounded: ~Copyable {
 

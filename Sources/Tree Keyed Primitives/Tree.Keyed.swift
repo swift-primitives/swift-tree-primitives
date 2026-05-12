@@ -61,6 +61,9 @@ public import Stack_Primitives
 /// copies share storage until mutation, providing efficient value semantics.
 extension Tree where Element: ~Copyable {
 
+    // WHY: Category D — structural Sendable workaround; the type is
+    // WHY: structurally value-safe but the compiler cannot synthesize
+    // WHY: Sendable due to a stored pointer / generic parameter shape.
     @safe
     public struct Keyed<Key: Hash.`Protocol`>: ~Copyable {
 
