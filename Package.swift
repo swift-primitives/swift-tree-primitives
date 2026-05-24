@@ -55,6 +55,7 @@ let package = Package(
         .package(path: "../swift-array-primitives"),
         .package(path: "../swift-index-primitives"),
         .package(path: "../swift-buffer-primitives"),
+        .package(path: "../swift-buffer-arena-primitives"),
         .package(path: "../swift-dictionary-primitives"),
     ],
     targets: [
@@ -66,7 +67,7 @@ let package = Package(
                 .product(name: "Queue Primitives Core", package: "swift-queue-primitives"),
                 .product(name: "Queue Dynamic Primitives", package: "swift-queue-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Buffer Arena Primitives", package: "swift-buffer-primitives"),
+                .product(name: "Buffer Arena Primitives", package: "swift-buffer-arena-primitives"),
             ]
         ),
 
@@ -81,14 +82,14 @@ let package = Package(
             name: "Tree N Inline Primitives",
             dependencies: [
                 "Tree Primitives Core",
-                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-primitives"),
+                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-arena-primitives"),
             ]
         ),
         .target(
             name: "Tree N Small Primitives",
             dependencies: [
                 "Tree Primitives Core",
-                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-primitives"),
+                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-arena-primitives"),
             ]
         ),
         .target(
