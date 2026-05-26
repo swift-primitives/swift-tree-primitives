@@ -12,31 +12,10 @@ let package = Package(
         .visionOS(.v26),
     ],
     products: [
-        // MARK: - Core
+        // MARK: - Core (the `Tree` namespace shell: Tree, Tree.Index, Tree.Position)
         .library(
             name: "Tree Primitives Core",
             targets: ["Tree Primitives Core"]
-        ),
-        // MARK: - Variants
-        .library(
-            name: "Tree N Bounded Primitives",
-            targets: ["Tree N Bounded Primitives"]
-        ),
-        .library(
-            name: "Tree N Inline Primitives",
-            targets: ["Tree N Inline Primitives"]
-        ),
-        .library(
-            name: "Tree N Small Primitives",
-            targets: ["Tree N Small Primitives"]
-        ),
-        .library(
-            name: "Tree Unbounded Primitives",
-            targets: ["Tree Unbounded Primitives"]
-        ),
-        .library(
-            name: "Tree Keyed Primitives",
-            targets: ["Tree Keyed Primitives"]
         ),
         // MARK: - Umbrella
         .library(
@@ -50,59 +29,19 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(path: "../swift-stack-primitives"),
-        .package(path: "../swift-queue-primitives"),
-        .package(path: "../swift-array-primitives"),
+        // Shell deps pruned 5 → 1: the namespace shell only needs Index
+        // (Tree.Index typealias + Tree.Position's Index<Self>/Ordinal). The
+        // arena/queue/stack/buffer backings moved out with the disciplines to
+        // swift-tree-n-primitives, swift-tree-unbounded-primitives,
+        // swift-tree-keyed-primitives.
         .package(path: "../swift-index-primitives"),
-        .package(path: "../swift-buffer-primitives"),
-        .package(path: "../swift-buffer-arena-primitives"),
-        .package(path: "../swift-dictionary-primitives"),
     ],
     targets: [
-        // MARK: - Core
+        // MARK: - Core (namespace shell)
         .target(
             name: "Tree Primitives Core",
             dependencies: [
-                .product(name: "Stack Primitives", package: "swift-stack-primitives"),
-                .product(name: "Queue Primitives Core", package: "swift-queue-primitives"),
-                .product(name: "Queue Dynamic Primitives", package: "swift-queue-primitives"),
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Buffer Arena Primitives", package: "swift-buffer-arena-primitives"),
-            ]
-        ),
-
-        // MARK: - Variants
-        .target(
-            name: "Tree N Bounded Primitives",
-            dependencies: [
-                "Tree Primitives Core",
-            ]
-        ),
-        .target(
-            name: "Tree N Inline Primitives",
-            dependencies: [
-                "Tree Primitives Core",
-                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-arena-primitives"),
-            ]
-        ),
-        .target(
-            name: "Tree N Small Primitives",
-            dependencies: [
-                "Tree Primitives Core",
-                .product(name: "Buffer Arena Inline Primitives", package: "swift-buffer-arena-primitives"),
-            ]
-        ),
-        .target(
-            name: "Tree Unbounded Primitives",
-            dependencies: [
-                "Tree Primitives Core",
-            ]
-        ),
-        .target(
-            name: "Tree Keyed Primitives",
-            dependencies: [
-                "Tree Primitives Core",
-                .product(name: "Dictionary Primitives", package: "swift-dictionary-primitives"),
             ]
         ),
 
@@ -111,11 +50,6 @@ let package = Package(
             name: "Tree Primitives",
             dependencies: [
                 "Tree Primitives Core",
-                "Tree N Bounded Primitives",
-                "Tree N Inline Primitives",
-                "Tree N Small Primitives",
-                "Tree Unbounded Primitives",
-                "Tree Keyed Primitives",
             ]
         ),
 
@@ -127,16 +61,6 @@ let package = Package(
                 .product(name: "Index Primitives Test Support", package: "swift-index-primitives"),
             ],
             path: "Tests/Support"
-        ),
-
-        // MARK: - Tests
-        .testTarget(
-            name: "Tree Primitives Tests",
-            dependencies: [
-                "Tree Primitives",
-                "Tree Primitives Test Support",
-                .product(name: "Array Primitives", package: "swift-array-primitives"),
-            ]
         ),
     ],
     swiftLanguageModes: [.v6]
