@@ -34,7 +34,7 @@ let package = Package(
         // arena/queue/stack/buffer backings moved out with the disciplines to
         // swift-tree-n-primitives, swift-tree-unbounded-primitives,
         // swift-tree-keyed-primitives.
-        .package(path: "../swift-index-primitives"),
+        .package(url: "https://github.com/swift-primitives/swift-index-primitives.git", branch: "main"),
     ],
     targets: [
         // MARK: - Core (namespace shell)
