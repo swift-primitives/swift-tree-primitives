@@ -16,28 +16,6 @@
       "statusRaw": "DECISION",
       "tier": null,
       "scope": null
-    },
-    {
-      "file": "tree-typed-remediation.md",
-      "displayName": "tree-typed-remediation.md",
-      "topic": "Bare Int → typed primitives infrastructure remediation",
-      "date": "2026-02-15",
-      "status": "RECOMMENDATION",
-      "statusDetail": null,
-      "statusRaw": "RECOMMENDATION",
-      "tier": null,
-      "scope": null
-    },
-    {
-      "file": "tree-operations-audit.md",
-      "displayName": "tree-operations-audit.md",
-      "topic": "Canonical Tree ADT operations completeness audit",
-      "date": "2026-02-16",
-      "status": "RECOMMENDATION",
-      "statusDetail": null,
-      "statusRaw": "RECOMMENDATION",
-      "tier": null,
-      "scope": null
     }
   ]
 }
