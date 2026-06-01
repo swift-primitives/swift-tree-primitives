@@ -46,7 +46,7 @@ public struct __TreePosition: Sendable, Equatable, Hashable {
     /// Boundary overload per [IMPL-010]: `.retag()` lives here,
     /// not at call sites.
     @inlinable
-    public init<T: ~Copyable>(index: Index<T>, token: UInt32) {
+    public init<T: ~Copyable & ~Escapable>(index: Index<T>, token: UInt32) {
         self.init(index: index.retag(Self.self), token: token)
     }
 
