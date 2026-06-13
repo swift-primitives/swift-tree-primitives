@@ -29,19 +29,34 @@ let package = Package(
         ),
     ],
     dependencies: [
-        // Shell deps pruned 5 → 1: the namespace shell only needs Index
-        // (Tree.Index typealias + Tree.Position's Index<Self>/Ordinal). The
-        // arena/queue/stack/buffer backings moved out with the disciplines to
-        // swift-tree-n-primitives, swift-tree-unbounded-primitives,
-        // swift-tree-keyed-primitives.
+        // R1 (corrected-E): tree-core is now the family home — it hosts Tree.Protocol, the
+        // shared arena (TreeStorage over Shared<Node, Column.Generational<Node>>), the shared
+        // defaults, and the canonical dynamic Tree. So the arena/queue/stack/buffer backings
+        // (previously in the per-variant packages) return here.
         .package(url: "https://github.com/swift-primitives/swift-index-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-column-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-shared-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-storage-arena-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-store-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-buffer-ring-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-queue-primitives.git", branch: "main"),
+        .package(url: "https://github.com/swift-primitives/swift-stack-primitives.git", branch: "main"),
     ],
     targets: [
-        // MARK: - Core (namespace shell)
+        // MARK: - Core (the family home: Tree.Protocol + TreeStorage arena + defaults +
+        //         canonical dynamic Tree; plus the legacy `Tree` namespace shell until W4
+        //         dissolves it)
         .target(
             name: "Tree Primitives Core",
             dependencies: [
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
+                .product(name: "Column Primitives", package: "swift-column-primitives"),
+                .product(name: "Shared Primitive", package: "swift-shared-primitives"),
+                .product(name: "Storage Generational Primitives", package: "swift-storage-arena-primitives"),
+                .product(name: "Store Primitive", package: "swift-store-primitives"),
+                .product(name: "Buffer Ring Primitive", package: "swift-buffer-ring-primitives"),
+                .product(name: "Queue Primitives", package: "swift-queue-primitives"),
+                .product(name: "Stack Primitives", package: "swift-stack-primitives"),
             ]
         ),
 
