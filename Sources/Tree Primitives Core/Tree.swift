@@ -50,26 +50,23 @@ public struct Tree<Element: ~Copyable>: __TreeProtocol {
     /// The error type for the shared tree operations.
     public typealias Error = __TreeError
 
-    /// The shared generational arena, parameterized by a variant's child-link representation.
-    public typealias Storage<ChildLinks> = __TreeStorage<Element, ChildLinks>
-
     /// The tree abstraction — the canonical surfacing of ``__TreeProtocol`` (the Array.Protocol pattern).
     public typealias `Protocol` = __TreeProtocol
 
     /// The private generational arena (NON-PUBLIC — `@usableFromInline` for the
     /// inlinable witnesses; the `Tree.Protocol` defaults never reference it).
     @usableFromInline
-    var _storage: __TreeStorage<Element, [Store.Generational.Handle]>
+    var _storage: Storage<[Store.Generational.Handle]>
 
     // MARK: Initialization (construction twins — the Copyable twin is in the extension below)
 
     /// Creates an empty tree (move-only elements).
     @inlinable
-    public init() { _storage = __TreeStorage() }
+    public init() { _storage = Storage<[Store.Generational.Handle]>() }
 
     /// Creates an empty tree with reserved capacity (move-only elements).
     @inlinable
-    public init(minimumCapacity: Count) { _storage = __TreeStorage(minimumCapacity: minimumCapacity) }
+    public init(minimumCapacity: Count) { _storage = Storage<[Store.Generational.Handle]>(minimumCapacity: minimumCapacity) }
 
     // MARK: Properties
 
@@ -203,13 +200,17 @@ extension Tree: Copyable where Element: Copyable {
     /// Creates an empty CoW tree (the clone strategy is captured via the
     /// `Tree.Storage` Copyable twin).
     @inlinable
-    public init() { _storage = __TreeStorage() }
+    public init() { _storage = Storage<[Store.Generational.Handle]>() }
 
     /// Creates an empty CoW tree with reserved capacity.
     @inlinable
-    public init(minimumCapacity: Count) { _storage = __TreeStorage(minimumCapacity: minimumCapacity) }
+    public init(minimumCapacity: Count) { _storage = Storage<[Store.Generational.Handle]>(minimumCapacity: minimumCapacity) }
 }
 
 // MARK: - Sendable
+//
+// PROPER conditional Sendable (no `@unchecked`): rides the arena's Sendable chain
+// (`Tree.Storage` → `Shared` → `Column.Generational` → `__TreeNode`). If the
+// compiler cannot carry it, falls back to `@unchecked` (NOT `@unsafe`) per [MEM-SAFE-024].
 
-extension Tree: @unsafe @unchecked Sendable where Element: Sendable {}
+extension Tree: Sendable where Element: Sendable {}

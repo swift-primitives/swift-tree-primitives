@@ -44,3 +44,9 @@ struct __TreeNode<Element: ~Copyable, ChildLinks>: ~Copyable {
 }
 
 extension __TreeNode: Copyable where Element: Copyable, ChildLinks: Copyable {}
+
+// Conditionally Sendable when its stored element + links are (the parent handle is
+// always Sendable). This is the foundation of the family's PROPER Sendable chain —
+// `Tree.Storage` → `Shared` → `Column.Generational` → here — so no tree type needs
+// `@unchecked` ([MEM-SAFE-024]).
+extension __TreeNode: Sendable where Element: Sendable, ChildLinks: Sendable {}
