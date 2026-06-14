@@ -15,27 +15,26 @@ public import Shared_Primitive
 public import Storage_Generational_Primitives
 public import Store_Primitive
 
-// MARK: - TreeStorage — the shared generational arena (the de-dup nucleus)
+// MARK: - Tree.Storage — the shared generational arena (the de-dup nucleus)
 //
-// The corrected-E shared arena: ONE generational slot column behind the `Shared`
-// CoW box, generalized over the per-conformer child-link representation
-// `ChildLinks`. Every `Tree.Protocol` conformer holds one of these privately (a
-// `@usableFromInline` stored property — non-public; the `Tree.Protocol` defaults
-// orchestrate via the operation requirements and never touch it). The arena
-// logic (decode / insert-grow / remove / element & link access) lives here ONCE.
+// Hoisted [API-EXC-001] implementation of ``Tree/Storage`` (surfaced as the
+// Nest.Name `Tree<Element>.Storage<ChildLinks>`). The corrected-E shared arena:
+// ONE generational slot column behind the `Shared` CoW box, generalized over the
+// per-variant child-link representation `ChildLinks`. Every `Tree.Protocol`
+// conformer (`Tree`, `Tree.N`, `Tree.Keyed`) holds one of these privately; the
+// arena logic (decode / insert-grow / remove / element & link access) lives here
+// ONCE. Carries Round M's tree work verbatim: B2 `handle(at:)` decode + token
+// validation; A3 typed counts; the generation-preserving `grow(to:)` / `clone()`
+// contract (positions survive growth); the `Shared` CoW column (the W5 design).
 //
-// Carries Round M's tree work verbatim: B2 `handle(at:)` decode + token
-// validation; A3 typed counts at the doors; the generation-preserving
-// `grow(to:)` / `clone()` contract (positions survive growth); the `Shared` CoW
-// column (the W5 tower design).
+// - Note: Use ``Tree/Storage`` in your code, not this type directly.
 
-/// The shared generational node arena for the tree family.
+/// Hoisted implementation of the shared generational node arena.
 ///
 /// Wraps `Shared<Node, Column.Generational<Node>>` and exposes the
-/// child-representation-agnostic arena operations the `Tree.Protocol` conformers
-/// delegate to. The node type and column are internal details; nothing about the
-/// raw storage crosses this type's public surface.
-public struct TreeStorage<Element: ~Copyable, ChildLinks>: ~Copyable {
+/// child-representation-agnostic arena operations the conformers delegate to. The
+/// node type and column are internal details; no raw storage crosses the surface.
+public struct __TreeStorage<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     @usableFromInline
     typealias Slot = __TreeNode<Element, ChildLinks>
@@ -54,9 +53,9 @@ public struct TreeStorage<Element: ~Copyable, ChildLinks>: ~Copyable {
     // The `~Copyable` twin captures no clone strategy (statically unique). The
     // `Copyable` twin (the extension below) routes to `Shared`'s clone-capturing
     // init, so a CoW copy detaches by the generation-preserving deep copy. As a
-    // TOP-LEVEL struct, `TreeStorage` is free of the nested-in-inverse-generic-
-    // enum mangling collision that forces the variant trees to use member-level
-    // twins (de-risked: probe-tp3, ×2 incl. -O, CoW clone-independence).
+    // TOP-LEVEL struct, this is free of the nested-in-inverse-generic-enum mangling
+    // collision that forces the variant trees to member-level twins (de-risked
+    // ×2 incl -O, CoW clone-independence).
 
     /// Creates an empty arena (move-only elements — no clone strategy).
     @inlinable
@@ -75,7 +74,7 @@ public struct TreeStorage<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     // MARK: Arena operations
 
-    /// The number of live nodes (typed — A3; tagged by `Element`, i.e. one per node).
+    /// The number of live nodes (typed — A3; tagged by `Element`, one per node).
     @inlinable
     public var count: Index<Element>.Count {
         Index<Element>.Count(UInt(Int(bitPattern: _column.withColumn { $0.count })))
@@ -121,7 +120,7 @@ public struct TreeStorage<Element: ~Copyable, ChildLinks>: ~Copyable {
     public mutating func removeNode(_ handle: Store.Generational.Handle) -> Element {
         guard let node = _column.withUnique({ $0.remove(handle) }) else {
             // Unreachable: callers pass decoded live handles and no removal interleaves.
-            preconditionFailure("TreeStorage: live handle failed to resolve on removal")
+            preconditionFailure("Tree.Storage: live handle failed to resolve on removal")
         }
         return node.element
     }
@@ -169,7 +168,7 @@ public struct TreeStorage<Element: ~Copyable, ChildLinks>: ~Copyable {
 
 // MARK: - Copyable construction twin (captures the clone strategy)
 
-extension TreeStorage: Copyable where Element: Copyable, ChildLinks: Copyable {
+extension __TreeStorage: Copyable where Element: Copyable, ChildLinks: Copyable {
     /// Creates an empty CoW-capable arena.
     ///
     /// The generation-preserving clone strategy is captured via `Shared`'s
@@ -180,7 +179,7 @@ extension TreeStorage: Copyable where Element: Copyable, ChildLinks: Copyable {
         self.rootHandle = nil
     }
 
-    /// Creates an empty arena with reserved capacity (CoW-capable).
+    /// Creates an empty CoW-capable arena with reserved capacity.
     @inlinable
     public init(minimumCapacity: Index<Element>.Count) {
         let slots = Index<Slot>.Count(UInt(Swift.max(Int(bitPattern: minimumCapacity), 1)))
@@ -191,4 +190,4 @@ extension TreeStorage: Copyable where Element: Copyable, ChildLinks: Copyable {
 
 // MARK: - Sendable
 
-extension TreeStorage: @unsafe @unchecked Sendable where Element: Sendable, ChildLinks: Sendable {}
+extension __TreeStorage: @unsafe @unchecked Sendable where Element: Sendable, ChildLinks: Sendable {}

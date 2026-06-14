@@ -80,12 +80,10 @@ extension __TreeProtocol where Self: ~Copyable {
         return _position(of: parentHandle)
     }
 
-    /// The number of children of the node at `position`, or `nil` if invalid.
-    @inlinable
-    public func childCount(of position: __TreePosition) -> Int? {
-        guard let handle = try? _decode(position) else { return nil }
-        return _childCount(at: handle)
-    }
+    // `childCount(of:)` is NOT a shared default: its return type is the conformer's
+    // own child domain (`Index<Tree<Element>>.Count?` for the dynamic tree, the
+    // bounded count for `Tree.N`, the key count for `Tree.Keyed`). Each conformer
+    // surfaces it over the `_childCount` requirement.
 
     /// Whether the node at `position` is a leaf (has no children). `false` if invalid.
     @inlinable
