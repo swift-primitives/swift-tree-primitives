@@ -17,7 +17,7 @@ public import Store_Primitive
 // `__TreeProtocol` is the additive abstraction the tree variants CONFORM TO
 // (mirroring `Array.Protocol` / `__ArrayProtocol`). Its requirements are
 // OPERATIONS — decode, node-at-handle, child-link read/set, arena access — never
-// raw storage: a conformer implements them over its OWN private `TreeStorage`,
+// raw storage: a conformer implements them over its OWN private `Tree.Storage`,
 // and the shared defaults (`__TreeProtocol+Defaults.swift`) orchestrate
 // insert / remove / navigation / traversal via these requirements ALONE. The
 // abstraction never sees a conformer's storage, so storage stays non-public.
@@ -32,7 +32,7 @@ public import Store_Primitive
 ///
 /// The shared operation seam for the tree family. Conformers
 /// (`Tree` / `Tree.N` / `Tree.Keyed`) implement the operation
-/// requirements over a private `TreeStorage`; the shared defaults provide the
+/// requirements over a private `Tree.Storage`; the shared defaults provide the
 /// node-shape-agnostic tree algorithms.
 ///
 /// - Note: Use ``Tree/Protocol`` in your code, not this type directly.
@@ -45,7 +45,7 @@ public protocol __TreeProtocol: ~Copyable {
     /// bounded slot (n-ary), or a key (keyed).
     associatedtype Address
 
-    // MARK: Arena requirements (the conformer delegates to its private TreeStorage)
+    // MARK: Arena requirements (the conformer delegates to its private Tree.Storage)
 
     /// The handle of the root node, or `nil` if the tree is empty.
     var _rootHandle: Store.Generational.Handle? { get set }

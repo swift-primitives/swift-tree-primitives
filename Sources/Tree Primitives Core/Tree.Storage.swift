@@ -178,6 +178,20 @@ extension Tree where Element: ~Copyable {
         ) -> R {
             _column.withUnique { body(&$0[handle].links) }
         }
+
+        /// CoW-gated mutable access to a node's element.
+        ///
+        /// The symmetric counterpart to ``withLinksMut(at:_:)`` for in-place
+        /// element replacement (the keyed tree's `update` / `rootValue` /
+        /// key-path-insert). Positions survive: the slot and its generation are
+        /// untouched, only the stored element changes.
+        @inlinable
+        public mutating func withElementMut<R: ~Copyable>(
+            at handle: Store.Generational.Handle,
+            _ body: (inout Element) -> R
+        ) -> R {
+            _column.withUnique { body(&$0[handle].element) }
+        }
     }
 }
 
