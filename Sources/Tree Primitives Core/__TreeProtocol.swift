@@ -31,7 +31,7 @@ public import Store_Primitive
 /// Hoisted implementation of the tree abstraction.
 ///
 /// The shared operation seam for the tree family. Conformers
-/// (`DynamicTree` / `NaryTree` / `KeyedTree`) implement the operation
+/// (`Tree` / `Tree.N` / `Tree.Keyed`) implement the operation
 /// requirements over a private `TreeStorage`; the shared defaults provide the
 /// node-shape-agnostic tree algorithms.
 ///
