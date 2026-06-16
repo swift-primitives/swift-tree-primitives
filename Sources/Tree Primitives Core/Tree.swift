@@ -35,13 +35,13 @@ public import Store_Primitive
 /// var tree = Tree<String>()
 /// let root = try tree.insert("root", at: .root)
 /// let child = try tree.insert("child", at: .child(of: root, at: 0))
-/// tree.forEachPreOrder { print($0) }  // root, child
+/// tree.forEach.preOrder { print($0) }  // root, child
 /// ```
 public struct Tree<Element: ~Copyable>: __TreeProtocol {
 
     /// Children are addressed by a typed ordinal in the tree's own child domain
-    /// (`0..<childCount`) — `Index<Tree<Element>>`, distinct from the node count
-    /// (`Index<Element>.Count`) and the arena slot (`Index<__TreePosition>`).
+    /// (`0..<` the parent's child count) — `Index<Tree<Element>>`, distinct from the
+    /// node count (`Index<Element>.Count`) and the arena slot (`Index<__TreePosition>`).
     public typealias Address = Index<Tree<Element>>
 
     /// Typed node count (A3).
@@ -74,14 +74,9 @@ public struct Tree<Element: ~Copyable>: __TreeProtocol {
     @inlinable
     public var count: Count { _storage.count }
 
-    /// The number of children of the node at `position`, or `nil` if the position
-    /// is invalid — typed in the tree's child domain (`Index<Tree<Element>>.Count`),
-    /// so `childIndex < childCount` bounds-checks ([IDX-007]).
-    @inlinable
-    public func childCount(of position: __TreePosition) -> Index<Tree<Element>>.Count? {
-        guard let handle = _liveHandle(position) else { return nil }
-        return Index<Tree<Element>>.Count(UInt(_childCount(at: handle)))
-    }
+    // The per-node child count is the shared `tree.child.count(of:)` view member
+    // (R1 W4 [API-NAME-002]; `__TreeChild.swift`) — uniformly `Int?` across the
+    // family; the compound `childCount(of:)` was folded into the `child` view.
 
     // MARK: Arena requirements (delegated to the private Tree.Storage)
 

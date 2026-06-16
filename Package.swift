@@ -41,6 +41,10 @@ let package = Package(
         .package(url: "https://github.com/swift-primitives/swift-buffer-ring-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-queue-primitives.git", branch: "main"),
         .package(url: "https://github.com/swift-primitives/swift-stack-primitives.git", branch: "main"),
+        // R1 W4: the read-only fluent accessor views (Tree.forEach / Tree.child) are built on
+        // `Property<Tag, Base>.Borrow` — the [PRP-001]-canonical mechanism for ~Copyable fluent
+        // accessors (bespoke borrowing views wall on 6.3.2; probe-confirmed). Seat-ratified dep.
+        .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
     ],
     targets: [
         // MARK: - Core (the family home: Tree.Protocol + TreeStorage arena + defaults +
@@ -57,6 +61,7 @@ let package = Package(
                 .product(name: "Buffer Ring Primitive", package: "swift-buffer-ring-primitives"),
                 .product(name: "Queue Primitives", package: "swift-queue-primitives"),
                 .product(name: "Stack Primitives", package: "swift-stack-primitives"),
+                .product(name: "Property Primitives", package: "swift-property-primitives"),
             ]
         ),
 

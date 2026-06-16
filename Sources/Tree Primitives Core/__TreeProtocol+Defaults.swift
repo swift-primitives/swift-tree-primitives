@@ -63,8 +63,11 @@ extension __TreeProtocol where Self: ~Copyable {
     // MARK: Navigation
 
     /// The position of the child at `address`, or `nil` if absent / position invalid.
+    ///
+    /// SPI backing for the public `tree.child.at(_:of:)` accessor ([API-NAME-002];
+    /// the compound surface was folded into the `child` view in R1 W4).
     @inlinable
-    public func child(of position: __TreePosition, at address: Address) -> __TreePosition? {
+    public func _child(of position: __TreePosition, at address: Address) -> __TreePosition? {
         guard let handle = try? _decode(position),
             let childHandle = _childHandle(at: handle, address: address)
         else { return nil }
@@ -190,11 +193,14 @@ extension __TreeProtocol where Self: ~Copyable {
         }
     }
 
-    // MARK: Traversal (closure-based; shared across all conformers)
+    // MARK: Traversal (closure-based; SPI backing the public `tree.forEach.*` view)
+    //
+    // The public surface is `tree.forEach.preOrder { }` etc. (`__TreeForEach.swift`,
+    // R1 W4 [API-NAME-002]); these `_forEach*` defaults carry the shared logic.
 
     /// Visits every element in pre-order (root, then children left-to-right).
     @inlinable
-    public func forEachPreOrder(_ body: (borrowing Element) -> Void) {
+    public func _forEachPreOrder(_ body: (borrowing Element) -> Void) {
         guard let rootHandle = _rootHandle else { return }
         var pending = Stack<Store.Generational.Handle>()
         pending.push(rootHandle)
@@ -208,7 +214,7 @@ extension __TreeProtocol where Self: ~Copyable {
 
     /// Visits every element in post-order (children left-to-right, then parent).
     @inlinable
-    public func forEachPostOrder(_ body: (borrowing Element) -> Void) {
+    public func _forEachPostOrder(_ body: (borrowing Element) -> Void) {
         guard let rootHandle = _rootHandle else { return }
         var pending = Stack<Store.Generational.Handle>()
         var output = Stack<Store.Generational.Handle>()
@@ -224,7 +230,7 @@ extension __TreeProtocol where Self: ~Copyable {
 
     /// Visits every element in level-order (breadth-first).
     @inlinable
-    public func forEachLevelOrder(_ body: (borrowing Element) -> Void) {
+    public func _forEachLevelOrder(_ body: (borrowing Element) -> Void) {
         guard let rootHandle = _rootHandle else { return }
         var pending = Queue<Column.Ring<Store.Generational.Handle>>()
         pending.enqueue(rootHandle)
