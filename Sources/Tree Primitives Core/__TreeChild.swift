@@ -10,6 +10,8 @@
 // ===----------------------------------------------------------------------===//
 
 public import Property_Primitives
+public import Storage_Generational_Primitives
+public import Store_Primitive
 
 // MARK: - Tree.child — the child-navigation accessor (R1 W4 [API-NAME-002])
 //
@@ -51,5 +53,29 @@ where Base: __TreeProtocol & ~Copyable, Tag == __TreeChild {
     public func count(of position: __TreePosition) -> Int? {
         guard let handle = base.value._liveHandle(position) else { return nil }
         return base.value._childCount(at: handle)
+    }
+
+    /// The position of the first child of the node at `position`, or `nil` if it has
+    /// no children / `position` is invalid. (For `Tree.N`, the first occupied slot;
+    /// folds the legacy n-ary `leftmostChild`, generalized to every ordered tree.)
+    @inlinable
+    public func leftmost(of position: __TreePosition) -> __TreePosition? {
+        guard let handle = base.value._liveHandle(position) else { return nil }
+        var first: Store.Generational.Handle?
+        base.value._forEachChild(at: handle) { if first == nil { first = $0 } }
+        guard let first else { return nil }
+        return base.value._position(of: first)
+    }
+
+    /// The position of the last child of the node at `position`, or `nil` if it has
+    /// no children / `position` is invalid. (For `Tree.N`, the last occupied slot;
+    /// folds the legacy n-ary `rightmostChild`, generalized to every ordered tree.)
+    @inlinable
+    public func rightmost(of position: __TreePosition) -> __TreePosition? {
+        guard let handle = base.value._liveHandle(position) else { return nil }
+        var last: Store.Generational.Handle?
+        base.value._forEachChild(at: handle) { last = $0 }
+        guard let last else { return nil }
+        return base.value._position(of: last)
     }
 }
