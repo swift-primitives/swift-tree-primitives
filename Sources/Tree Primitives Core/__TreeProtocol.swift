@@ -12,28 +12,28 @@
 public import Storage_Generational_Primitives
 public import Store_Primitive
 
-// MARK: - Tree.Protocol — the OPERATION-requirement abstraction (the Array.Protocol pattern)
+// MARK: - Tree.Protocol — the CONSUMER protocol (the Array.Protocol / __ArrayProtocol analog)
 //
-// `__TreeProtocol` is the additive abstraction the tree variants CONFORM TO
-// (mirroring `Array.Protocol` / `__ArrayProtocol`). Its requirements are
-// OPERATIONS — decode, node-at-handle, child-link read/set, arena access — never
-// raw storage: a conformer implements them over its OWN private `Tree.Storage`,
-// and the shared defaults (`__TreeProtocol+Defaults.swift`) orchestrate
-// insert / remove / navigation / traversal via these requirements ALONE. The
-// abstraction never sees a conformer's storage, so storage stays non-public.
+// The Charter at-target reshape ([DS-025]): `Tree<S>` ADDITIVELY conforms its own
+// consumer-facing protocol `Tree.Protocol` (`extension Tree: Tree.Protocol where S:
+// __TreeStorage`), exactly as `Array<S>` conforms `Array.Protocol`. The STORAGE column
+// `S` never conforms `Tree.Protocol` — it conforms the SEPARATE storage capability
+// ``__TreeStorage``; only `Tree<S>` conforms this consumer protocol.
 //
-// Ruling 12: this is the SANCTIONED additive-abstraction kind (a conformance
-// target + generic bound, mirroring `Array.Protocol`), NOT a composition bound —
-// there is no `Tree<S: __TreeProtocol>` generic type.
+// This protocol is the seam GENERIC CONSUMERS and the shared `Property.Borrow` views
+// (`tree.forEach.*`, `tree.child.*`) constrain on. Its requirements are the navigation /
+// traversal / element-access operations `Tree<S>` supplies through its conditional
+// extensions (`__TreeProtocol+Operations.swift`); the views and generic algorithms reach
+// them through this protocol without knowing the column.
 //
-// Hoisted per [API-EXC-001]; use ``Tree/Protocol`` in your code.
+// Hoisted per [API-EXC-001] (a protocol cannot nest in the generic `Tree<S>`); use
+// ``Tree/Protocol`` in your code.
 
-/// Hoisted implementation of the tree abstraction.
+/// Hoisted implementation of the tree consumer abstraction.
 ///
-/// The shared operation seam for the tree family. Conformers
-/// (`Tree` / `Tree.N` / `Tree.Keyed`) implement the operation
-/// requirements over a private `Tree.Storage`; the shared defaults provide the
-/// node-shape-agnostic tree algorithms.
+/// The consumer-facing seam for the tree family. `Tree<S>` conforms it conditionally
+/// (`where S: __TreeStorage`); generic functions and the shared `tree.forEach.*` /
+/// `tree.child.*` views constrain on it.
 ///
 /// - Note: Use ``Tree/Protocol`` in your code, not this type directly.
 public protocol __TreeProtocol: ~Copyable {
@@ -45,64 +45,24 @@ public protocol __TreeProtocol: ~Copyable {
     /// bounded slot (n-ary), or a key (keyed).
     associatedtype Address
 
-    // MARK: Arena requirements (the conformer delegates to its private Tree.Storage)
+    // MARK: Properties
 
-    /// The handle of the root node, or `nil` if the tree is empty.
-    var _rootHandle: Store.Generational.Handle? { get set }
+    /// Whether the tree has no nodes.
+    var isEmpty: Bool { get }
+
+    /// The position of the root node, or `nil` if the tree is empty.
+    var root: __TreePosition? { get }
+
+    // MARK: Navigation / traversal seams (the view-facing requirements)
+
+    /// Mints the public position for a live handle.
+    func _position(of handle: Store.Generational.Handle) -> __TreePosition
 
     /// Decodes a position into its live handle, or `nil` if stale/out-of-bounds.
     func _liveHandle(_ position: __TreePosition) -> Store.Generational.Handle?
 
-    /// Inserts a node with no children yet and the given parent; returns its handle.
-    mutating func _insertNode(
-        _ element: consuming Element,
-        parent: Store.Generational.Handle?
-    ) -> Store.Generational.Handle
-
-    /// Removes the node at a live handle and moves its element out.
-    mutating func _removeNode(_ handle: Store.Generational.Handle) -> Element
-
-    /// Removes every node and resets the root.
-    mutating func _removeAll()
-
-    /// The parent handle of a node (`nil` for the root).
-    func _parentHandle(of handle: Store.Generational.Handle) -> Store.Generational.Handle?
-
-    /// Borrowing access to a node's element.
-    func _withElement<R: ~Copyable>(
-        at handle: Store.Generational.Handle,
-        _ body: (borrowing Element) -> R
-    ) -> R
-
-    // MARK: Child-link requirements (genuinely per-conformer)
-
-    /// The handle of the child at `address`, or `nil` if absent.
-    func _childHandle(
-        at handle: Store.Generational.Handle,
-        address: Address
-    ) -> Store.Generational.Handle?
-
-    /// Validates that a child link at `address` under `parent` is permissible
-    /// BEFORE any node is inserted — the per-conformer error precision flows here
-    /// (`.childIndexOutOfBounds` / `.slotOccupied` / keyed). No mutation.
-    func _validateLink(
-        to parent: Store.Generational.Handle,
-        at address: Address
-    ) throws(__TreeError)
-
-    /// Links `child` under `parent` at `address`. Precondition: a prior
-    /// `_validateLink(to:at:)` succeeded, so this never fails.
-    mutating func _linkChild(
-        _ child: Store.Generational.Handle,
-        to parent: Store.Generational.Handle,
-        at address: Address
-    )
-
-    /// Unlinks `child` from `parent`'s child links.
-    mutating func _unlinkChild(
-        _ child: Store.Generational.Handle,
-        from parent: Store.Generational.Handle
-    )
+    /// The position of the child at `address`, or `nil` if absent / position invalid.
+    func _child(of position: __TreePosition, at address: Address) -> __TreePosition?
 
     /// The number of children of a node.
     func _childCount(at handle: Store.Generational.Handle) -> Int
@@ -112,6 +72,21 @@ public protocol __TreeProtocol: ~Copyable {
         at handle: Store.Generational.Handle,
         _ body: (Store.Generational.Handle) -> Void
     )
+
+    /// Borrowing access to a node's element.
+    func _withElement<R: ~Copyable>(
+        at handle: Store.Generational.Handle,
+        _ body: (borrowing Element) -> R
+    ) -> R
+
+    /// Visits every element in pre-order (root, then children left-to-right).
+    func _forEachPreOrder(_ body: (borrowing Element) -> Void)
+
+    /// Visits every element in post-order (children left-to-right, then parent).
+    func _forEachPostOrder(_ body: (borrowing Element) -> Void)
+
+    /// Visits every element in level-order (breadth-first).
+    func _forEachLevelOrder(_ body: (borrowing Element) -> Void)
 }
 
 // MARK: - Shared surfaced typealiases

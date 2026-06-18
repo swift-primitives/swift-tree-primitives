@@ -17,7 +17,7 @@ public import Store_Primitive
 // The generational-column slot type, generalized over the per-conformer child-
 // link representation `ChildLinks` (dense `[Handle]` for the dynamic tree, sparse
 // `InlineArray<n, Handle?>` for the n-ary tree, the ordered keyed dictionary for
-// the keyed tree). This is an INTERNAL arena detail of `Tree.Storage`: it never
+// the keyed tree). This is an INTERNAL arena detail of `__TreeArena`: it never
 // appears in any public signature (the public surface traffics in
 // `Element` / `ChildLinks` / `Store.Generational.Handle` / `__TreePosition`),
 // so it is `@usableFromInline`, not `public`. Conformers never name it.
@@ -47,6 +47,6 @@ extension __TreeNode: Copyable where Element: Copyable, ChildLinks: Copyable {}
 
 // Conditionally Sendable when its stored element + links are (the parent handle is
 // always Sendable). This is the foundation of the family's PROPER Sendable chain —
-// `Tree.Storage` → `Shared` → `Column.Generational` → here — so no tree type needs
+// `__TreeArena` → `Shared` → `Column.Generational` → here — so no tree type needs
 // `@unchecked` ([MEM-SAFE-024]).
 extension __TreeNode: Sendable where Element: Sendable, ChildLinks: Sendable {}

@@ -13,6 +13,12 @@ import Testing
 
 @testable import Tree_Primitives_Core
 
+// At-target reshape ([DS-025]): the canonical dynamic tree is `Tree<TreeStorage.Dynamic<E>>`
+// (the `TreeDynamic` alias). This local alias keeps the permanent suite's bodies VERBATIM
+// (`Tree<Int>` / `Tree<Int>.Position`) — the re-skeleton mirrors `Array`'s `MoveArray<E>`
+// test alias, exercising the SAME engine through the new column-generic surface.
+fileprivate typealias Tree<Element: ~Copyable> = TreeDynamic<Element>
+
 // MARK: - struct Tree (the canonical dynamic tree) — permanent suite
 //
 // Migrated into tree-core at R1 W4 when `Tree.Unbounded` retired into `struct Tree`
@@ -32,7 +38,7 @@ struct TreeTests {
 
 extension TreeTests {
     /// Nested:  0 → [1, 2], 1 → [3, 4]. Pre-order [0,1,3,4,2]; post-order [3,4,1,2,0].
-    static func makeNested() throws -> Tree<Int> {
+    fileprivate static func makeNested() throws -> Tree<Int> {
         var tree = Tree<Int>()
         let root = try tree.insert(0, at: .root)
         let left = try tree.insert(1, at: .child(of: root, at: 0))
@@ -43,7 +49,7 @@ extension TreeTests {
     }
 
     /// Chain 0 → 1 → 2 → 3 → 4 (each node one child). Post-order [4,3,2,1,0].
-    static func makeChain() throws -> Tree<Int> {
+    fileprivate static func makeChain() throws -> Tree<Int> {
         var tree = Tree<Int>()
         var position = try tree.insert(0, at: .root)
         for value in 1...4 {
@@ -53,7 +59,7 @@ extension TreeTests {
     }
 
     /// Wide 0 → [1, 2, 3, 4, 5] (all leaves). Post-order [1,2,3,4,5,0].
-    static func makeWide() throws -> Tree<Int> {
+    fileprivate static func makeWide() throws -> Tree<Int> {
         var tree = Tree<Int>()
         let root = try tree.insert(0, at: .root)
         _ = try tree.insert(1, at: .child(of: root, at: 0))
@@ -64,19 +70,19 @@ extension TreeTests {
         return tree
     }
 
-    static func preOrder(_ tree: borrowing Tree<Int>) -> [Int] {
+    fileprivate static func preOrder(_ tree: borrowing Tree<Int>) -> [Int] {
         var result: [Int] = []
         tree.forEach.preOrder { result.append($0) }
         return result
     }
 
-    static func postOrder(_ tree: borrowing Tree<Int>) -> [Int] {
+    fileprivate static func postOrder(_ tree: borrowing Tree<Int>) -> [Int] {
         var result: [Int] = []
         tree.forEach.postOrder { result.append($0) }
         return result
     }
 
-    static func levelOrder(_ tree: borrowing Tree<Int>) -> [Int] {
+    fileprivate static func levelOrder(_ tree: borrowing Tree<Int>) -> [Int] {
         var result: [Int] = []
         tree.forEach.levelOrder { result.append($0) }
         return result

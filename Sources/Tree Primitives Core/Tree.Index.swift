@@ -11,7 +11,7 @@
 
 public import Index_Primitives
 
-extension Tree where Element: ~Copyable {
+extension Tree {
     /// Type-safe index for tree node positions.
     ///
     /// Uses `Index<Tag>` to provide compile-time safety preventing

@@ -66,8 +66,12 @@ public struct __TreePosition: Sendable, Equatable, Hashable {
 }
 
 // MARK: - Typealias in Tree
+//
+// A NON-GENERIC namespaced typealias (no `S` capture) — the at-target reshape drops the
+// `where Element: ~Copyable` constraint (the namespace's parameter is now the column `S`,
+// and `Position` is column-agnostic).
 
-extension Tree where Element: ~Copyable {
+extension Tree {
     /// A position (cursor) to a node in a tree.
     ///
     /// - SeeAlso: ``__TreePosition`` for the full documentation.

@@ -9,203 +9,85 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Storage_Generational_Primitives
-public import Store_Primitive
+// MARK: - Tree (the ADT tier — generic over the STORAGE COLUMN, per [DS-025])
 
-/// A dynamically-growing tree of unbounded arity — the canonical tree, and the
-/// namespace for the variant trees.
+/// A tree — the semantic ADT over an explicit storage COLUMN `S`.
 ///
-/// `Tree<Element>` is the general-purpose tree: each node may have any number of
-/// children in a dense, ordered list. It is the `Tree.Protocol` conformer for the
-/// dynamic role (the former `Tree.Unbounded`, which retires into this type), and
-/// it is ALSO the namespace nest for the bounded-arity ``Tree/N``, the keyed
-/// ``Tree/Keyed``, and the binary `Tree.Binary` (= `Tree.N<2>`) variants — each
-/// added by its own package via a cross-module extension on `Tree`.
+/// The Charter at-target shape ([DS-025]): `Tree` is a thin generic over its storage
+/// column `S`, bound `~Copyable` **only** — no storage-protocol bound on the type.
+/// Capabilities attach by CONDITIONAL EXTENSION keyed on what `S` supports
+/// (`extension Tree where S: __TreeStorage`), and `Tree<S>` ADDITIVELY conforms its own
+/// consumer protocol `Tree.Protocol` (`extension Tree: Tree.Protocol where S:
+/// __TreeStorage`). The storage `S` never conforms `Tree.Protocol`; only `Tree<S>` does
+/// — the exact `Array<S>` / `Buffer<S>` model.
 ///
-/// Both the tree and its elements may be `~Copyable`; when `Element` is `Copyable`
-/// the tree is copy-on-write (the `Shared` column's generation-preserving clone).
-/// The arena, decode (Round M B2), token validation, typed counts (A3) and the
-/// position-survives-growth contract live in ``Tree/Storage`` + the
-/// ``Tree/Protocol`` defaults; this type supplies the dense `[Handle]` child-link
-/// representation and its operations.
+/// Copyability **flows from the column**: `Tree<S>` is `Copyable` exactly when `S` is.
+/// The ADT carries no `deinit` — teardown lives in the column's `__TreeArena` (the
+/// `Shared` CoW box drain / generational column).
+///
+/// The shipped columns are the dynamic dense-list column (``Tree/Dynamic``, this
+/// package), the bounded-arity n-ary column (`swift-tree-n-primitives`) and the keyed
+/// column (`swift-tree-keyed-primitives`); the canonical dynamic tree is the
+/// ``TreeDynamic`` ergonomic alias.
 ///
 /// ## Example
 ///
 /// ```swift
-/// var tree = Tree<String>()
+/// var tree = TreeDynamic<String>()                 // = Tree<Tree.Dynamic<String>>
 /// let root = try tree.insert("root", at: .root)
 /// let child = try tree.insert("child", at: .child(of: root, at: 0))
-/// tree.forEach.preOrder { print($0) }  // root, child
+/// tree.forEach.preOrder { print($0) }              // root, child
 /// ```
-public struct Tree<Element: ~Copyable>: __TreeProtocol {
+@frozen
+public struct Tree<S: ~Copyable> {
 
-    /// Children are addressed by a typed ordinal in the tree's own child domain
-    /// (`0..<` the parent's child count) — `Index<Tree<Element>>`, distinct from the
-    /// node count (`Index<Element>.Count`) and the arena slot (`Index<__TreePosition>`).
-    public typealias Address = Index<Tree<Element>>
+    /// The storage column — the arena + child-link capability the tree is a thin
+    /// semantic discipline over. Carries the per-node arena (`__TreeArena`) and the
+    /// per-column child-link interpretation.
+    @usableFromInline
+    package var storage: S
 
-    /// Typed node count (A3).
-    public typealias Count = Index<Element>.Count
+    /// Wraps an existing storage column.
+    @inlinable
+    public init(storage: consuming S) {
+        self.storage = storage
+    }
+
+    /// Consumes the tree, yielding its storage column.
+    @inlinable
+    public consuming func take() -> S {
+        storage
+    }
+}
+
+// MARK: - Conditional Conformances (copyability + Sendability flow from the column)
+
+extension Tree: Copyable where S: Copyable {}
+
+extension Tree: Sendable where S: Sendable & ~Copyable {}
+
+// MARK: - Column-agnostic typealiases (no `S` capture — the Set.Ordered namespaced pattern)
+
+extension Tree {
 
     /// The error type for the shared tree operations.
     public typealias Error = __TreeError
 
-    /// The tree abstraction — the canonical surfacing of ``__TreeProtocol`` (the Array.Protocol pattern).
+    /// The tree consumer abstraction — the canonical surfacing of ``__TreeProtocol``
+    /// (the `Array.Protocol` pattern). `Tree<S>` conforms it where `S: __TreeStorage`.
     public typealias `Protocol` = __TreeProtocol
-
-    /// The private generational arena (NON-PUBLIC — `@usableFromInline` for the
-    /// inlinable witnesses; the `Tree.Protocol` defaults never reference it).
-    @usableFromInline
-    var _storage: Storage<[Store.Generational.Handle]>
-
-    // MARK: Initialization (construction twins — the Copyable twin is in the extension below)
-
-    /// Creates an empty tree (move-only elements).
-    @inlinable
-    public init() { _storage = Storage<[Store.Generational.Handle]>() }
-
-    /// Creates an empty tree with reserved capacity (move-only elements).
-    @inlinable
-    public init(minimumCapacity: Count) { _storage = Storage<[Store.Generational.Handle]>(minimumCapacity: minimumCapacity) }
-
-    // MARK: Properties
-
-    /// The number of nodes in the tree (typed — A3).
-    @inlinable
-    public var count: Count { _storage.count }
-
-    // The per-node child count is the shared `tree.child.count(of:)` view member
-    // (R1 W4 [API-NAME-002]; `__TreeChild.swift`) — uniformly `Int?` across the
-    // family; the compound `childCount(of:)` was folded into the `child` view.
-
-    // MARK: Arena requirements (delegated to the private Tree.Storage)
-
-    /// The root node's handle (the `Tree.Protocol` arena requirement).
-    @inlinable
-    public var _rootHandle: Store.Generational.Handle? {
-        get { _storage.rootHandle }
-        set { _storage.rootHandle = newValue }
-    }
-
-    /// Decodes a position to its live handle (the arena requirement).
-    @inlinable
-    public func _liveHandle(_ position: __TreePosition) -> Store.Generational.Handle? {
-        _storage.liveHandle(position)
-    }
-
-    /// Inserts a childless node with the given parent (the arena requirement).
-    @inlinable
-    public mutating func _insertNode(
-        _ element: consuming Element,
-        parent: Store.Generational.Handle?
-    ) -> Store.Generational.Handle {
-        _storage.insertNode(element, links: [], parent: parent)
-    }
-
-    /// Removes a node, moving its element out (the arena requirement).
-    @inlinable
-    public mutating func _removeNode(_ handle: Store.Generational.Handle) -> Element {
-        _storage.removeNode(handle)
-    }
-
-    /// Removes every node and resets the root (the arena requirement).
-    @inlinable
-    public mutating func _removeAll() { _storage.removeAll() }
-
-    /// The parent handle of a node (the arena requirement).
-    @inlinable
-    public func _parentHandle(of handle: Store.Generational.Handle) -> Store.Generational.Handle? {
-        _storage.parentHandle(of: handle)
-    }
-
-    /// Borrowing access to a node's element (the arena requirement).
-    @inlinable
-    public func _withElement<R: ~Copyable>(
-        at handle: Store.Generational.Handle,
-        _ body: (borrowing Element) -> R
-    ) -> R {
-        _storage.withElement(at: handle, body)
-    }
-
-    // MARK: Child-link requirements (dense ordered list)
-
-    /// The child handle at a dense index, or `nil` if out of range.
-    ///
-    /// The typed child ordinal is lowered to `Int` only at the stdlib-array
-    /// boundary ([IDX-006b]/[CONV-002] — same-package implementation).
-    @inlinable
-    public func _childHandle(
-        at handle: Store.Generational.Handle,
-        address index: Index<Tree<Element>>
-    ) -> Store.Generational.Handle? {
-        let i = Int(bitPattern: index)
-        return _storage.withLinks(at: handle) { (i >= 0 && i < $0.count) ? $0[i] : nil }
-    }
-
-    /// Rejects a child index outside `0...childCount` (the per-conformer error precision).
-    @inlinable
-    public func _validateLink(
-        to parent: Store.Generational.Handle,
-        at index: Index<Tree<Element>>
-    ) throws(__TreeError) {
-        let i = Int(bitPattern: index)
-        let childCount = _storage.withLinks(at: parent) { $0.count }
-        guard i >= 0, i <= childCount else { throw .childIndexOutOfBounds }
-    }
-
-    /// Inserts a child handle at a dense index (precondition: validated).
-    @inlinable
-    public mutating func _linkChild(
-        _ child: Store.Generational.Handle,
-        to parent: Store.Generational.Handle,
-        at index: Index<Tree<Element>>
-    ) {
-        let i = Int(bitPattern: index)
-        _storage.withLinksMut(at: parent) { $0.insert(child, at: i) }
-    }
-
-    /// Removes a child handle from its parent's dense list.
-    @inlinable
-    public mutating func _unlinkChild(
-        _ child: Store.Generational.Handle,
-        from parent: Store.Generational.Handle
-    ) {
-        _storage.withLinksMut(at: parent) { if let position = $0.firstIndex(of: child) { $0.remove(at: position) } }
-    }
-
-    /// The number of children of a node.
-    @inlinable
-    public func _childCount(at handle: Store.Generational.Handle) -> Int {
-        _storage.withLinks(at: handle) { $0.count }
-    }
-
-    /// Visits each child handle in dense order.
-    @inlinable
-    public func _forEachChild(
-        at handle: Store.Generational.Handle,
-        _ body: (Store.Generational.Handle) -> Void
-    ) {
-        _storage.withLinks(at: handle) { for index in 0..<$0.count { body($0[index]) } }
-    }
 }
 
-// MARK: - Copyable construction twin (CoW; captures the clone strategy)
-
-extension Tree: Copyable where Element: Copyable {
-    /// Creates an empty CoW tree (the clone strategy is captured via the
-    /// `Tree.Storage` Copyable twin).
-    @inlinable
-    public init() { _storage = Storage<[Store.Generational.Handle]>() }
-
-    /// Creates an empty CoW tree with reserved capacity.
-    @inlinable
-    public init(minimumCapacity: Count) { _storage = Storage<[Store.Generational.Handle]>(minimumCapacity: minimumCapacity) }
-}
-
-// MARK: - Sendable
+// MARK: - Ergonomic alias for the canonical dynamic tree
 //
-// PROPER conditional Sendable (no `@unchecked`): rides the arena's Sendable chain
-// (`Tree.Storage` → `Shared` → `Column.Generational` → `__TreeNode`). If the
-// compiler cannot carry it, falls back to `@unchecked` (NOT `@unsafe`) per [MEM-SAFE-024].
+// Top-level (NOT namespaced as a generic typealias under `Tree<S>` — that crashes the
+// 6.3.2 frontend, probe-confirmed) so users and tests write `TreeDynamic<Element>` for
+// the canonical `Tree<TreeStorage.Dynamic<Element>>`.
 
-extension Tree: Sendable where Element: Sendable {}
+/// The canonical dynamic (unbounded-arity) tree: `Tree` over the dense `[Handle]` column.
+///
+/// ```swift
+/// var tree = TreeDynamic<String>()
+/// let root = try tree.insert("root", at: .root)
+/// ```
+public typealias TreeDynamic<Element: ~Copyable> = Tree<TreeStorage.Dynamic<Element>>
