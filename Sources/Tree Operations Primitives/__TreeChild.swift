@@ -12,6 +12,7 @@
 public import Property_Primitives
 public import Storage_Generational_Primitives
 public import Store_Primitive
+public import Tree_Index_Primitives
 
 // MARK: - Tree.child — the child-navigation accessor (R1 W4 [API-NAME-002])
 //

@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Index_Primitives
+public import Tree_Primitive
 
 // MARK: - Hoisted Position Type (Module Level)
 //

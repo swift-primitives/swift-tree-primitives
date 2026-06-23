@@ -11,6 +11,7 @@
 
 public import Storage_Generational_Primitives
 public import Store_Primitive
+public import Tree_Primitive
 
 // MARK: - Tree.Protocol — the CONSUMER protocol (the Array.Protocol / __ArrayProtocol analog)
 //
@@ -94,4 +95,15 @@ public protocol __TreeProtocol: ~Copyable {
 extension __TreeProtocol where Self: ~Copyable {
     /// Where to insert a new node, addressed per the conformer's `Address`.
     public typealias InsertPosition = __TreeInsertPosition<Address>
+}
+
+// MARK: - Tree.Protocol — the column-agnostic namespaced alias
+//
+// The zero-dependency root `Tree<S>` (`Tree Primitive`) cannot name `__TreeProtocol`, so
+// the consumer-protocol alias attaches by extension from this sub-namespace.
+
+extension Tree {
+    /// The tree consumer abstraction — the canonical surfacing of ``__TreeProtocol``
+    /// (the `Array.Protocol` pattern). `Tree<S>` conforms it where `S: __TreeStorage`.
+    public typealias `Protocol` = __TreeProtocol
 }

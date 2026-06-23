@@ -1,4 +1,7 @@
 // exports.swift
-// Re-export dependencies for consumers.
+// Umbrella — re-exports the singular root + every sub-namespace ([MOD-005]).
 
-@_exported public import Tree_Primitives_Core
+@_exported public import Tree_Primitive
+@_exported public import Tree_Index_Primitives
+@_exported public import Tree_Storage_Primitives
+@_exported public import Tree_Operations_Primitives

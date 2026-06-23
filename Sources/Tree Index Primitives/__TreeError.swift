@@ -9,6 +9,8 @@
 //
 // ===----------------------------------------------------------------------===//
 
+public import Tree_Primitive
+
 // MARK: - Hoisted shared tree error (module level)
 //
 // The shared, non-generic error for the tree family's common surface (the
@@ -40,4 +42,16 @@ public enum __TreeError: Swift.Error, Sendable, Equatable {
     case childIndexOutOfBounds
     /// A non-leaf node cannot be removed by `remove(at:)` (use `removeSubtree(at:)`).
     case cannotRemoveNonLeaf
+}
+
+// MARK: - Tree.Error — the column-agnostic namespaced alias
+//
+// The zero-dependency root `Tree<S>` (`Tree Primitive`) cannot name `__TreeError`
+// (which carries no external deps but lives here, the addressing/seam foundation), so
+// the alias attaches by extension from this sub-namespace — the Buffer-root model where
+// disciplines attach to the namespace from their own target.
+
+extension Tree {
+    /// The error type for the shared tree operations.
+    public typealias Error = __TreeError
 }

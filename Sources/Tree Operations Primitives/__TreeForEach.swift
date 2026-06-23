@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Property_Primitives
+public import Tree_Index_Primitives
 
 // MARK: - Tree.forEach — the closure-based traversal accessor (R1 W4 [API-NAME-002])
 //

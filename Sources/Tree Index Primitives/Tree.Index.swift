@@ -10,6 +10,7 @@
 // ===----------------------------------------------------------------------===//
 
 public import Index_Primitives
+public import Tree_Primitive
 
 extension Tree {
     /// Type-safe index for tree node positions.

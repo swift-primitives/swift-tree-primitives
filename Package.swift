@@ -12,7 +12,25 @@ let package = Package(
         .visionOS(.v26),
     ],
     products: [
-        // MARK: - Core (the `Tree` namespace shell: Tree, Tree.Index, Tree.Position)
+        // MARK: - Root (the zero-dependency `Tree<S>` ADT namespace, [MOD-017])
+        .library(
+            name: "Tree Primitive",
+            targets: ["Tree Primitive"]
+        ),
+        // MARK: - Sub-namespaces ([MOD-031])
+        .library(
+            name: "Tree Index Primitives",
+            targets: ["Tree Index Primitives"]
+        ),
+        .library(
+            name: "Tree Storage Primitives",
+            targets: ["Tree Storage Primitives"]
+        ),
+        .library(
+            name: "Tree Operations Primitives",
+            targets: ["Tree Operations Primitives"]
+        ),
+        // MARK: - Core (DEPRECATED transitional shim — re-exports the dissolved surface)
         .library(
             name: "Tree Primitives Core",
             targets: ["Tree Primitives Core"]
@@ -47,29 +65,80 @@ let package = Package(
         .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
     ],
     targets: [
-        // MARK: - Core (the family home: Tree.Protocol + TreeStorage arena + defaults +
-        //         canonical dynamic Tree; plus the legacy `Tree` namespace shell until W4
-        //         dissolves it)
+        // MARK: - Root ([MOD-017]: the singular zero-external-dependency `Tree<S>` ADT
+        //         namespace + its column-flowing Copyable/Sendable conformances)
         .target(
-            name: "Tree Primitives Core",
+            name: "Tree Primitive"
+        ),
+
+        // MARK: - Tree Index Primitives ([MOD-031]: the typed-addressing + seam foundation
+        //         — Tree.Index, Tree.Position, the shared error + insert-position, and the
+        //         hoisted `__TreeStorage` / `__TreeProtocol` seam protocols)
+        .target(
+            name: "Tree Index Primitives",
             dependencies: [
+                "Tree Primitive",
+                .product(name: "Index Primitives", package: "swift-index-primitives"),
+                .product(name: "Storage Generational Primitives", package: "swift-storage-generational-primitives"),
+                .product(name: "Store Primitive", package: "swift-storage-primitives"),
+            ]
+        ),
+
+        // MARK: - Tree Storage Primitives ([MOD-031]: the shared generational arena + node +
+        //         the `TreeStorage` namespace and the canonical dynamic column conformer)
+        .target(
+            name: "Tree Storage Primitives",
+            dependencies: [
+                "Tree Primitive",
+                "Tree Index Primitives",
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
                 .product(name: "Column Primitives", package: "swift-column-primitives"),
                 .product(name: "Shared Primitive", package: "swift-shared-primitives"),
                 .product(name: "Storage Generational Primitives", package: "swift-storage-generational-primitives"),
                 .product(name: "Store Primitive", package: "swift-storage-primitives"),
+            ]
+        ),
+
+        // MARK: - Tree Operations Primitives ([MOD-031]: the de-dup algorithm engine on
+        //         `Tree<S>`, the consumer-protocol conformance, and the `forEach` / `child`
+        //         fluent traversal views)
+        .target(
+            name: "Tree Operations Primitives",
+            dependencies: [
+                "Tree Primitive",
+                "Tree Index Primitives",
+                .product(name: "Index Primitives", package: "swift-index-primitives"),
+                .product(name: "Column Primitives", package: "swift-column-primitives"),
                 .product(name: "Buffer Ring Primitive", package: "swift-buffer-ring-primitives"),
                 .product(name: "Queue Primitives", package: "swift-queue-primitives"),
                 .product(name: "Stack Primitives", package: "swift-stack-primitives"),
+                .product(name: "Storage Generational Primitives", package: "swift-storage-generational-primitives"),
+                .product(name: "Store Primitive", package: "swift-storage-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
             ]
         ),
 
-        // MARK: - Umbrella
+        // MARK: - Core (DEPRECATED transitional shim — exports-only; re-exports the dissolved
+        //         pre-migration Core surface until the cleanup wave repoints consumers)
+        .target(
+            name: "Tree Primitives Core",
+            dependencies: [
+                "Tree Primitive",
+                "Tree Index Primitives",
+                "Tree Storage Primitives",
+                "Tree Operations Primitives",
+                .product(name: "Index Primitives", package: "swift-index-primitives"),
+            ]
+        ),
+
+        // MARK: - Umbrella ([MOD-005]: re-exports root + every sub-namespace)
         .target(
             name: "Tree Primitives",
             dependencies: [
-                "Tree Primitives Core",
+                "Tree Primitive",
+                "Tree Index Primitives",
+                "Tree Storage Primitives",
+                "Tree Operations Primitives",
             ]
         ),
 
@@ -87,8 +156,10 @@ let package = Package(
         .testTarget(
             name: "Tree Primitives Tests",
             dependencies: [
-                "Tree Primitives Core",
+                "Tree Primitives",
                 "Tree Primitives Test Support",
+                // For the typed-count literal SLI conformance ([MemberImportVisibility]).
+                .product(name: "Index Primitives", package: "swift-index-primitives"),
             ]
         ),
     ],

@@ -11,7 +11,13 @@
 
 import Testing
 
-@testable import Tree_Primitives_Core
+import Tree_Primitives
+// The permanent suite compares the typed node count (`Index<Element>.Count`, a Tagged
+// type) against integer literals (`tree.count == 0`). The literal `init(integerLiteral:)`
+// lives in `Tagged_Primitives_Standard_Library_Integration`, surfaced here via
+// `Index_Primitives`' `@_exported` chain ([MemberImportVisibility]; the umbrella's plain
+// `public import` of the sub-namespaces does not propagate the deep `@_exported` SLI conformance).
+import Index_Primitives
 
 // At-target reshape ([DS-025]): the canonical dynamic tree is `Tree<TreeStorage.Dynamic<E>>`
 // (the `TreeDynamic` alias). This local alias keeps the permanent suite's bodies VERBATIM

@@ -12,6 +12,8 @@
 public import Index_Primitives
 public import Storage_Generational_Primitives
 public import Store_Primitive
+public import Tree_Index_Primitives
+public import Tree_Primitive
 
 // MARK: - Tree.Storage namespace + Tree.Storage.Dynamic — the DYNAMIC storage column
 //
@@ -229,3 +231,18 @@ extension Tree where S: ~Copyable {
         self.init(storage: TreeStorage.Dynamic<Element>(minimumCapacity: minimumCapacity))
     }
 }
+
+// MARK: - Ergonomic alias for the canonical dynamic tree
+//
+// Top-level (NOT namespaced as a generic typealias under `Tree<S>` — that crashes the
+// 6.3.2 frontend, probe-confirmed) so users and tests write `TreeDynamic<Element>` for
+// the canonical `Tree<TreeStorage.Dynamic<Element>>`. Supplied by this sub-namespace
+// because it names the dynamic column `TreeStorage.Dynamic` (the zero-dep root cannot).
+
+/// The canonical dynamic (unbounded-arity) tree: `Tree` over the dense `[Handle]` column.
+///
+/// ```swift
+/// var tree = TreeDynamic<String>()
+/// let root = try tree.insert("root", at: .root)
+/// ```
+public typealias TreeDynamic<Element: ~Copyable> = Tree<TreeStorage.Dynamic<Element>>

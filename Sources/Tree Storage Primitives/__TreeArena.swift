@@ -14,6 +14,7 @@ public import Index_Primitives
 public import Shared_Primitive
 public import Storage_Generational_Primitives
 public import Store_Primitive
+public import Tree_Index_Primitives
 
 // MARK: - __TreeArena — the shared generational arena (the de-dup nucleus)
 //

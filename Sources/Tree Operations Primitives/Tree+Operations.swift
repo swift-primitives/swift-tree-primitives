@@ -16,6 +16,8 @@ public import Queue_Primitives
 public import Stack_Primitives
 public import Storage_Generational_Primitives
 public import Store_Primitive
+public import Tree_Index_Primitives
+public import Tree_Primitive
 
 // MARK: - Tree operations (the de-dup engine: written ONCE on Tree<S>, for every column)
 //

@@ -38,6 +38,12 @@
 /// let child = try tree.insert("child", at: .child(of: root, at: 0))
 /// tree.forEach.preOrder { print($0) }              // root, child
 /// ```
+///
+/// - Note: This zero-dependency root owns the column-agnostic ADT only ([MOD-017]). The
+///   typed `Index` / `Position` / `Error` / `Protocol` namespaced aliases attach by
+///   extension from the sub-namespace that owns each referenced type
+///   (`Tree Index Primitives`, `Tree Operations Primitives`); the `TreeDynamic` ergonomic
+///   alias is supplied by `Tree Storage Primitives`.
 @frozen
 public struct Tree<S: ~Copyable> {
 
@@ -65,29 +71,3 @@ public struct Tree<S: ~Copyable> {
 extension Tree: Copyable where S: Copyable {}
 
 extension Tree: Sendable where S: Sendable & ~Copyable {}
-
-// MARK: - Column-agnostic typealiases (no `S` capture — the Set.Ordered namespaced pattern)
-
-extension Tree {
-
-    /// The error type for the shared tree operations.
-    public typealias Error = __TreeError
-
-    /// The tree consumer abstraction — the canonical surfacing of ``__TreeProtocol``
-    /// (the `Array.Protocol` pattern). `Tree<S>` conforms it where `S: __TreeStorage`.
-    public typealias `Protocol` = __TreeProtocol
-}
-
-// MARK: - Ergonomic alias for the canonical dynamic tree
-//
-// Top-level (NOT namespaced as a generic typealias under `Tree<S>` — that crashes the
-// 6.3.2 frontend, probe-confirmed) so users and tests write `TreeDynamic<Element>` for
-// the canonical `Tree<TreeStorage.Dynamic<Element>>`.
-
-/// The canonical dynamic (unbounded-arity) tree: `Tree` over the dense `[Handle]` column.
-///
-/// ```swift
-/// var tree = TreeDynamic<String>()
-/// let root = try tree.insert("root", at: .root)
-/// ```
-public typealias TreeDynamic<Element: ~Copyable> = Tree<TreeStorage.Dynamic<Element>>
