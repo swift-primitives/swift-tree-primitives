@@ -30,11 +30,6 @@ let package = Package(
             name: "Tree Operations Primitives",
             targets: ["Tree Operations Primitives"]
         ),
-        // MARK: - Core (DEPRECATED transitional shim — re-exports the dissolved surface)
-        .library(
-            name: "Tree Primitives Core",
-            targets: ["Tree Primitives Core"]
-        ),
         // MARK: - Umbrella
         .library(
             name: "Tree Primitives",
@@ -115,19 +110,6 @@ let package = Package(
                 .product(name: "Storage Generational Primitives", package: "swift-storage-generational-primitives"),
                 .product(name: "Store Primitive", package: "swift-storage-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
-            ]
-        ),
-
-        // MARK: - Core (DEPRECATED transitional shim — exports-only; re-exports the dissolved
-        //         pre-migration Core surface until the cleanup wave repoints consumers)
-        .target(
-            name: "Tree Primitives Core",
-            dependencies: [
-                "Tree Primitive",
-                "Tree Index Primitives",
-                "Tree Storage Primitives",
-                "Tree Operations Primitives",
-                .product(name: "Index Primitives", package: "swift-index-primitives"),
             ]
         ),
 
