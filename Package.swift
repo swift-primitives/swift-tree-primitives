@@ -133,8 +133,7 @@ let package = Package(
             ],
             path: "Tests/Support"
         ),
-
-        // MARK: - Tests (struct Tree permanent suite; migrated from tree-unbounded at R1 W4)
+        
         .testTarget(
             name: "Tree Primitives Tests",
             dependencies: [
