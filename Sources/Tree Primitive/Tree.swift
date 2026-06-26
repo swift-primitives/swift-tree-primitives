@@ -66,6 +66,30 @@ public struct Tree<S: ~Copyable> {
     }
 }
 
+// MARK: - Column-access seam (for column-specific extensions in OTHER packages)
+//
+// `Tree<S>` hides its `storage` (package access), so a column author in a SEPARATE
+// package (the keyed / n-ary variants) cannot attach `Tree<S>`-surface operations that
+// reach column-specific capabilities — key-path navigation, in-place value update, the
+// keyed children-by-key reads. This public `_read`/`_modify` accessor is the sanctioned
+// door: it borrows / mutably-yields the column without copying (so it carries `~Copyable`
+// columns), the `Array<S>.storage`-equivalent seam. SPI-spelled (`_`-prefixed) — generic
+// consumers stay on the public ADT surface; only a column's own package reaches through.
+
+extension Tree where S: ~Copyable {
+
+    /// Borrowing / mutating access to the storage column.
+    ///
+    /// The seam a column's own package uses to attach `Tree<S>` operations that reach
+    /// column-specific capabilities (e.g. the keyed tree's `keyPath(to:)` / `update`).
+    /// Yields without copying, so it carries `~Copyable` columns.
+    @inlinable
+    public var _storage: S {
+        _read { yield storage }
+        _modify { yield &storage }
+    }
+}
+
 // MARK: - Conditional Conformances (copyability + Sendability flow from the column)
 
 extension Tree: Copyable where S: Copyable {}

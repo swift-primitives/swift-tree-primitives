@@ -81,6 +81,16 @@ public protocol __TreeStorage: ~Copyable {
         _ body: (borrowing Element) -> R
     ) -> R
 
+    /// In-place (position-stable) mutating access to a node's element.
+    ///
+    /// The slot and its generation are untouched — only the stored element changes —
+    /// so positions minted before the mutation keep resolving. Backs the value-update
+    /// surfaces (the keyed tree's `update(at:)` / `rootValue` setter / `mapValues`).
+    mutating func _withElementMut<R: ~Copyable>(
+        at handle: Store.Generational.Handle,
+        _ body: (inout Element) -> R
+    ) -> R
+
     // MARK: Child-link requirements (genuinely per-column)
 
     /// The handle of the child at `address`, or `nil` if absent.

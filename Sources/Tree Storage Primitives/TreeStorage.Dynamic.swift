@@ -124,6 +124,15 @@ extension TreeStorage.Dynamic: __TreeStorage {
         _arena.withElement(at: handle, body)
     }
 
+    /// In-place (position-stable) mutating access to a node's element.
+    @inlinable
+    public mutating func _withElementMut<R: ~Copyable>(
+        at handle: Store.Generational.Handle,
+        _ body: (inout Element) -> R
+    ) -> R {
+        _arena.withElementMut(at: handle, body)
+    }
+
     // MARK: Child-link requirements (dense ordered list)
 
     /// The child handle at a dense index, or `nil` if out of range.

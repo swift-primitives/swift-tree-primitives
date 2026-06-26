@@ -164,6 +164,22 @@ extension Tree where S: __TreeStorage & ~Copyable {
         storage._withElement(at: handle, body)
     }
 
+    /// In-place (position-stable) mutating access to the element at `position`, or
+    /// `nil` if the position is invalid.
+    ///
+    /// The slot and its generation are untouched — only the stored element changes —
+    /// so `position` (and any other outstanding position) keeps resolving. The
+    /// mutating counterpart to ``peek(at:_:)``; backs value-update surfaces.
+    @inlinable
+    @discardableResult
+    public mutating func withElementMut<R: ~Copyable>(
+        at position: __TreePosition,
+        _ body: (inout S.Element) -> R
+    ) -> R? {
+        guard let handle = try? _decode(position) else { return nil }
+        return storage._withElementMut(at: handle, body)
+    }
+
     // MARK: Mutation
 
     /// Inserts an element at the given insert position; returns the new node's position.
