@@ -124,7 +124,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     ) -> Store.Generational.Handle {
         _column.withUnique(
             consuming: Slot(element: element, links: links, parentHandle: parent)
-        ) { (column, node) -> Store.Generational.Handle in
+        ) { column, node -> Store.Generational.Handle in
             if column.count == column.capacity {
                 let doubled = Index<Slot>.Count(UInt(2 &* Int(bitPattern: column.capacity)))
                 column.grow(to: doubled)

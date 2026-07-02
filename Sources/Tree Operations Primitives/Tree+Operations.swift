@@ -97,6 +97,7 @@ extension Tree where S: __TreeStorage & ~Copyable {
     /// the compound surface was folded into the `child` view in R1 W4).
     @inlinable
     public func _child(of position: __TreePosition, at address: S.Address) -> __TreePosition? {
+        // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position),
             let childHandle = storage._childHandle(at: handle, address: address)
         else { return nil }
@@ -106,6 +107,7 @@ extension Tree where S: __TreeStorage & ~Copyable {
     /// The position of a node's parent, or `nil` if it is the root / position invalid.
     @inlinable
     public func parent(of position: __TreePosition) -> __TreePosition? {
+        // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position),
             let parentHandle = storage._parentHandle(of: handle)
         else { return nil }
@@ -139,6 +141,7 @@ extension Tree where S: __TreeStorage & ~Copyable {
     /// Whether the node at `position` is a leaf (has no children). `false` if invalid.
     @inlinable
     public func isLeaf(_ position: __TreePosition) -> Bool {
+        // swiftlint:disable:next no_try_optional - reason: invalid position maps to false per the documented contract
         guard let handle = try? _decode(position) else { return false }
         return storage._childCount(at: handle) == 0
     }
@@ -151,6 +154,7 @@ extension Tree where S: __TreeStorage & ~Copyable {
         at position: __TreePosition,
         _ body: (borrowing S.Element) -> R
     ) -> R? {
+        // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position) else { return nil }
         return storage._withElement(at: handle, body)
     }
@@ -176,6 +180,7 @@ extension Tree where S: __TreeStorage & ~Copyable {
         at position: __TreePosition,
         _ body: (inout S.Element) -> R
     ) -> R? {
+        // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position) else { return nil }
         return storage._withElementMut(at: handle, body)
     }

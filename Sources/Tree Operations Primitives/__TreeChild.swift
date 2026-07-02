@@ -28,7 +28,9 @@ public enum __TreeChild {}
 
 extension __TreeProtocol where Self: ~Copyable {
     /// Child navigation: `tree.child.at(address, of: position)`, `.count(of:)`,
-    /// and (n-ary) `.leftmost(of:)` / `.rightmost(of:)`. Read-only.
+    /// and (n-ary) `.leftmost(of:)` / `.rightmost(of:)`.
+    ///
+    /// Read-only.
     @inlinable
     public var child: Property<__TreeChild>.Borrow {
         _read {
@@ -57,7 +59,9 @@ where Base: __TreeProtocol & ~Copyable, Tag == __TreeChild {
     }
 
     /// The position of the first child of the node at `position`, or `nil` if it has
-    /// no children / `position` is invalid. (For `Tree.N`, the first occupied slot;
+    /// no children / `position` is invalid.
+    ///
+    /// (For `Tree.N`, the first occupied slot;
     /// folds the legacy n-ary `leftmostChild`, generalized to every ordered tree.)
     @inlinable
     public func leftmost(of position: __TreePosition) -> __TreePosition? {
@@ -69,7 +73,9 @@ where Base: __TreeProtocol & ~Copyable, Tag == __TreeChild {
     }
 
     /// The position of the last child of the node at `position`, or `nil` if it has
-    /// no children / `position` is invalid. (For `Tree.N`, the last occupied slot;
+    /// no children / `position` is invalid.
+    ///
+    /// (For `Tree.N`, the last occupied slot;
     /// folds the legacy n-ary `rightmostChild`, generalized to every ordered tree.)
     @inlinable
     public func rightmost(of position: __TreePosition) -> __TreePosition? {

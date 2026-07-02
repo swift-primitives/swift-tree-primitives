@@ -23,7 +23,9 @@ public import Tree_Index_Primitives
 // the public surface and forwards to them.
 
 /// Phantom tag for the tree-family ``Tree/forEach`` view ([API-EXC-001] hoist, like
-/// the other `__Tree*` types). Non-generic, so a single view ranges over every
+/// the other `__Tree*` types).
+///
+/// Non-generic, so a single view ranges over every
 /// conformer; use ``Tree/forEach`` at call sites, not this type.
 public enum __TreeForEach {}
 
@@ -33,7 +35,9 @@ extension __TreeProtocol where Self: ~Copyable {
 
     /// Closure-based traversal: `tree.forEach.preOrder { }` / `.postOrder { }` /
     /// `.levelOrder { }` (plus `.inOrder` on binary `Tree.N`, `.child` / `.path` on
-    /// `Tree.Keyed`). Read-only — callable on a `let` or borrowed tree.
+    /// `Tree.Keyed`).
+    ///
+    /// Read-only — callable on a `let` or borrowed tree.
     @inlinable
     public var forEach: Property<__TreeForEach>.Borrow {
         _read {

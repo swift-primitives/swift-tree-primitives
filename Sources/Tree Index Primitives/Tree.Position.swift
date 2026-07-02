@@ -34,8 +34,9 @@ public struct __TreePosition: Sendable, Equatable, Hashable {
 
     /// Token for validity checking — the slot's generation projected into
     /// `UInt32` (`UInt32(truncatingIfNeeded: handle.generation)`); a position is
-    /// live iff its token equals the slot's CURRENT projected generation. Wraps
-    /// after 2^32 frees of one slot.
+    /// live iff its token equals the slot's CURRENT projected generation.
+    ///
+    /// Wraps after 2^32 frees of one slot.
     public let token: UInt32
 
     /// Creates a position with the given typed index and token.

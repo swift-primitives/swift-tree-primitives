@@ -48,7 +48,9 @@
 public struct Tree<S: ~Copyable> {
 
     /// The storage column — the arena + child-link capability the tree is a thin
-    /// semantic discipline over. Carries the per-node arena (`__TreeArena`) and the
+    /// semantic discipline over.
+    ///
+    /// Carries the per-node arena (`__TreeArena`) and the
     /// per-column child-link interpretation.
     @usableFromInline
     package var storage: S

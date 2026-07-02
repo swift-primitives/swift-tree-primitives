@@ -9,21 +9,20 @@
 //
 // ===----------------------------------------------------------------------===//
 
-import Testing
-
-import Tree_Primitives
 // The permanent suite compares the typed node count (`Index<Element>.Count`, a Tagged
 // type) against integer literals (`tree.count == 0`). The literal `init(integerLiteral:)`
 // lives in `Tagged_Primitives_Standard_Library_Integration`, surfaced here via
 // `Index_Primitives`' `@_exported` chain ([MemberImportVisibility]; the umbrella's plain
 // `public import` of the sub-namespaces does not propagate the deep `@_exported` SLI conformance).
 import Index_Primitives
+import Testing
+import Tree_Primitives
 
 // At-target reshape ([DS-025]): the canonical dynamic tree is `Tree<TreeStorage.Dynamic<E>>`
 // (the `TreeDynamic` alias). This local alias keeps the permanent suite's bodies VERBATIM
 // (`Tree<Int>` / `Tree<Int>.Position`) — the re-skeleton mirrors `Array`'s `MoveArray<E>`
 // test alias, exercising the SAME engine through the new column-generic surface.
-fileprivate typealias Tree<Element: ~Copyable> = TreeDynamic<Element>
+private typealias Tree<Element: ~Copyable> = TreeDynamic<Element>
 
 // MARK: - struct Tree (the canonical dynamic tree) — permanent suite
 //
@@ -43,7 +42,9 @@ struct TreeTests {
 // MARK: - Fixtures
 
 extension TreeTests {
-    /// Nested:  0 → [1, 2], 1 → [3, 4]. Pre-order [0,1,3,4,2]; post-order [3,4,1,2,0].
+    /// Nested:  0 → [1, 2], 1 → [3, 4].
+    ///
+    /// Pre-order [0,1,3,4,2]; post-order [3,4,1,2,0].
     fileprivate static func makeNested() throws -> Tree<Int> {
         var tree = Tree<Int>()
         let root = try tree.insert(0, at: .root)
@@ -54,7 +55,9 @@ extension TreeTests {
         return tree
     }
 
-    /// Chain 0 → 1 → 2 → 3 → 4 (each node one child). Post-order [4,3,2,1,0].
+    /// Chain 0 → 1 → 2 → 3 → 4 (each node one child).
+    ///
+    /// Post-order [4,3,2,1,0].
     fileprivate static func makeChain() throws -> Tree<Int> {
         var tree = Tree<Int>()
         var position = try tree.insert(0, at: .root)
@@ -64,7 +67,9 @@ extension TreeTests {
         return tree
     }
 
-    /// Wide 0 → [1, 2, 3, 4, 5] (all leaves). Post-order [1,2,3,4,5,0].
+    /// Wide 0 → [1, 2, 3, 4, 5] (all leaves).
+    ///
+    /// Post-order [1,2,3,4,5,0].
     fileprivate static func makeWide() throws -> Tree<Int> {
         var tree = Tree<Int>()
         let root = try tree.insert(0, at: .root)
@@ -132,7 +137,7 @@ extension TreeTests.Unit {
     func `removeSubtree of an interior node frees exactly that subtree`() throws {
         var tree = try TreeTests.makeNested()
         let root = try #require(tree.root)
-        let leftChild = tree.child.leftmost(of: root)   // bind: `child` view is ~Escapable
+        let leftChild = tree.child.leftmost(of: root)  // bind: `child` view is ~Escapable
         let left = try #require(leftChild)
         try tree.removeSubtree(at: left)
         #expect(tree.count == 2)
@@ -146,7 +151,7 @@ extension TreeTests.Unit {
 extension TreeTests.Unit {
     @Test
     func `child view: at / count / leftmost / rightmost`() throws {
-        let tree = try TreeTests.makeWide()   // 0 → [1, 2, 3, 4, 5]
+        let tree = try TreeTests.makeWide()  // 0 → [1, 2, 3, 4, 5]
         let root = try #require(tree.root)
         // Bind view results to locals first — the `child` view is ~Escapable, which the
         // #expect / #require macros cannot decompose as a call receiver.
@@ -195,10 +200,10 @@ extension TreeTests.Unit {
 extension TreeTests.Unit {
     @Test
     func `mutating a copy leaves the original intact`() throws {
-        let original = try TreeTests.makeNested()   // 5 nodes
+        let original = try TreeTests.makeNested()  // 5 nodes
         var copy = original
         let copyRoot = try #require(copy.root)
-        try copy.removeSubtree(at: copyRoot)        // empty the copy
+        try copy.removeSubtree(at: copyRoot)  // empty the copy
         #expect(copy.isEmpty)
         // The original is undisturbed (generation-preserving CoW clone).
         #expect(original.count == 5)
@@ -213,7 +218,7 @@ extension TreeTests.Unit {
     func `a stale position (after removal) is rejected`() throws {
         var tree = try TreeTests.makeWide()
         let root = try #require(tree.root)
-        let leafChild = tree.child.leftmost(of: root)   // first child (a leaf); bind (~Escapable view)
+        let leafChild = tree.child.leftmost(of: root)  // first child (a leaf); bind (~Escapable view)
         let leaf = try #require(leafChild)
         try tree.remove(at: leaf)
         // The stale handle no longer validates, and peek returns nil.
