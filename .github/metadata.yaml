@@ -1,6 +1,6 @@
 # .github/metadata.yaml
 # Triaged by AI-assisted bulk pass (2026-04-29).
-description: "Tree types for Swift."
+description: "Column-generic tree engine with generational positions and noncopyable-by-default elements for Swift."
 topics:
   - primitives
   - tree
