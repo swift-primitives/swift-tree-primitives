@@ -20,7 +20,7 @@ public import Tree_Primitive
 // `TreeStorage.Dynamic` is the canonical tree's storage capability conformer
 // ([DS-025]/[DS-027].1): a dense, ordered `[Handle]` child-link representation over the
 // shared ``__TreeArena``. It is the `S` of the canonical dynamic tree
-// `Tree<TreeStorage.Dynamic<Element>>` (the ``TreeDynamic`` alias) — the re-roled former
+// `__Tree<TreeStorage.Dynamic<Element>>` (the ``Tree`` front door) — the re-roled former
 // `struct Tree<Element>`'s arena + child-link `_`-ops, now a STORAGE column conforming
 // ``__TreeStorage`` rather than the ADT conforming the seam. This is a re-skeleton: the
 // arena and witnesses carry forward verbatim. The `TreeStorage` namespace enum is in
@@ -203,11 +203,11 @@ extension TreeStorage.Dynamic: Sendable where Element: Sendable {}
 
 // MARK: - Column-pinned construction (the `Array+Columns` mechanic: method-level `where ==`)
 //
-// `Tree<S>`'s construction pins to the dynamic column here (`init() where S ==
-// TreeStorage.Dynamic<E>`), so the ``TreeDynamic`` alias gets the ergonomic empty /
-// reserved-capacity inits. Mirrors `Array`'s per-column inits.
+// The carrier's construction pins to the dynamic column here (`init() where S ==
+// TreeStorage.Dynamic<E>`), so the canonical ``Tree`` front door gets the ergonomic
+// empty / reserved-capacity inits. Mirrors `Array`'s per-column inits.
 
-extension Tree where S: ~Copyable {
+extension __Tree where S: ~Copyable {
 
     /// Creates an empty dynamic tree (move-only elements).
     @inlinable
@@ -241,17 +241,7 @@ extension Tree where S: ~Copyable {
     }
 }
 
-// MARK: - Ergonomic alias for the canonical dynamic tree
-//
-// Top-level (NOT namespaced as a generic typealias under `Tree<S>` — that crashes the
-// 6.3.2 frontend, probe-confirmed) so users and tests write `TreeDynamic<Element>` for
-// the canonical `Tree<TreeStorage.Dynamic<Element>>`. Supplied by this sub-namespace
-// because it names the dynamic column `TreeStorage.Dynamic` (the zero-dep root cannot).
-
-/// The canonical dynamic (unbounded-arity) tree: `Tree` over the dense `[Handle]` column.
-///
-/// ```swift
-/// var tree = TreeDynamic<String>()
-/// let root = try tree.insert("root", at: .root)
-/// ```
-public typealias TreeDynamic<Element: ~Copyable> = Tree<TreeStorage.Dynamic<Element>>
+// The former `TreeDynamic` compound ergonomic alias is RETIRED (§9.6.5, [API-NAME-001]
+// hygiene): the canonical spelling is the `Tree<Element>` front door (`Tree.FrontDoor.swift`,
+// this target). The 6.3.2 frontend crash that forced the compound top-level alias is fixed
+// on 6.3.3 (the adt-tower walls probes) — the front door is the sanctioned [DS-028] shape.

@@ -3,7 +3,7 @@
 ![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
 [![CI](https://github.com/swift-primitives/swift-tree-primitives/actions/workflows/ci.yml/badge.svg)](https://github.com/swift-primitives/swift-tree-primitives/actions/workflows/ci.yml)
 
-A tree generic over its storage **column** — `Tree<S>` writes the node-shape-agnostic surface (insert, remove, subtree teardown, traversal, navigation) once against the column seam, and copyability flows from the column rather than from per-tree machinery. The shipped column is `TreeStorage.Dynamic<Element>`, a dense ordered-children arena; `TreeDynamic<Element>` names the canonical dynamic tree built on it.
+A tree generic over its storage **column** — the carrier writes the node-shape-agnostic surface (insert, remove, subtree teardown, traversal, navigation) once against the column seam, and copyability flows from the column rather than from per-tree machinery. The shipped column is `TreeStorage.Dynamic<Element>`, a dense ordered-children arena; `Tree<Element>` names the canonical dynamic tree built on it.
 
 Positions are generational: `Tree.Position` carries a slot index plus a generation token, so a position held across a removal goes *stale* and is rejected — it can never silently resolve to whatever node later reuses the freed slot. Elements may be `~Copyable`; with a `Copyable` element the dynamic tree is copy-on-write, so copies fork lazily and mutate independently.
 
@@ -25,7 +25,7 @@ Positions are generational: `Tree.Position` carries a slot index plus a generati
 ```swift
 import Tree_Primitives
 
-var tree = TreeDynamic<String>()
+var tree = Tree<String>()
 let root = try tree.insert("root", at: .root)
 let draft = try tree.insert("draft", at: .child(of: root, at: 0))
 _ = try tree.insert("published", at: .child(of: root, at: 1))
@@ -71,9 +71,9 @@ The package is pre-1.0 — depend on `branch: "main"` until `0.1.0` is tagged. R
 | Product | When to import |
 |---------|----------------|
 | `Tree Primitives` | Umbrella — the ADT, positions and errors, the dynamic column, and the traversal / navigation views |
-| `Tree Primitive` | The bare column-generic `Tree<S>` value type, zero dependencies — column authors and minimal consumers |
+| `Tree Primitive` | The bare column-generic carrier value type, zero dependencies — column authors and minimal consumers |
 | `Tree Index Primitives` | `Tree.Position`, `Tree.Error`, insert positions, and the storage / consumer seam protocols — writing code generic over tree-like storage |
-| `Tree Storage Primitives` | The dynamic column (`TreeStorage.Dynamic`) and the `TreeDynamic` alias, without the operations surface |
+| `Tree Storage Primitives` | The dynamic column (`TreeStorage.Dynamic`) and the canonical `Tree<Element>` front door, without the operations surface |
 | `Tree Operations Primitives` | The shared algorithm engine and the `forEach` / `child` views |
 | `Tree Primitives Test Support` | Test utilities for targets exercising tree code |
 

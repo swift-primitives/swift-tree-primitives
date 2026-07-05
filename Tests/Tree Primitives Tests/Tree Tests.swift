@@ -18,11 +18,11 @@ import Index_Primitives
 import Testing
 import Tree_Primitives
 
-// At-target reshape ([DS-025]): the canonical dynamic tree is `Tree<TreeStorage.Dynamic<E>>`
-// (the `TreeDynamic` alias). This local alias keeps the permanent suite's bodies VERBATIM
-// (`Tree<Int>` / `Tree<Int>.Position`) — the re-skeleton mirrors `Array`'s `MoveArray<E>`
-// test alias, exercising the SAME engine through the new column-generic surface.
-private typealias Tree<Element: ~Copyable> = TreeDynamic<Element>
+// At-target reshape ([DS-025]/[DS-028]): the canonical dynamic tree is the `Tree<Element>`
+// front door (= `__Tree<TreeStorage.Dynamic<Element>>`). The suite's `Tree<Int>` /
+// `Tree<Int>.Position` spellings ARE the front door — the former `TreeDynamic` shim
+// retired with the compound alias (§9.6.5); the suite exercises the same engine through
+// the canonical spelling directly.
 
 // MARK: - struct Tree (the canonical dynamic tree) — permanent suite
 //

@@ -73,8 +73,11 @@ public struct __TreePosition: Sendable, Equatable, Hashable {
 // `where Element: ~Copyable` constraint (the namespace's parameter is now the column `S`,
 // and `Position` is column-agnostic).
 
-extension Tree {
+extension __Tree where S: ~Copyable {
     /// A position (cursor) to a node in a tree.
+    ///
+    /// The `where S: ~Copyable` restatement keeps the alias reachable from move-only
+    /// columns (the M1 alias-reachability discipline, [DS-028]).
     ///
     /// - SeeAlso: ``__TreePosition`` for the full documentation.
     public typealias Position = __TreePosition

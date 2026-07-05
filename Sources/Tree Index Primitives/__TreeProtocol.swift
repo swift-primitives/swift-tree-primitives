@@ -15,11 +15,11 @@ public import Tree_Primitive
 
 // MARK: - Tree.Protocol — the CONSUMER protocol (the Array.Protocol / __ArrayProtocol analog)
 //
-// The Charter at-target reshape ([DS-025]): `Tree<S>` ADDITIVELY conforms its own
-// consumer-facing protocol `Tree.Protocol` (`extension Tree: Tree.Protocol where S:
-// __TreeStorage`), exactly as `Array<S>` conforms `Array.Protocol`. The STORAGE column
-// `S` never conforms `Tree.Protocol` — it conforms the SEPARATE storage capability
-// ``__TreeStorage``; only `Tree<S>` conforms this consumer protocol.
+// The Charter at-target reshape ([DS-025]): the carrier `__Tree<S>` ADDITIVELY conforms
+// its own consumer-facing protocol `Tree.Protocol` (`extension __Tree: __TreeProtocol
+// where S: __TreeStorage`), exactly as `__Array` conforms `Array.Protocol`. The STORAGE
+// column `S` never conforms `Tree.Protocol` — it conforms the SEPARATE storage capability
+// ``__TreeStorage``; only the carrier conforms this consumer protocol.
 //
 // This protocol is the seam GENERIC CONSUMERS and the shared `Property.Borrow` views
 // (`tree.forEach.*`, `tree.child.*`) constrain on. Its requirements are the navigation /
@@ -99,11 +99,11 @@ extension __TreeProtocol where Self: ~Copyable {
 
 // MARK: - Tree.Protocol — the column-agnostic namespaced alias
 //
-// The zero-dependency root `Tree<S>` (`Tree Primitive`) cannot name `__TreeProtocol`, so
-// the consumer-protocol alias attaches by extension from this sub-namespace.
+// The zero-dependency root `__Tree<S>` (`Tree Primitive`) cannot name `__TreeProtocol`,
+// so the consumer-protocol alias attaches by extension from this sub-namespace.
 
-extension Tree {
+extension __Tree where S: ~Copyable {
     /// The tree consumer abstraction — the canonical surfacing of ``__TreeProtocol``
-    /// (the `Array.Protocol` pattern). `Tree<S>` conforms it where `S: __TreeStorage`.
+    /// (the `Array.Protocol` pattern). `__Tree<S>` conforms it where `S: __TreeStorage`.
     public typealias `Protocol` = __TreeProtocol
 }

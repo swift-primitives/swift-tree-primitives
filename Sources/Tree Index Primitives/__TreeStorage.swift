@@ -22,11 +22,11 @@ public import Store_Primitive
 // seam: the same arena (decode / node-at-handle / arena access) + child-link
 // (read / set / count / iterate) `_`-ops, now required of the column rather than the ADT.
 //
-// `Tree<S>` attaches its operations by CONDITIONAL EXTENSION keyed on this capability
-// (`extension Tree where S: __TreeStorage`), forwarding to `storage._x`; and `Tree<S>`
-// ADDITIVELY conforms the consumer protocol `Tree.Protocol` (`__TreeProtocol`) where
-// `S: __TreeStorage`. The storage `S` never conforms `Tree.Protocol`; only `Tree<S>` does
-// (the `__ArrayProtocol` / `Store.Protocol` split).
+// The carrier `__Tree<S>` attaches its operations by CONDITIONAL EXTENSION keyed on this
+// capability (`extension __Tree where S: __TreeStorage`), forwarding to `storage._x`; and
+// `__Tree<S>` ADDITIVELY conforms the consumer protocol `Tree.Protocol` (`__TreeProtocol`)
+// where `S: __TreeStorage`. The storage `S` never conforms `Tree.Protocol`; only the
+// carrier does (the `__ArrayProtocol` / `Store.Protocol` split).
 //
 // Hoisted per [API-EXC-001] (a protocol cannot nest in the generic `Tree<S>`); the
 // capability has no consumer-facing alias — columns conform `__TreeStorage` directly.

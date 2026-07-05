@@ -5,7 +5,7 @@ dynamic (unbounded-arity) tree**. It owns the `Tree<S>` ADT namespace (a thin
 generic over an explicit storage column `S`, per `[DS-025]`), the shared
 generational arena every column is built on, the storage and consumer seam
 protocols, the column-agnostic algorithm engine, and the dense-list dynamic
-column (`TreeStorage.Dynamic`, the `TreeDynamic` ergonomic alias). The
+column (`TreeStorage.Dynamic`, the canonical `Tree<Element>` front door). The
 bounded-arity n-ary column and the keyed column are their own sibling packages
 (`swift-tree-n-primitives`, `swift-tree-keyed-primitives`), each conforming the
 shared `__TreeStorage` capability and reusing this package's arena + engine.
@@ -34,7 +34,7 @@ core-dissolution cleanup wave, 2026-06-23).
 - **Tree Storage Primitives** — the concrete storage: the shared generational
   arena (`__TreeArena` over `Shared<Node, Column.Generational<Node>>`), its node
   (`__TreeNode`), the `TreeStorage` column namespace, and the canonical dynamic
-  dense-list column `TreeStorage.Dynamic` (with the `TreeDynamic` alias) conforming
+  dense-list column `TreeStorage.Dynamic` (with the canonical `Tree<Element>` front door) conforming
   `__TreeStorage`. Depends on the root + Index.
 - **Tree Operations Primitives** — the de-dup algorithm engine written once on
   `Tree<S>` (traversal, insert / remove / removeSubtree, height, navigation), the

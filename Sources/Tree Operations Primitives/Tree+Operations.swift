@@ -10,7 +10,6 @@
 // ===----------------------------------------------------------------------===//
 
 public import Buffer_Ring_Primitive
-public import Column_Primitives
 public import Index_Primitives
 public import Queue_Primitives
 public import Stack_Primitives
@@ -19,18 +18,18 @@ public import Store_Primitive
 public import Tree_Index_Primitives
 public import Tree_Primitive
 
-// MARK: - Tree operations (the de-dup engine: written ONCE on Tree<S>, for every column)
+// MARK: - Tree operations (the de-dup engine: written ONCE on __Tree<S>, for every column)
 //
 // The Charter at-target reshape ([DS-025]): the node-shape-agnostic tree algorithms move
-// from the former `extension __TreeProtocol` defaults onto `Tree<S>` by CONDITIONAL
-// EXTENSION keyed on the storage capability (`extension Tree where S: __TreeStorage`),
+// from the former `extension __TreeProtocol` defaults onto the carrier by CONDITIONAL
+// EXTENSION keyed on the storage capability (`extension __Tree where S: __TreeStorage`),
 // forwarding to `storage._x`. This is a re-skeleton — the algorithm bodies carry forward
 // VERBATIM (the post-order dropped-subtree fix, the two-stack n-ary teardown, the
 // iterative height, the position plumbing); only the receiver changes from `self._x`
 // (the ADT-conformed-the-seam shape) to `storage._x` (the column-conforms-the-seam shape).
 // `Element`/`Address` are read from the column as `S.Element` / `S.Address`.
 
-extension Tree where S: __TreeStorage & ~Copyable {
+extension __Tree where S: __TreeStorage & ~Copyable {
 
     // MARK: Surfaced typealiases (the consumer-facing element / address / insert position)
 
@@ -321,7 +320,7 @@ extension Tree where S: __TreeStorage & ~Copyable {
 
 // MARK: - Copyable-element conveniences
 
-extension Tree where S: __TreeStorage & ~Copyable, S.Element: Copyable {
+extension __Tree where S: __TreeStorage & ~Copyable, S.Element: Copyable {
     /// The element at `position`, or `nil` if the position is invalid.
     @inlinable
     public func peek(at position: __TreePosition) -> S.Element? {
@@ -329,11 +328,11 @@ extension Tree where S: __TreeStorage & ~Copyable, S.Element: Copyable {
     }
 }
 
-// MARK: - Additive consumer-protocol conformance (Tree<S> conforms; the column never does)
+// MARK: - Additive consumer-protocol conformance (the carrier conforms; the column never does)
 //
-// `Tree<S>` conforms `Tree.Protocol` (`__TreeProtocol`) where its column carries the
-// storage capability — the `Array<S>: Array.Protocol` model ([DS-025] point 4). The
+// `__Tree<S>` conforms `Tree.Protocol` (`__TreeProtocol`) where its column carries the
+// storage capability — the `__Array: Array.Protocol` model ([DS-025] point 4). The
 // requirements are satisfied by the operations above; the storage `S` itself never
 // conforms `Tree.Protocol`.
 
-extension Tree: __TreeProtocol where S: __TreeStorage & ~Copyable {}
+extension __Tree: __TreeProtocol where S: __TreeStorage & ~Copyable {}

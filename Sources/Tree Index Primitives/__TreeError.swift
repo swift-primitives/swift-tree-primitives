@@ -51,7 +51,10 @@ public enum __TreeError: Swift.Error, Sendable, Equatable {
 // the alias attaches by extension from this sub-namespace — the Buffer-root model where
 // disciplines attach to the namespace from their own target.
 
-extension Tree {
+extension __Tree where S: ~Copyable {
     /// The error type for the shared tree operations.
+    ///
+    /// The `where S: ~Copyable` restatement keeps the alias reachable from move-only
+    /// columns (the M1 alias-reachability discipline, [DS-028]).
     public typealias Error = __TreeError
 }

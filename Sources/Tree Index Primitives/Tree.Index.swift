@@ -12,7 +12,7 @@
 public import Index_Primitives
 public import Tree_Primitive
 
-extension Tree {
+extension __Tree where S: ~Copyable {
     /// Type-safe index for tree node positions.
     ///
     /// Uses `Index<Tag>` to provide compile-time safety preventing
