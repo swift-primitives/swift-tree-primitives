@@ -11,7 +11,7 @@
 
 public import Column_Primitives
 public import Index_Primitives
-public import Shared_Primitive
+public import Ownership_Shared_Primitive
 public import Storage_Generational_Primitives
 public import Store_Primitive
 public import Tree_Index_Primitives
@@ -27,7 +27,7 @@ public import Tree_Index_Primitives
 // validation; A3 typed counts; the generation-preserving `grow(to:)` / `clone()`
 // contract; the `Shared` CoW column (the W5 design).
 //
-// `__TreeArena` is an arena over `Shared<Node, Column.Generational<Node>>` exposing the
+// `__TreeArena` is an arena over `Ownership.Shared<Node, Column.Generational<Node>>` exposing the
 // child-representation-agnostic arena operations. The per-column storage capability
 // conformers (`Tree.Dynamic`, the n-ary and keyed storages in their own packages) hold
 // one privately and interpret `ChildLinks` per their addressing scheme. The node type
@@ -46,7 +46,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// The generational node column behind the `Shared` CoW box.
     @usableFromInline
-    var _column: Shared<Slot, Column.Generational<Slot>>
+    var _column: Ownership.Shared<Slot, Column.Generational<Slot>>
 
     /// The handle of the tree's root node, or `nil` if the tree is empty.
     ///
@@ -60,7 +60,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     /// Creates an empty arena (move-only elements — no clone strategy).
     @inlinable
     init() {
-        self._column = Shared(Column.Generational<Slot>.create(slotCapacity: 1))
+        self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: 1))
         self.rootHandle = nil
     }
 
@@ -70,7 +70,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     /// `Copyable` init.
     @inlinable
     init() where Element: Copyable, ChildLinks: Copyable {
-        self._column = Shared(Column.Generational<Slot>.create(slotCapacity: 1))
+        self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: 1))
         self.rootHandle = nil
     }
 
@@ -78,7 +78,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     @inlinable
     init(minimumCapacity: Index<Element>.Count) {
         let slots = Index<Slot>.Count(UInt(Swift.max(Int(bitPattern: minimumCapacity), 1)))
-        self._column = Shared(Column.Generational<Slot>.create(slotCapacity: slots))
+        self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: slots))
         self.rootHandle = nil
     }
 
@@ -86,7 +86,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     @inlinable
     init(minimumCapacity: Index<Element>.Count) where Element: Copyable, ChildLinks: Copyable {
         let slots = Index<Slot>.Count(UInt(Swift.max(Int(bitPattern: minimumCapacity), 1)))
-        self._column = Shared(Column.Generational<Slot>.create(slotCapacity: slots))
+        self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: slots))
         self.rootHandle = nil
     }
 

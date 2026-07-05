@@ -310,7 +310,7 @@ extension Tree where S: __TreeStorage & ~Copyable {
     @inlinable
     public func _forEachLevelOrder(_ body: (borrowing S.Element) -> Void) {
         guard let rootHandle = storage._rootHandle else { return }
-        var pending = Queue<Column.Ring<Store.Generational.Handle>>()
+        var pending = Queue<Store.Generational.Handle>()
         pending.enqueue(rootHandle)
         while let current = pending.dequeue() {
             storage._withElement(at: current) { body($0) }
