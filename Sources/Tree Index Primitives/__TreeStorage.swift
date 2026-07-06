@@ -49,6 +49,19 @@ public protocol __TreeStorage: ~Copyable {
     /// bounded slot (n-ary), or a key (keyed).
     associatedtype Address
 
+    /// The public error type of the tree surface over this column (P4, 2026-07-06).
+    ///
+    /// The error FLOWS FROM THE COLUMN: the carrier's single `Tree/Error` alias is
+    /// `S.Error` (`Tree Index Primitives`, `__TreeError.swift`), so each column names its
+    /// own public error here — the dynamic column keeps the default (the shared
+    /// ``__TreeError``); the keyed column pins `__TreeKeyedError<Key>` (its richer,
+    /// key-carrying error). Two same-named conditional aliases on the carrier are NOT an
+    /// option: member-type lookup on `__Tree` offers every same-named conditional
+    /// typealias regardless of where-clause disjointness (compiler-refuted, P4 probe
+    /// matrix 2026-07-06), so the one flow-through alias + per-column witnesses is the
+    /// only collision-free shape.
+    associatedtype Error: Swift.Error = __TreeError
+
     // MARK: Arena requirements (delegated to the column's private __TreeArena)
 
     /// The number of live nodes (typed — A3; tagged by `Element`, one per node).

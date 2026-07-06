@@ -44,17 +44,29 @@ public enum __TreeError: Swift.Error, Sendable, Equatable {
     case cannotRemoveNonLeaf
 }
 
-// MARK: - Tree.Error — the column-agnostic namespaced alias
+// MARK: - Tree.Error — the SINGLE flow-through alias (the error flows from the column, P4)
 //
 // The zero-dependency root `Tree<S>` (`Tree Primitive`) cannot name `__TreeError`
 // (which carries no external deps but lives here, the addressing/seam foundation), so
 // the alias attaches by extension from this sub-namespace — the Buffer-root model where
 // disciplines attach to the namespace from their own target.
+//
+// P4 (2026-07-06): this is the ONLY `.Error` typealias on `__Tree` ecosystem-wide, and it
+// MUST stay the only one. It forwards to the column's `Error` witness
+// (`__TreeStorage.Error`, defaulted to the shared `__TreeError`; the keyed column pins
+// `__TreeKeyedError<Key>`), so `Tree<E>.Error` and `Tree<E>.Keyed<K>.Error` resolve
+// per-instantiation THROUGH SUBSTITUTION, not through alias selection. Do NOT add a second
+// conditional `.Error` alias on `__Tree` anywhere: member-type lookup offers every
+// same-named conditional typealias on a carrier regardless of where-clause disjointness,
+// so any second alias makes BOTH doors ambiguous (compiler-refuted, P4 probe matrix; see
+// the compiler-bug-catalog entry).
 
-extension __Tree where S: ~Copyable {
-    /// The error type for the shared tree operations.
+extension __Tree where S: __TreeStorage & ~Copyable {
+    /// The error type of the tree surface over this column — flows from the column
+    /// (`S.Error`): the shared ``__TreeError`` for the dynamic column, the keyed
+    /// `__TreeKeyedError<Key>` for the keyed column.
     ///
-    /// The `where S: ~Copyable` restatement keeps the alias reachable from move-only
+    /// The `~Copyable` restatement keeps the alias reachable from move-only
     /// columns (the M1 alias-reachability discipline, [DS-028]).
-    public typealias Error = __TreeError
+    public typealias Error = S.Error
 }
