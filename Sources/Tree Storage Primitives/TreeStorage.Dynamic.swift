@@ -69,7 +69,7 @@ extension TreeStorage {
 
 // MARK: - __TreeStorage conformance (the arena + dense child-link witnesses)
 
-extension TreeStorage.Dynamic: __TreeStorage {
+extension TreeStorage.Dynamic: __TreeStorage where Element: ~Copyable {
 
     // MARK: Arena requirements (delegated to the private __TreeArena)
 

@@ -250,3 +250,29 @@ extension TreeTests.EdgeCase {
         #expect(tree.count == 0)
     }
 }
+
+// MARK: - Move-only element door (M1 restatement receipt, P4 increment)
+
+extension TreeTests.Unit {
+
+    /// In-suite witness for the `TreeStorage.Dynamic: __TreeStorage where Element: ~Copyable`
+    /// restatement (TreeStorage.Dynamic.swift:72, the W1.6 M1 defect class): without it the
+    /// suppressed-conformance rule reimposes `Copyable` on the conformance, and
+    /// `Tree<MoveOnly>` cannot reach `insert` at all — this test then fails to COMPILE.
+    @Test
+    func `move-only element flows through the canonical door`() throws {
+        struct MoveOnly: ~Copyable { var payload: Int }
+
+        var tree = Tree<MoveOnly>()
+        let root = try tree.insert(MoveOnly(payload: 7), at: .root)
+        _ = try tree.insert(MoveOnly(payload: 8), at: .child(of: root, at: 0))
+
+        // Bind observations to locals first (move-only #expect capture discipline).
+        let count = tree.count
+        #expect(count == 2)
+
+        // Namespaced aliases stay reachable from the move-only column (M1, [DS-028]).
+        let _: Tree<MoveOnly>.Position = root
+        let _: Tree<MoveOnly>.Error? = nil
+    }
+}
