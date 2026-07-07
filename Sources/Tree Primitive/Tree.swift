@@ -49,7 +49,7 @@
 ///   (`Tree Index Primitives`, `Tree Operations Primitives`); the canonical `Tree<Element>`
 ///   front-door alias is supplied by `Tree Storage Primitives` (it names the dynamic column,
 ///   which the zero-dep root cannot).
-@_documentation(visibility: public)   // symbolgraph-extract drops __-prefixed decls otherwise (§9.6.12)
+@_documentation(visibility: public)  // symbolgraph-extract drops __-prefixed decls otherwise (§9.6.12)
 @frozen
 public struct __Tree<S: ~Copyable> {
 
