@@ -64,7 +64,7 @@ extension __Tree where S: __TreeStorage & ~Copyable {
 
     /// Decodes a position into a live handle or throws `.invalidPosition`.
     @inlinable
-    func _decode(_ position: __TreePosition) throws(__TreeError) -> Store.Generational.Handle {
+    package func _decode(_ position: __TreePosition) throws(__TreeError) -> Store.Generational.Handle {
         guard let handle = storage._liveHandle(position) else { throw .invalidPosition }
         return handle
     }

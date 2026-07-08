@@ -59,7 +59,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// Creates an empty arena (move-only elements — no clone strategy).
     @inlinable
-    init() {
+    package init() {
         self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: 1))
         self.rootHandle = nil
     }
@@ -69,14 +69,14 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     /// The generation-preserving clone strategy is captured via `Shared`'s
     /// `Copyable` init.
     @inlinable
-    init() where Element: Copyable, ChildLinks: Copyable {
+    package init() where Element: Copyable, ChildLinks: Copyable {
         self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: 1))
         self.rootHandle = nil
     }
 
     /// Creates an empty arena with reserved capacity (move-only elements).
     @inlinable
-    init(minimumCapacity: Index<Element>.Count) {
+    package init(minimumCapacity: Index<Element>.Count) {
         let slots = Index<Slot>.Count(UInt(Swift.max(Int(bitPattern: minimumCapacity), 1)))
         self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: slots))
         self.rootHandle = nil
@@ -84,7 +84,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// Creates an empty CoW-capable arena with reserved capacity.
     @inlinable
-    init(minimumCapacity: Index<Element>.Count) where Element: Copyable, ChildLinks: Copyable {
+    package init(minimumCapacity: Index<Element>.Count) where Element: Copyable, ChildLinks: Copyable {
         let slots = Index<Slot>.Count(UInt(Swift.max(Int(bitPattern: minimumCapacity), 1)))
         self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: slots))
         self.rootHandle = nil
@@ -94,7 +94,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// The number of live nodes (typed — A3; tagged by `Element`, one per node).
     @inlinable
-    var count: Index<Element>.Count {
+    package var count: Index<Element>.Count {
         Index<Element>.Count(UInt(Int(bitPattern: _column.withColumn { $0.count })))
     }
 
@@ -104,7 +104,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     /// (`handle(at:)`, no side table) and accepted only if the token matches the
     /// slot's current projected generation.
     @inlinable
-    func liveHandle(_ position: __TreePosition) -> Store.Generational.Handle? {
+    package func liveHandle(_ position: __TreePosition) -> Store.Generational.Handle? {
         let slot = Int(bitPattern: position.index)
         guard
             slot >= 0,
@@ -117,7 +117,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     /// Inserts a node (element + links), growing the column first when full (the
     /// explicit generation-preserving `grow(to:)` door — positions survive growth).
     @inlinable
-    mutating func insertNode(
+    package mutating func insertNode(
         _ element: consuming Element,
         links: consuming ChildLinks,
         parent: Store.Generational.Handle?
@@ -135,7 +135,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// Removes the node at a live handle and moves its element out.
     @inlinable
-    mutating func removeNode(_ handle: Store.Generational.Handle) -> Element {
+    package mutating func removeNode(_ handle: Store.Generational.Handle) -> Element {
         guard let node = _column.withUnique({ $0.remove(handle) }) else {
             // Unreachable: callers pass decoded live handles and no removal interleaves.
             preconditionFailure("__TreeArena: live handle failed to resolve on removal")
@@ -145,20 +145,20 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// Removes every node and resets the root (the `Shared` drain).
     @inlinable
-    mutating func removeAll() {
+    package mutating func removeAll() {
         _column.withUnique { $0.removeAll() }
         rootHandle = nil
     }
 
     /// The parent handle of a node (`nil` for the root).
     @inlinable
-    func parentHandle(of handle: Store.Generational.Handle) -> Store.Generational.Handle? {
+    package func parentHandle(of handle: Store.Generational.Handle) -> Store.Generational.Handle? {
         _column.withColumn { $0[handle].parentHandle }
     }
 
     /// Borrowing access to a node's element.
     @inlinable
-    func withElement<R: ~Copyable>(
+    package func withElement<R: ~Copyable>(
         at handle: Store.Generational.Handle,
         _ body: (borrowing Element) -> R
     ) -> R {
@@ -167,7 +167,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// Borrowing access to a node's child links.
     @inlinable
-    func withLinks<R: ~Copyable>(
+    package func withLinks<R: ~Copyable>(
         at handle: Store.Generational.Handle,
         _ body: (borrowing ChildLinks) -> R
     ) -> R {
@@ -176,7 +176,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// CoW-gated mutable access to a node's child links.
     @inlinable
-    mutating func withLinksMut<R: ~Copyable>(
+    package mutating func withLinksMut<R: ~Copyable>(
         at handle: Store.Generational.Handle,
         _ body: (inout ChildLinks) -> R
     ) -> R {
@@ -190,7 +190,7 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
     /// key-path-insert). Positions survive: the slot and its generation are
     /// untouched, only the stored element changes.
     @inlinable
-    mutating func withElementMut<R: ~Copyable>(
+    package mutating func withElementMut<R: ~Copyable>(
         at handle: Store.Generational.Handle,
         _ body: (inout Element) -> R
     ) -> R {
