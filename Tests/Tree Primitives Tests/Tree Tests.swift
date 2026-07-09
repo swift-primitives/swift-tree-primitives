@@ -33,15 +33,15 @@ import Tree_Primitives
 // clone-independence, and decode / stale-reject. Order-view / Builder / Nested
 // coverage retired with `Tree.Unbounded` (struct Tree exposes neither surface).
 
-@Suite("Tree")
-struct TreeTests {
+@Suite
+struct `Tree Tests` {
     @Suite struct Unit {}
-    @Suite struct EdgeCase {}
+    @Suite struct `Edge Case` {}
 }
 
 // MARK: - Fixtures
 
-extension TreeTests {
+extension `Tree Tests` {
     /// Nested:  0 → [1, 2], 1 → [3, 4].
     ///
     /// Pre-order [0,1,3,4,2]; post-order [3,4,1,2,0].
@@ -102,29 +102,29 @@ extension TreeTests {
 
 // MARK: - Unit: traversal correctness (incl. the post-order dropped-subtree regression)
 
-extension TreeTests.Unit {
+extension `Tree Tests`.Unit {
     @Test
     func `pre / post / level order on the nested fixture`() throws {
-        let tree = try TreeTests.makeNested()
-        #expect(TreeTests.preOrder(tree) == [0, 1, 3, 4, 2])
-        #expect(TreeTests.postOrder(tree) == [3, 4, 1, 2, 0])
-        #expect(TreeTests.levelOrder(tree) == [0, 1, 2, 3, 4])
+        let tree = try `Tree Tests`.makeNested()
+        #expect(`Tree Tests`.preOrder(tree) == [0, 1, 3, 4, 2])
+        #expect(`Tree Tests`.postOrder(tree) == [3, 4, 1, 2, 0])
+        #expect(`Tree Tests`.levelOrder(tree) == [0, 1, 2, 3, 4])
     }
 
     @Test
     func `post-order visits every node across shapes`() throws {
-        #expect(TreeTests.postOrder(try TreeTests.makeNested()) == [3, 4, 1, 2, 0])
-        #expect(TreeTests.postOrder(try TreeTests.makeChain()) == [4, 3, 2, 1, 0])
-        #expect(TreeTests.postOrder(try TreeTests.makeWide()) == [1, 2, 3, 4, 5, 0])
+        #expect(`Tree Tests`.postOrder(try `Tree Tests`.makeNested()) == [3, 4, 1, 2, 0])
+        #expect(`Tree Tests`.postOrder(try `Tree Tests`.makeChain()) == [4, 3, 2, 1, 0])
+        #expect(`Tree Tests`.postOrder(try `Tree Tests`.makeWide()) == [1, 2, 3, 4, 5, 0])
     }
 }
 
 // MARK: - Unit: removeSubtree frees exactly its slots
 
-extension TreeTests.Unit {
+extension `Tree Tests`.Unit {
     @Test
     func `removeSubtree at root frees every slot`() throws {
-        var tree = try TreeTests.makeNested()
+        var tree = try `Tree Tests`.makeNested()
         #expect(tree.count == 5)
         let root = try #require(tree.root)
         try tree.removeSubtree(at: root)
@@ -135,23 +135,23 @@ extension TreeTests.Unit {
 
     @Test
     func `removeSubtree of an interior node frees exactly that subtree`() throws {
-        var tree = try TreeTests.makeNested()
+        var tree = try `Tree Tests`.makeNested()
         let root = try #require(tree.root)
         let leftChild = tree.child.leftmost(of: root)  // bind: `child` view is ~Escapable
         let left = try #require(leftChild)
         try tree.removeSubtree(at: left)
         #expect(tree.count == 2)
-        #expect(TreeTests.preOrder(tree) == [0, 2])
-        #expect(TreeTests.postOrder(tree) == [2, 0])
+        #expect(`Tree Tests`.preOrder(tree) == [0, 2])
+        #expect(`Tree Tests`.postOrder(tree) == [2, 0])
     }
 }
 
 // MARK: - Unit: the folded child / forEach views
 
-extension TreeTests.Unit {
+extension `Tree Tests`.Unit {
     @Test
     func `child view: at / count / leftmost / rightmost`() throws {
-        let tree = try TreeTests.makeWide()  // 0 → [1, 2, 3, 4, 5]
+        let tree = try `Tree Tests`.makeWide()  // 0 → [1, 2, 3, 4, 5]
         let root = try #require(tree.root)
         // Bind view results to locals first — the `child` view is ~Escapable, which the
         // #expect / #require macros cannot decompose as a call receiver.
@@ -177,7 +177,7 @@ extension TreeTests.Unit {
 
 // MARK: - Unit: positions survive growth (the bidirectional net)
 
-extension TreeTests.Unit {
+extension `Tree Tests`.Unit {
     @Test
     func `positions survive growth (1,000-node chain)`() throws {
         var tree = Tree<Int>()
@@ -197,26 +197,26 @@ extension TreeTests.Unit {
 
 // MARK: - Unit: copy-on-write clone-independence
 
-extension TreeTests.Unit {
+extension `Tree Tests`.Unit {
     @Test
     func `mutating a copy leaves the original intact`() throws {
-        let original = try TreeTests.makeNested()  // 5 nodes
+        let original = try `Tree Tests`.makeNested()  // 5 nodes
         var copy = original
         let copyRoot = try #require(copy.root)
         try copy.removeSubtree(at: copyRoot)  // empty the copy
         #expect(copy.isEmpty)
         // The original is undisturbed (generation-preserving CoW clone).
         #expect(original.count == 5)
-        #expect(TreeTests.postOrder(original) == [3, 4, 1, 2, 0])
+        #expect(`Tree Tests`.postOrder(original) == [3, 4, 1, 2, 0])
     }
 }
 
 // MARK: - Unit: decode / stale-reject
 
-extension TreeTests.Unit {
+extension `Tree Tests`.Unit {
     @Test
     func `a stale position (after removal) is rejected`() throws {
-        var tree = try TreeTests.makeWide()
+        var tree = try `Tree Tests`.makeWide()
         let root = try #require(tree.root)
         let leafChild = tree.child.leftmost(of: root)  // first child (a leaf); bind (~Escapable view)
         let leaf = try #require(leafChild)
@@ -229,16 +229,16 @@ extension TreeTests.Unit {
 
 // MARK: - Edge cases
 
-extension TreeTests.EdgeCase {
+extension `Tree Tests`.`Edge Case` {
     @Test
     func `empty and single-node traversals`() throws {
         let empty = Tree<Int>()
-        #expect(TreeTests.postOrder(empty) == [])
+        #expect(`Tree Tests`.postOrder(empty) == [])
 
         var single = Tree<Int>()
         _ = try single.insert(42, at: .root)
-        #expect(TreeTests.preOrder(single) == [42])
-        #expect(TreeTests.postOrder(single) == [42])
+        #expect(`Tree Tests`.preOrder(single) == [42])
+        #expect(`Tree Tests`.postOrder(single) == [42])
     }
 
     @Test
@@ -253,7 +253,7 @@ extension TreeTests.EdgeCase {
 
 // MARK: - Move-only element door (M1 restatement receipt, P4 increment)
 
-extension TreeTests.Unit {
+extension `Tree Tests`.Unit {
 
     /// In-suite witness for the `TreeStorage.Dynamic: __TreeStorage where Element: ~Copyable`
     /// restatement (TreeStorage.Dynamic.swift:72, the W1.6 M1 defect class): without it the
