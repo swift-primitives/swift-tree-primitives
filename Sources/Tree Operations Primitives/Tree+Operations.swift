@@ -137,7 +137,9 @@ extension __Tree where S: __TreeStorage & ~Copyable {
     // `childCount(of:)` is NOT a shared op: its return type is the column's own child
     // domain. Each column / variant surfaces it over the `_childCount` requirement.
 
-    /// Whether the node at `position` is a leaf (has no children). `false` if invalid.
+    /// Whether the node at `position` is a leaf (has no children).
+    ///
+    /// Returns `false` if the position is invalid.
     @inlinable
     public func isLeaf(_ position: __TreePosition) -> Bool {
         // swiftlint:disable:next no_try_optional - reason: invalid position maps to false per the documented contract

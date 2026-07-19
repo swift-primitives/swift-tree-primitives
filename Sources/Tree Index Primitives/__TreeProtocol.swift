@@ -104,6 +104,8 @@ extension __TreeProtocol where Self: ~Copyable {
 
 extension __Tree where S: ~Copyable {
     /// The tree consumer abstraction — the canonical surfacing of ``__TreeProtocol``
-    /// (the `Array.Protocol` pattern). `__Tree<S>` conforms it where `S: __TreeStorage`.
+    /// (the `Array.Protocol` pattern).
+    ///
+    /// `__Tree<S>` conforms it where `S: __TreeStorage`.
     public typealias `Protocol` = __TreeProtocol
 }

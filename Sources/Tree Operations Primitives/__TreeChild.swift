@@ -44,7 +44,9 @@ extension __TreeProtocol where Self: ~Copyable {
 extension Property_Primitives.Property.Borrow
 where Base: __TreeProtocol & ~Copyable, Tag == __TreeChild {
     /// The position of the child at `address`, or `nil` if absent / `position`
-    /// invalid. `address` is the conformer's child domain (a child index for the
+    /// invalid.
+    ///
+    /// `address` is the conformer's child domain (a child index for the
     /// dynamic tree, a bounded slot for `Tree.N`, a key for `Tree.Keyed`).
     @inlinable
     public func at(_ address: Base.Address, of position: __TreePosition) -> __TreePosition? {
