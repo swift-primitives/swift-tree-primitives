@@ -33,8 +33,8 @@ public import Tree_Primitive
 /// [API-NAME-001] hygiene): the 6.3.2 frontend crash that forced the compound spelling
 /// is fixed on 6.3.3, so the front door is the canonical name. Column variants live
 /// behind nested aliases on the family: `Tree<Element>.Keyed<Key>` is the keyed column
-/// (swift-tree-keyed-primitives); the bounded-arity `Tree<Element>.N<n>` door is pending
-/// the tree-n column re-skeleton.
+/// (swift-tree-keyed-primitives); `Tree<Element>.N<n>` / `Tree<Element>.Binary` are the
+/// bounded-arity doors (swift-tree-n-primitives).
 ///
 /// Supplied by this sub-namespace because it names the dynamic column
 /// `TreeStorage.Dynamic` (the zero-dep root cannot).

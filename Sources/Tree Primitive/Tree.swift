@@ -31,8 +31,8 @@
 /// `Shared` CoW box drain / generational column).
 ///
 /// The shipped columns are the dynamic dense-list column (``Tree/Dynamic``, this
-/// package) and the keyed column (`swift-tree-keyed-primitives`); the bounded-arity
-/// n-ary column (`swift-tree-n-primitives`) is pending its column re-skeleton.
+/// package), the keyed column (`swift-tree-keyed-primitives`), and the bounded-arity
+/// n-ary column (`swift-tree-n-primitives`).
 ///
 /// ## Example
 ///
