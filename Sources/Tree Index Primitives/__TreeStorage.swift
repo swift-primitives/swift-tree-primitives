@@ -120,8 +120,9 @@ public protocol __TreeStorage: ~Copyable {
         at address: Address
     ) throws(__TreeError)
 
-    /// Links `child` under `parent` at `address`. Precondition: a prior
-    /// `_validateLink(to:at:)` succeeded, so this never fails.
+    /// Links `child` under `parent` at `address`.
+    ///
+    /// Precondition: a prior `_validateLink(to:at:)` succeeded, so this never fails.
     mutating func _linkChild(
         _ child: Store.Generational.Handle,
         to parent: Store.Generational.Handle,
