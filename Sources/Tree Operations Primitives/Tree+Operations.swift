@@ -96,6 +96,8 @@ extension __Tree where S: __TreeStorage & ~Copyable {
     /// the compound surface was folded into the `child` view in R1 W4).
     @inlinable
     public func _child(of position: __TreePosition, at address: S.Address) -> __TreePosition? {
+        // swift-linter:disable:next try optional
+        // REASON: invalid position maps to nil per the documented contract; _decode's error is typed (Self.Error).
         // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position),
             let childHandle = storage._childHandle(at: handle, address: address)
@@ -106,6 +108,8 @@ extension __Tree where S: __TreeStorage & ~Copyable {
     /// The position of a node's parent, or `nil` if it is the root / position invalid.
     @inlinable
     public func parent(of position: __TreePosition) -> __TreePosition? {
+        // swift-linter:disable:next try optional
+        // REASON: invalid position maps to nil per the documented contract; _decode's error is typed (Self.Error).
         // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position),
             let parentHandle = storage._parentHandle(of: handle)
@@ -142,6 +146,8 @@ extension __Tree where S: __TreeStorage & ~Copyable {
     /// Returns `false` if the position is invalid.
     @inlinable
     public func isLeaf(_ position: __TreePosition) -> Bool {
+        // swift-linter:disable:next try optional
+        // REASON: invalid position maps to false per the documented contract; _decode's error is typed (Self.Error).
         // swiftlint:disable:next no_try_optional - reason: invalid position maps to false per the documented contract
         guard let handle = try? _decode(position) else { return false }
         return storage._childCount(at: handle) == 0
@@ -155,6 +161,8 @@ extension __Tree where S: __TreeStorage & ~Copyable {
         at position: __TreePosition,
         _ body: (borrowing S.Element) -> R
     ) -> R? {
+        // swift-linter:disable:next try optional
+        // REASON: invalid position maps to nil per the documented contract; _decode's error is typed (Self.Error).
         // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position) else { return nil }
         return storage._withElement(at: handle, body)
@@ -181,6 +189,8 @@ extension __Tree where S: __TreeStorage & ~Copyable {
         at position: __TreePosition,
         _ body: (inout S.Element) -> R
     ) -> R? {
+        // swift-linter:disable:next try optional
+        // REASON: invalid position maps to nil per the documented contract; _decode's error is typed (Self.Error).
         // swiftlint:disable:next no_try_optional - reason: invalid position maps to nil per the documented contract
         guard let handle = try? _decode(position) else { return nil }
         return storage._withElementMut(at: handle, body)

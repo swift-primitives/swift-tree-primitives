@@ -37,6 +37,7 @@ import Tree_Primitives
 struct `Tree Tests` {
     @Suite struct Unit {}
     @Suite struct `Edge Case` {}
+    @Suite struct Integration {}
 }
 
 // MARK: - Fixtures
@@ -61,6 +62,9 @@ extension `Tree Tests` {
     fileprivate static func makeChain() throws -> Tree<Int> {
         var tree = Tree<Int>()
         var position = try tree.insert(0, at: .root)
+        // swift-linter:disable:next counter loop iteration
+        // REASON: tree.insert(_:at:) throws typed Self.Error; a forEach closure
+        // here would erase it to `any Error` (typed-throws-preserving exception).
         for value in 1...4 {
             position = try tree.insert(value, at: .child(of: position, at: 0))
         }
@@ -184,6 +188,9 @@ extension `Tree Tests`.Unit {
         var positions: [Tree<Int>.Position] = []
         positions.append(try tree.insert(0, at: .root))
         // Grow a 1,000-deep chain, recording every position; growth must preserve them.
+        // swift-linter:disable:next counter loop iteration
+        // REASON: tree.insert(_:at:) throws typed Self.Error; a forEach closure
+        // here would erase it to `any Error` (typed-throws-preserving exception).
         for value in 1...1000 {
             positions.append(try tree.insert(value, at: .child(of: positions[value - 1], at: 0)))
         }

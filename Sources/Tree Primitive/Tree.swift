@@ -66,7 +66,9 @@ public struct __Tree<S: ~Copyable> {
     public init(storage: consuming S) {
         self.storage = storage
     }
+}
 
+extension __Tree where S: ~Copyable {
     /// Consumes the tree, yielding its storage column.
     @inlinable
     public consuming func take() -> S {

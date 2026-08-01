@@ -35,9 +35,6 @@ extension TreeStorage {
     /// (`Index<TreeStorage.Dynamic<Element>>`). Inserting at an index shifts the rest.
     public struct Dynamic<Element: ~Copyable>: ~Copyable {
 
-        /// Children are addressed by a typed ordinal in this column's child domain.
-        public typealias Address = Index<Self>
-
         /// The private generational arena (NON-PUBLIC — `@usableFromInline` for the
         /// inlinable witnesses).
         @usableFromInline
@@ -68,6 +65,11 @@ extension TreeStorage {
 }
 
 // MARK: - __TreeStorage conformance (the arena + dense child-link witnesses)
+
+extension TreeStorage.Dynamic where Element: ~Copyable {
+    /// Children are addressed by a typed ordinal in this column's child domain.
+    public typealias Address = Index<Self>
+}
 
 extension TreeStorage.Dynamic: __TreeStorage where Element: ~Copyable {
 
@@ -191,7 +193,7 @@ extension TreeStorage.Dynamic: __TreeStorage where Element: ~Copyable {
         at handle: Store.Generational.Handle,
         _ body: (Store.Generational.Handle) -> Void
     ) {
-        _arena.withLinks(at: handle) { for index in 0..<$0.count { body($0[index]) } }
+        _arena.withLinks(at: handle) { links in links.indices.forEach { index in body(links[index]) } }
     }
 }
 
