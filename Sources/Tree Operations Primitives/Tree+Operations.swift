@@ -297,7 +297,7 @@ extension __Tree where S: __TreeStorage & ~Copyable {
             storage._withElement(at: current) { body($0) }
             var kids: [Store.Generational.Handle] = []
             storage._forEachChild(at: current) { kids.append($0) }
-            for index in (0..<kids.count).reversed() { pending.push(kids[index]) }
+            (0..<kids.count).reversed().forEach { index in pending.push(kids[index]) }
         }
     }
 
