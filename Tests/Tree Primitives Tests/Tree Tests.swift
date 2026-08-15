@@ -225,7 +225,8 @@ extension `Tree Tests`.Unit {
     func `a stale position (after removal) is rejected`() throws {
         var tree = try `Tree Tests`.makeWide()
         let root = try #require(tree.root)
-        let leafChild = tree.child.leftmost(of: root)  // first child (a leaf); bind (~Escapable view)
+        // first child (a leaf); bind (~Escapable view)
+        let leafChild = tree.child.leftmost(of: root)
         let leaf = try #require(leafChild)
         try tree.remove(at: leaf)
         // The stale handle no longer validates, and peek returns nil.

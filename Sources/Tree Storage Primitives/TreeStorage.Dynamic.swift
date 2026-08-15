@@ -47,7 +47,9 @@ extension TreeStorage {
         /// Creates an empty dynamic column with reserved capacity (move-only elements).
         @inlinable
         public init(minimumCapacity: Index<Element>.Count) {
-            _arena = __TreeArena<Element, [Store.Generational.Handle]>(minimumCapacity: minimumCapacity)
+            _arena = __TreeArena<Element, [Store.Generational.Handle]>(
+                minimumCapacity: minimumCapacity
+            )
         }
 
         /// Creates an empty CoW-capable dynamic column (the clone strategy is captured here).
@@ -59,7 +61,9 @@ extension TreeStorage {
         /// Creates an empty CoW-capable dynamic column with reserved capacity.
         @inlinable
         public init(minimumCapacity: Index<Element>.Count) where Element: Copyable {
-            _arena = __TreeArena<Element, [Store.Generational.Handle]>(minimumCapacity: minimumCapacity)
+            _arena = __TreeArena<Element, [Store.Generational.Handle]>(
+                minimumCapacity: minimumCapacity
+            )
         }
     }
 }
@@ -178,7 +182,9 @@ extension TreeStorage.Dynamic: __TreeStorage where Element: ~Copyable {
         _ child: Store.Generational.Handle,
         from parent: Store.Generational.Handle
     ) {
-        _arena.withLinksMut(at: parent) { if let position = $0.firstIndex(of: child) { $0.remove(at: position) } }
+        _arena.withLinksMut(at: parent) {
+            if let position = $0.firstIndex(of: child) { $0.remove(at: position) }
+        }
     }
 
     /// The number of children of a node.
@@ -193,7 +199,9 @@ extension TreeStorage.Dynamic: __TreeStorage where Element: ~Copyable {
         at handle: Store.Generational.Handle,
         _ body: (Store.Generational.Handle) -> Void
     ) {
-        _arena.withLinks(at: handle) { links in links.indices.forEach { index in body(links[index]) } }
+        _arena.withLinks(at: handle) { links in
+            links.indices.forEach { index in body(links[index]) }
+        }
     }
 }
 
