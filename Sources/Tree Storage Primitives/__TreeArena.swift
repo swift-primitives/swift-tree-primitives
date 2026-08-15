@@ -84,7 +84,8 @@ struct __TreeArena<Element: ~Copyable, ChildLinks>: ~Copyable {
 
     /// Creates an empty CoW-capable arena with reserved capacity.
     @inlinable
-    package init(minimumCapacity: Index<Element>.Count) where Element: Copyable, ChildLinks: Copyable {
+    package init(minimumCapacity: Index<Element>.Count)
+    where Element: Copyable, ChildLinks: Copyable {
         let slots = Index<Slot>.Count(UInt(Swift.max(Int(bitPattern: minimumCapacity), 1)))
         self._column = Ownership.Shared(Column.Generational<Slot>.create(slotCapacity: slots))
         self.rootHandle = nil

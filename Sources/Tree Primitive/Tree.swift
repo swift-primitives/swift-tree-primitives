@@ -11,6 +11,7 @@
 
 // MARK: - __Tree (the hoisted ADT-tier CARRIER — generic over the STORAGE COLUMN, [DS-025])
 
+// symbolgraph-extract drops __-prefixed decls otherwise (§9.6.12)
 /// A tree — the semantic ADT carrier over an explicit storage COLUMN `S`.
 ///
 /// The Charter at-target shape ([DS-025]): `__Tree` is the HOISTED thin carrier
@@ -49,7 +50,7 @@
 ///   (`Tree Index Primitives`, `Tree Operations Primitives`); the canonical `Tree<Element>`
 ///   front-door alias is supplied by `Tree Storage Primitives` (it names the dynamic column,
 ///   which the zero-dep root cannot).
-@_documentation(visibility: public)  // symbolgraph-extract drops __-prefixed decls otherwise (§9.6.12)
+@_documentation(visibility: public)
 @frozen
 public struct __Tree<S: ~Copyable> {
 
