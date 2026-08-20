@@ -1,15 +1,15 @@
-// swift-tools-version: 6.3.3
+// swift-tools-version: 6.4
 
 import PackageDescription
 
 let package = Package(
     name: "swift-tree-primitives",
     platforms: [
-        .macOS("27"),
-        .iOS("27"),
-        .tvOS("27"),
-        .watchOS("27"),
-        .visionOS("27"),
+        .macOS(.v27),
+        .iOS(.v27),
+        .tvOS(.v27),
+        .watchOS(.v27),
+        .visionOS(.v27),
     ],
     products: [
         // MARK: - Root (the zero-dependency `Tree<S>` ADT namespace, [MOD-017])
@@ -46,18 +46,45 @@ let package = Package(
         // shared arena (TreeStorage over Shared<Node, Column.Generational<Node>>), the shared
         // defaults, and the canonical dynamic Tree. So the arena/queue/stack/buffer backings
         // (previously in the per-variant packages) return here.
-        .package(url: "https://github.com/swift-primitives/swift-index-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-column-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-ownership-shared-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-storage-generational-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-storage-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-buffer-ring-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-queue-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-stack-primitives.git", branch: "main"),
+        .package(
+            url: "https://github.com/swift-primitives/swift-index-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-column-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-ownership-shared-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-storage-generational-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-storage-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-buffer-ring-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-queue-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-stack-primitives.git",
+            branch: "main"
+        ),
         // R1 W4: the read-only fluent accessor views (Tree.forEach / Tree.child) are built on
         // `Property<Tag, Base>.Borrow` — the [PRP-001]-canonical mechanism for ~Copyable fluent
         // accessors (bespoke borrowing views wall on 6.3.2; probe-confirmed). Seat-ratified dep.
-        .package(url: "https://github.com/swift-primitives/swift-property-primitives.git", branch: "main"),
+        .package(
+            url: "https://github.com/swift-primitives/swift-property-primitives.git",
+            branch: "main"
+        ),
     ],
     targets: [
         // MARK: - Root ([MOD-017]: the singular zero-external-dependency `Tree<S>` ADT
@@ -74,7 +101,10 @@ let package = Package(
             dependencies: [
                 "Tree Primitive",
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
-                .product(name: "Storage Generational Primitives", package: "swift-storage-generational-primitives"),
+                .product(
+                    name: "Storage Generational Primitives",
+                    package: "swift-storage-generational-primitives"
+                ),
                 .product(name: "Store Primitive", package: "swift-storage-primitives"),
             ]
         ),
@@ -88,8 +118,14 @@ let package = Package(
                 "Tree Index Primitives",
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
                 .product(name: "Column Primitives", package: "swift-column-primitives"),
-                .product(name: "Ownership Shared Primitive", package: "swift-ownership-shared-primitives"),
-                .product(name: "Storage Generational Primitives", package: "swift-storage-generational-primitives"),
+                .product(
+                    name: "Ownership Shared Primitive",
+                    package: "swift-ownership-shared-primitives"
+                ),
+                .product(
+                    name: "Storage Generational Primitives",
+                    package: "swift-storage-generational-primitives"
+                ),
                 .product(name: "Store Primitive", package: "swift-storage-primitives"),
             ]
         ),
@@ -107,7 +143,10 @@ let package = Package(
                 .product(name: "Buffer Ring Primitive", package: "swift-buffer-ring-primitives"),
                 .product(name: "Queue Primitives", package: "swift-queue-primitives"),
                 .product(name: "Stack Primitives", package: "swift-stack-primitives"),
-                .product(name: "Storage Generational Primitives", package: "swift-storage-generational-primitives"),
+                .product(
+                    name: "Storage Generational Primitives",
+                    package: "swift-storage-generational-primitives"
+                ),
                 .product(name: "Store Primitive", package: "swift-storage-primitives"),
                 .product(name: "Property Primitives", package: "swift-property-primitives"),
             ]
@@ -133,7 +172,7 @@ let package = Package(
             ],
             path: "Tests/Support"
         ),
-        
+
         .testTarget(
             name: "Tree Primitives Tests",
             dependencies: [
@@ -162,7 +201,7 @@ for target in package.targets where ![.system, .binary, .plugin, .macro].contain
     ]
 
     let package: [SwiftSetting] = [
-        .enableExperimentalFeature("RawLayout"),
+        .enableExperimentalFeature("RawLayout")
     ]
 
     target.swiftSettings = (target.swiftSettings ?? []) + ecosystem + package
