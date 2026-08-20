@@ -11,7 +11,7 @@
 
 public import Storage_Generational_Primitives
 public import Store_Primitive
-public import Tree_Primitive
+import Tree_Primitive
 
 // MARK: - Traversable — the CONSUMER protocol (top-level; formerly hoisted as __TreeProtocol)
 //
