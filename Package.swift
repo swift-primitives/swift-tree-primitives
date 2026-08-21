@@ -12,12 +12,12 @@ let package = Package(
         .visionOS(.v27),
     ],
     products: [
-        // MARK: - Root (the zero-dependency `Tree<S>` ADT namespace, [MOD-017])
+
         .library(
             name: "Tree Primitive",
             targets: ["Tree Primitive"]
         ),
-        // MARK: - Sub-namespaces ([MOD-031])
+
         .library(
             name: "Tree Index Primitives",
             targets: ["Tree Index Primitives"]
@@ -30,22 +30,19 @@ let package = Package(
             name: "Tree Operations Primitives",
             targets: ["Tree Operations Primitives"]
         ),
-        // MARK: - Umbrella
+
         .library(
             name: "Tree Primitives",
             targets: ["Tree Primitives"]
         ),
-        // MARK: - Test Support
+
         .library(
             name: "Tree Primitives Test Support",
             targets: ["Tree Primitives Test Support"]
         ),
     ],
     dependencies: [
-        // R1 (corrected-E): tree-core is now the family home — it hosts Tree.Protocol, the
-        // shared arena (TreeStorage over Shared<Node, Column.Generational<Node>>), the shared
-        // defaults, and the canonical dynamic Tree. So the arena/queue/stack/buffer backings
-        // (previously in the per-variant packages) return here.
+
         .package(
             url: "https://github.com/swift-primitives/swift-index-primitives.git",
             branch: "main"
@@ -78,24 +75,18 @@ let package = Package(
             url: "https://github.com/swift-primitives/swift-stack-primitives.git",
             branch: "main"
         ),
-        // R1 W4: the read-only fluent accessor views (Tree.forEach / Tree.child) are built on
-        // `Property<Tag, Base>.Borrow` — the [PRP-001]-canonical mechanism for ~Copyable fluent
-        // accessors (bespoke borrowing views wall on 6.3.2; probe-confirmed). Seat-ratified dep.
+
         .package(
             url: "https://github.com/swift-primitives/swift-property-primitives.git",
             branch: "main"
         ),
     ],
     targets: [
-        // MARK: - Root ([MOD-017]: the singular zero-external-dependency `Tree<S>` ADT
-        //         namespace + its column-flowing Copyable/Sendable conformances)
+
         .target(
             name: "Tree Primitive"
         ),
 
-        // MARK: - Tree Index Primitives ([MOD-031]: the typed-addressing + seam foundation
-        //         — Tree.Index, Tree.Position, the shared error + insert-position, and the
-        //         hoisted `__TreeStorage` / `__TreeProtocol` seam protocols)
         .target(
             name: "Tree Index Primitives",
             dependencies: [
@@ -109,8 +100,6 @@ let package = Package(
             ]
         ),
 
-        // MARK: - Tree Storage Primitives ([MOD-031]: the shared generational arena + node +
-        //         the `TreeStorage` namespace and the canonical dynamic column conformer)
         .target(
             name: "Tree Storage Primitives",
             dependencies: [
@@ -130,9 +119,6 @@ let package = Package(
             ]
         ),
 
-        // MARK: - Tree Operations Primitives ([MOD-031]: the de-dup algorithm engine on
-        //         `Tree<S>`, the consumer-protocol conformance, and the `forEach` / `child`
-        //         fluent traversal views)
         .target(
             name: "Tree Operations Primitives",
             dependencies: [
@@ -152,7 +138,6 @@ let package = Package(
             ]
         ),
 
-        // MARK: - Umbrella ([MOD-005]: re-exports root + every sub-namespace)
         .target(
             name: "Tree Primitives",
             dependencies: [
@@ -163,7 +148,6 @@ let package = Package(
             ]
         ),
 
-        // MARK: - Test Support
         .target(
             name: "Tree Primitives Test Support",
             dependencies: [
@@ -178,7 +162,7 @@ let package = Package(
             dependencies: [
                 "Tree Primitives",
                 "Tree Primitives Test Support",
-                // For the typed-count literal SLI conformance ([MemberImportVisibility]).
+
                 .product(name: "Index Primitives", package: "swift-index-primitives"),
             ]
         ),
